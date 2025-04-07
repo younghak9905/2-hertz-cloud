@@ -1,1 +1,1 @@
-# 2-team-teamname-cloud
+# 2-team-hertz-cloud
