@@ -4,7 +4,6 @@ echo "✅ Docker 설치 중..."
 sudo yum install -y docker
 sudo service docker start
 sudo usermod -aG docker ec2-user
-newgrp docker
 
 echo "✅ 개발 도구 및 wrk 의존성 설치 중..."
 sudo yum groupinstall -y "Development Tools"
