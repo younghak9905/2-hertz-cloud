@@ -1,0 +1,63 @@
+name: Backend CD (SSH)
+
+on:
+  workflow_dispatch:
+
+env:
+  PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+  ZONE: ${{ secrets.GCP_ZONE }}
+  STAGING_INSTANCE: ${{ secrets.STAGING_INSTANCE }}
+  PROD_INSTANCE: ${{ secrets.PROD_INSTANCE }}
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Set environment
+        run: |
+          BRANCH="${{ github.ref_name }}"
+          echo "BRANCH=$BRANCH" >> $GITHUB_ENV
+
+          if [[ "$BRANCH" == "main" ]]; then
+            echo "ENV=production" >> $GITHUB_ENV
+            echo "HOST=${{ secrets.PROD_SERVER_HOST }}" >> $GITHUB_ENV
+            echo "INSTANCE=${{ env.PROD_INSTANCE }}" >> $GITHUB_ENV
+          else
+            echo "ENV=staging" >> $GITHUB_ENV
+            echo "HOST=${{ secrets.STAGING_SERVER_HOST }}" >> $GITHUB_ENV
+            echo "INSTANCE=${{ env.STAGING_INSTANCE }}" >> $GITHUB_ENV
+          fi
+
+      - name: Setup gcloud auth
+        uses: google-github-actions/setup-gcloud@v1
+        with:
+          credentials: ${{ secrets.GCP_SA_KEY }}
+          project_id: ${{ env.PROJECT_ID }}
+
+      - name: Boot target instance
+        run: |
+          echo "⚡ 인스턴스 기동 중: $INSTANCE (zone: $ZONE)"
+          gcloud compute instances start "$INSTANCE" --zone="$ZONE"
+
+      - name: Wait for instance to boot
+        run: sleep 30
+
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ env.HOST }}
+          username: ${{ secrets.SSH_USERNAME }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            cd /home/deploy
+            chmod +x be_deploy.sh
+            ./be_deploy.sh
+
+      - name: Send notification
+        if: always()
+        run: |
+          curl -H "Content-Type: application/json" \
+               -X POST \
+               -d "{\"username\": \"CD Bot\", \"content\": \"✅ ${{ env.ENV }} Spring Boot 배포 완료 - 브랜치: ${{ env.BRANCH }}\"}" \
+               ${{ secrets.DISCORD_WEBHOOK_URL }}
