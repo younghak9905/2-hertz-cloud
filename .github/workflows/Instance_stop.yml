@@ -1,0 +1,57 @@
+name: Stop GCP Instance
+
+on:
+  workflow_dispatch:
+
+env:
+  PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+  ZONE: ${{ secrets.GCP_ZONE }}
+  STAGING_INSTANCE: ${{ secrets.STAGING_INSTANCE }}
+  PROD_INSTANCE: ${{ secrets.PROD_INSTANCE }}
+
+jobs:
+  stop-instance:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Set environment
+        run: |
+          BRANCH="${{ github.ref_name }}"
+          echo "BRANCH=$BRANCH" >> $GITHUB_ENV
+
+          if [[ "$BRANCH" == "main" ]]; then
+            echo "ENV=production" >> $GITHUB_ENV
+            echo "INSTANCE=${{ env.PROD_INSTANCE }}" >> $GITHUB_ENV
+          else
+            echo "ENV=staging" >> $GITHUB_ENV
+            echo "INSTANCE=${{ env.STAGING_INSTANCE }}" >> $GITHUB_ENV
+          fi
+
+      - name: Authenticate to GCP
+        uses: google-github-actions/auth@v1
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Setup gcloud CLI
+        uses: google-github-actions/setup-gcloud@v1
+
+      - name: Stop target instance
+        run: |
+          echo "⚡ 중지할 인스턴스: $INSTANCE (zone: $ZONE)"
+          STATUS=$(gcloud compute instances describe "$INSTANCE" --zone="$ZONE" --format='get(status)')
+          echo "🔎 현재 상태: $STATUS"
+
+          if [[ "$STATUS" == "RUNNING" ]]; then
+            gcloud compute instances stop "$INSTANCE" --zone="$ZONE"
+            echo "🛑 인스턴스 중지 완료"
+          else
+            echo "ℹ️ 중지 생략: 현재 상태는 '$STATUS'"
+          fi
+
+      - name: Send notification
+        if: always()
+        run: |
+          curl -H "Content-Type: application/json" \
+               -X POST \
+               -d "{\"username\": \"CD Bot\", \"content\": \"🛑 ${{ env.ENV }} GCP 인스턴스 중지 완료 (브랜치: ${{ env.BRANCH }})\"}" \
+               ${{ secrets.DISCORD_WEBHOOK_URL }}
