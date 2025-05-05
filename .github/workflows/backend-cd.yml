@@ -2,6 +2,15 @@ name: Backend CD (SSH)
 
 on:
   workflow_dispatch:
+    inputs:
+      rollback:
+        description: 'Rollback 배포를 수행할까요?'
+        required: false
+        default: 'false'   # 문자열로 입력됨
+        type: choice
+        options:
+          - 'false'
+          - 'true'
 
 env:
   PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
@@ -29,18 +38,20 @@ jobs:
             echo "INSTANCE=${{ env.STAGING_INSTANCE }}" >> $GITHUB_ENV
           fi
 
+          echo "ROLLBACK=${{ github.event.inputs.rollback }}" >> $GITHUB_ENV
+
       - name: Authenticate to GCP
         uses: google-github-actions/auth@v1
         with:
-            credentials_json: ${{ secrets.GCP_SA_KEY }}
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
         
       - name: Setup gcloud CLI
         uses: google-github-actions/setup-gcloud@v1
         
       - name: Boot target instance
         run: |
-            echo "⚡ 인스턴스 기동 중: $INSTANCE (zone: $ZONE)"
-            gcloud compute instances start "$INSTANCE" --zone="$ZONE"
+          echo "⚡ 인스턴스 기동 중: $INSTANCE (zone: $ZONE)"
+          gcloud compute instances start "$INSTANCE" --zone="$ZONE"
 
       - name: Wait for instance to boot
         run: sleep 30
@@ -54,12 +65,16 @@ jobs:
           script: |
             cd /home/deploy
             chmod +x be_deploy.sh
-            ./be_deploy.sh
+            if [[ "${{ env.ROLLBACK }}" == "true" ]]; then
+              ./be_deploy.sh --rollback
+            else
+              ./be_deploy.sh
+            fi
 
       - name: Send notification
         if: always()
         run: |
           curl -H "Content-Type: application/json" \
                -X POST \
-               -d "{\"username\": \"CD Bot\", \"content\": \"✅ ${{ env.ENV }} Spring Boot 배포 완료 - 브랜치: ${{ env.BRANCH }}\"}" \
+               -d "{\"username\": \"CD Bot\", \"content\": \"🚀 ${{ env.ENV }} Spring Boot ${ROLLBACK:+롤백 }배포 완료 - 브랜치: ${{ env.BRANCH }}\"}" \
                ${{ secrets.DISCORD_WEBHOOK_URL }}
