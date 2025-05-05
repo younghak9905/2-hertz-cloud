@@ -57,24 +57,25 @@ jobs:
       - name: Setup gcloud CLI
         uses: google-github-actions/setup-gcloud@v1
 
-      - name: Boot target instance (start or resume)
+      - name: Boot target instance (start/resume with conditional wait)
         run: |
           echo "⚡ 인스턴스 상태 확인 중: $INSTANCE (zone: $ZONE)"
           STATUS=$(gcloud compute instances describe "$INSTANCE" --zone="$ZONE" --format='get(status)')
           echo "🔎 현재 상태: $STATUS"
-
+      
           if [[ "$STATUS" == "SUSPENDED" ]]; then
             echo "🔄 'resume' 명령 실행"
             gcloud compute instances resume "$INSTANCE" --zone="$ZONE"
+            echo "⏳ 상태 변경 후 30초 대기..."
+            sleep 30
           elif [[ "$STATUS" == "TERMINATED" ]]; then
             echo "🔄 'start' 명령 실행"
             gcloud compute instances start "$INSTANCE" --zone="$ZONE"
+            echo "⏳ 상태 변경 후 30초 대기..."
+            sleep 30
           else
-            echo "✅ 이미 실행 중 또는 시작 불필요: 상태=$STATUS"
+            echo "✅ 이미 실행 중 - 대기 생략"
           fi
-
-      - name: Wait for instance to boot
-        run: sleep 30
 
       - name: Deploy via SSH
         uses: appleboy/ssh-action@master
