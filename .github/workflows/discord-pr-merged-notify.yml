@@ -16,7 +16,8 @@ jobs:
         run: |
           curl -H "Content-Type: application/json" \
                -X POST \
-               -d "{
-                  \"content\": \"✅ PR Merged to **develop**!\n\n**Title:** ${{ github.event.pull_request.title }}\n**Author:** ${{ github.event.pull_request.user.login }}\n\n📝 **Description:**\n${{ github.event.pull_request.body }}\n\n🔗 <${{ github.event.pull_request.html_url }}>\"
-               }" \
-               "${{ secrets.DISCORD_WEBHOOK_URL }}"
+               -d @- "${{ secrets.DISCORD_WEBHOOK_URL }}" <<EOF
+          {
+            "content": "✅ PR Merged to **develop**!\n\n**Title:** ${{ github.event.pull_request.title }}\n**Author:** ${{ github.event.pull_request.user.login }}\n\n📝 **Description:**\n${{ github.event.pull_request.body }}\n\n🔗 <${{ github.event.pull_request.html_url }}"
+          }
+EOF
