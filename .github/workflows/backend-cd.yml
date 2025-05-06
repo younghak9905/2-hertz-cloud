@@ -120,4 +120,4 @@ jobs:
             curl -H "Content-Type: application/json" \
                  -X POST \
                  -d "{\"username\": \"CD Bot\", \"content\": \"${{ env.ENV }} Spring Boot ${{ env.DEPLOY_MESSAGE }} - 브랜치: ${{ env.BRANCH }}\\n🔖 커밋: ${{ env.COMMIT_HASH }}\"}" \
-                 ${{ secrets.DISCORD_WEBHOOK_URL }}
+                 ${{ secrets.DISCORD_WEBHOOK_CICD_URL }}
