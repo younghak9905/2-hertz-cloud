@@ -44,9 +44,9 @@ jobs:
       - name: Set deploy message
         run: |
           if [[ "${{ github.event.inputs.rollback }}" == "true" ]]; then
-            echo "DEPLOY_MESSAGE=🚨 롤백 배포 완료" >> $GITHUB_ENV
+            echo "DEPLOY_MESSAGE=🚨 [롤백 배포 완료]" >> $GITHUB_ENV
           else
-            echo "DEPLOY_MESSAGE=🚀 배포 완료" >> $GITHUB_ENV
+            echo "DEPLOY_MESSAGE=🚀 [배포 완료]" >> $GITHUB_ENV
           fi
 
       - name: Authenticate to GCP
@@ -119,5 +119,5 @@ jobs:
         run: |
             curl -H "Content-Type: application/json" \
                  -X POST \
-                 -d "{\"username\": \"CD Bot\", \"content\": \"${{ env.ENV }} Spring Boot ${{ env.DEPLOY_MESSAGE }} - 브랜치: ${{ env.BRANCH }}\\n🔖 커밋: ${{ env.COMMIT_HASH }}\"}" \
+                 -d "{\"content\": \"${{ env.DEPLOY_MESSAGE }} **${{ env.ENV }}** Spring Boot (브랜치: \`${{ env.BRANCH }}\`)\\n🔖 Commit: ${{ env.COMMIT_HASH }}\"}" \
                  ${{ secrets.DISCORD_WEBHOOK_CICD_URL }}
