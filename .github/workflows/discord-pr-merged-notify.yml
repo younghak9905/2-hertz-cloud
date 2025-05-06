@@ -24,19 +24,25 @@ jobs:
             PR_BODY="내용 없음"
           fi
 
-          # 이스케이프 처리
-          PR_BODY_ESCAPED=$(echo "$PR_BODY" | jq -Rs . | sed 's/^"//;s/"$//')
+          # JSON 생성
+          cat > payload.json << EOF
+          {
+            "embeds": [
+              {
+                "title": "✅ PR Merged to \`$BASE_BRANCH\`! [PR 링크]",
+                "url": "$PR_URL",
+                "description": "**Title:** $PR_TITLE\n**Author:** $PR_AUTHOR\n\n📝 **Description:**\n\`\`\`\n$(echo "$PR_BODY" | sed 's/"/\\"/g')\n\`\`\`",
+                "color": 3066993
+              }
+            ]
+          }
+          EOF
 
-          # 메시지 전송
+          # jq로 JSON 검증 및 이스케이프 처리
+          cat payload.json | jq '.' > escaped_payload.json
+
+          # 웹훅 전송
           curl -H "Content-Type: application/json" \
             -X POST \
-            -d "{
-              \"embeds\": [
-                {
-                  \"title\": \"✅ PR Merged to \\\`$BASE_BRANCH\\\`! [PR 링크]\",
-                  \"url\": \"$PR_URL\",
-                  \"description\": \"**Title:** $PR_TITLE\\n**Author:** $PR_AUTHOR\\n\\n📝 **Description:**\\n\`\`\`\\n$PR_BODY_ESCAPED\\n\`\`\`\",
-                  \"color\": 3066993
-                }
-              ]
-            }" "${{ secrets.DISCORD_WEBHOOK_PR_URL }}"
+            -d @escaped_payload.json \
+            "${{ secrets.DISCORD_WEBHOOK_PR_URL }}"
