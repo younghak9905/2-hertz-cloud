@@ -20,7 +20,7 @@ jobs:
             "embeds": [
                 {
                 "title": "✅ PR Merged to develop!",
-                "description": "**Title:** ${{ github.event.pull_request.title }}\\n**Author:** ${{ github.event.pull_request.user.login }}\\n\\n📝 **Description:**\\n${{ github.event.pull_request.body }}",
+                "description": "```markdown\n**Title:** ${{ github.event.pull_request.title }}\n**Author:** ${{ github.event.pull_request.user.login }}\n\n📝 **Description:**\n${{ github.event.pull_request.body }}\n```",
                 "url": "${{ github.event.pull_request.html_url }}",
                 "color": 3066993
                 }
