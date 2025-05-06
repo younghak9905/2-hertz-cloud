@@ -11,12 +11,19 @@ jobs:
     if: github.event.pull_request.merged == true  # 병합된 경우만 실행
     runs-on: ubuntu-latest
     steps:
-      - name: Send test message to Discord
+      - name: Send PR info to Discord
         run: |
             curl -H "Content-Type: application/json" \
                 -X POST \
                 -d @- "${{ secrets.DISCORD_WEBHOOK_URL }}" <<EOF
             {
-                "content": "✅ PR Merged to **develop**!\n\n**Title:** ${{ github.event.pull_request.title }}\n**Author:** ${{ github.event.pull_request.user.login }}\n\n📝 **Description:**\n${{ github.event.pull_request.body }}\n\n🔗 <${{ github.event.pull_request.html_url }}"
+            "embeds": [
+                {
+                "title": "✅ PR Merged to develop!",
+                "description": "**Title:** ${{ github.event.pull_request.title }}\\n**Author:** ${{ github.event.pull_request.user.login }}\\n\\n📝 **Description:**\\n${{ github.event.pull_request.body }}",
+                "url": "${{ github.event.pull_request.html_url }}",
+                "color": 3066993
+                }
+            ]
             }
             EOF
