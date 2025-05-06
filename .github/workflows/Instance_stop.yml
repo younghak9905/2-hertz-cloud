@@ -53,5 +53,5 @@ jobs:
         run: |
           curl -H "Content-Type: application/json" \
                -X POST \
-               -d "{\"username\": \"CD Bot\", \"content\": \"🛑 ${{ env.ENV }} GCP 인스턴스 중지 완료 (브랜치: ${{ env.BRANCH }})\"}" \
+               -d "{\"username\": \"CD Bot\", \"content\": \"🛑 [GCP 인스턴스 중지 완료] **${{ env.ENV }}** (브랜치: \`${{ env.BRANCH }}\`)\"}" \
                ${{ secrets.DISCORD_WEBHOOK_URL }}
