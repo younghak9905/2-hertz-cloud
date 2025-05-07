@@ -18,13 +18,15 @@ jobs:
         run: |
           BRANCH="${{ github.ref_name }}"
           echo "BRANCH=$BRANCH" >> $GITHUB_ENV
-
+      
           if [[ "$BRANCH" == "main" ]]; then
             echo "ENV=production" >> $GITHUB_ENV
             echo "INSTANCE=${{ env.PROD_INSTANCE }}" >> $GITHUB_ENV
+            echo "PROJECT_ID=${{ secrets.GCP_PROJECT_ID }}" >> $GITHUB_ENV
           else
-            echo "ENV=staging" >> $GITHUB_ENV
+            echo "ENV=stage" >> $GITHUB_ENV
             echo "INSTANCE=${{ env.STAGING_INSTANCE }}" >> $GITHUB_ENV
+            echo "PROJECT_ID=${{ secrets.GCP_PROJECT_ID_STAGING }}" >> $GITHUB_ENV
           fi
 
       - name: Authenticate to GCP
