@@ -11,15 +11,6 @@ on:
         options:
           - 'false'
           - 'true'
-
-env:
-  PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
-  ZONE: ${{ secrets.GCP_ZONE }}
-  STAGING_INSTANCE: ${{ secrets.STAGING_INSTANCE }}
-  PROD_INSTANCE: ${{ secrets.PROD_INSTANCE }}
-  GCP_SA_KEY: ${{ secrets.GCP_SA_KEY }}
-  GCP_SA_KEY_STAGING: ${{ secrets.GCP_SA_KEY_STAGING }}
-
 jobs:
   deploy:
     runs-on: ubuntu-latest
@@ -29,16 +20,17 @@ jobs:
         run: |
           BRANCH="${{ github.ref_name }}"
           echo "BRANCH=$BRANCH" >> $GITHUB_ENV
-      
+          echo "ZONE=${{ secrets.GCP_ZONE }}" >> $GITHUB_ENV
+
           if [[ "$BRANCH" == "main" ]]; then
             echo "ENV=production" >> $GITHUB_ENV
             echo "HOST=${{ secrets.PROD_SERVER_HOST }}" >> $GITHUB_ENV
-            echo "INSTANCE=${{ env.PROD_INSTANCE }}" >> $GITHUB_ENV
+            echo "INSTANCE=${{ secrets.PROD_INSTANCE }}" >> $GITHUB_ENV
             echo "PROJECT_ID=${{ secrets.GCP_PROJECT_ID }}" >> $GITHUB_ENV
           else
             echo "ENV=stage" >> $GITHUB_ENV
             echo "HOST=${{ secrets.STAGING_SERVER_HOST }}" >> $GITHUB_ENV
-            echo "INSTANCE=${{ env.STAGING_INSTANCE }}" >> $GITHUB_ENV
+            echo "INSTANCE=${{ secrets.STAGING_INSTANCE }}" >> $GITHUB_ENV
             echo "PROJECT_ID=${{ secrets.GCP_PROJECT_ID_STAGING }}" >> $GITHUB_ENV
           fi
       
@@ -48,9 +40,9 @@ jobs:
       - name: Set deploy message
         run: |
           if [[ "${{ github.event.inputs.rollback }}" == "true" ]]; then
-            echo "DEPLOY_MESSAGE=🚨 [롤백 배포 완료]" >> $GITHUB_ENV
+            echo "DEPLOY_MESSAGE=🚨 [BE 롤백 배포 완료]" >> $GITHUB_ENV
           else
-            echo "DEPLOY_MESSAGE=🚀 [배포 완료]" >> $GITHUB_ENV
+            echo "DEPLOY_MESSAGE=🚀 [BE 배포 완료]" >> $GITHUB_ENV
           fi
 
       - name: Authenticate to GCP
@@ -125,10 +117,18 @@ jobs:
           echo "❌ 3회 헬스체크 실패 - 서버가 정상 기동되지 않음"
           exit 1
 
-      - name: Send notification
+      - name: Send success notification
         if: success()
         run: |
             curl -H "Content-Type: application/json" \
                  -X POST \
-                 -d "{\"content\": \"${{ env.DEPLOY_MESSAGE }} **${{ env.ENV }}** Spring Boot (브랜치: \`${{ env.BRANCH }}\`)\\n🔖 Commit: ${{ env.COMMIT_HASH }}\"}" \
+                 -d "{\"content\": \"${{ env.DEPLOY_MESSAGE }} **${{ env.ENV }}** Backend 서버 (브랜치: \`${{ env.BRANCH }}\`)\\n🔖 Commit: ${{ env.COMMIT_HASH }}\"}" \
                  ${{ secrets.DISCORD_WEBHOOK_CICD_URL }}
+                 
+      - name: Send failure notification
+        if: failure()
+        run: |
+          curl -H "Content-Type: application/json" \
+              -X POST \
+              -d "{\"content\": \"❌ [BE 배포 실패] **${{ env.ENV }}** AI 서버 (브랜치: \`${{ env.BRANCH }}\`)\\n🔖 Commit: ${{ env.COMMIT_HASH }}\\n⚠️ 원인: 워크플로우 실행 중 오류 발생\"}" \
+              ${{ secrets.DISCORD_WEBHOOK_CICD_URL }}
