@@ -33,11 +33,11 @@ jobs:
             echo "HOST=${{ secrets.PROD_SERVER_HOST }}" >> $GITHUB_ENV
             echo "INSTANCE=${{ env.PROD_INSTANCE }}" >> $GITHUB_ENV
             echo "PROJECT_ID=${{ secrets.GCP_PROJECT_ID_PROD }}" >> $GITHUB_ENV
-          elif [[ "$BRANCH" == "stage" ]]; then
+          elif [[ "$BRANCH" == "develop" ]]; then
             echo "ENV=stage" >> $GITHUB_ENV
             echo "HOST=${{ secrets.STAGING_SERVER_HOST }}" >> $GITHUB_ENV
             echo "INSTANCE=${{ env.STAGING_INSTANCE }}" >> $GITHUB_ENV
-            echo "PROJECT_ID=${{ secrets.GCP_PROJECT_ID_STAGE }}" >> $GITHUB_ENV
+            echo "PROJECT_ID=${{ secrets.GCP_PROJECT_ID_STAGING }}" >> $GITHUB_ENV
           else
             echo "ENV=staging" >> $GITHUB_ENV
             echo "HOST=${{ secrets.STAGING_SERVER_HOST }}" >> $GITHUB_ENV
