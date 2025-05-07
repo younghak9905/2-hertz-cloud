@@ -25,12 +25,12 @@ jobs:
 
           if [[ "$BRANCH" == "main" ]]; then
             echo "ENV=production" >> $GITHUB_ENV
-            echo "HOST=${{ secrets.PROD_SERVER_HOST }}" >> $GITHUB_ENV
+            echo "HOST=${{ secrets.PROD_SERVER_HOST_AI }}" >> $GITHUB_ENV
             echo "INSTANCE=${{ secrets.PROD_INSTANCE_AI }}" >> $GITHUB_ENV
             echo "PROJECT_ID=${{ secrets.GCP_PROJECT_ID }}" >> $GITHUB_ENV
           else
             echo "ENV=stage" >> $GITHUB_ENV
-            echo "HOST=${{ secrets.STAGING_SERVER_HOST }}" >> $GITHUB_ENV
+            echo "HOST=${{ secrets.STAGING_SERVER_HOST_AI }}" >> $GITHUB_ENV
             echo "INSTANCE=${{ secrets.STAGING_INSTANCE_AI }}" >> $GITHUB_ENV
             echo "PROJECT_ID=${{ secrets.GCP_PROJECT_ID_STAGING }}" >> $GITHUB_ENV
           fi
