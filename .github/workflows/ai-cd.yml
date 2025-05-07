@@ -1,4 +1,4 @@
-name: AI Backend CD (SSH)
+name: AI CD (SSH)
 
 on:
   workflow_dispatch:
@@ -12,14 +12,6 @@ on:
           - "false"
           - "true"
 
-env:
-  PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
-  ZONE: ${{ secrets.GCP_ZONE }}
-  STAGING_INSTANCE: ${{ secrets.STAGING_INSTANCE_AI }}
-  PROD_INSTANCE: ${{ secrets.PROD_INSTANCE_AI }}
-  GCP_SA_KEY: ${{ secrets.GCP_SA_KEY }}
-  GCP_SA_KEY_STAGING: ${{ secrets.GCP_SA_KEY_STAGING }}
-
 jobs:
   deploy:
     runs-on: ubuntu-latest
@@ -29,16 +21,17 @@ jobs:
         run: |
           BRANCH="${{ github.ref_name }}"
           echo "BRANCH=$BRANCH" >> $GITHUB_ENV
+          echo "ZONE=${{ secrets.GCP_ZONE }}" >> $GITHUB_ENV
 
           if [[ "$BRANCH" == "main" ]]; then
             echo "ENV=production" >> $GITHUB_ENV
             echo "HOST=${{ secrets.PROD_SERVER_HOST }}" >> $GITHUB_ENV
-            echo "INSTANCE=${{ env.PROD_INSTANCE_AI }}" >> $GITHUB_ENV
+            echo "INSTANCE=${{ secrets.PROD_INSTANCE_AI }}" >> $GITHUB_ENV
             echo "PROJECT_ID=${{ secrets.GCP_PROJECT_ID }}" >> $GITHUB_ENV
           else
             echo "ENV=stage" >> $GITHUB_ENV
             echo "HOST=${{ secrets.STAGING_SERVER_HOST }}" >> $GITHUB_ENV
-            echo "INSTANCE=${{ env.STAGING_INSTANCE_AI }}" >> $GITHUB_ENV
+            echo "INSTANCE=${{ secrets.STAGING_INSTANCE_AI }}" >> $GITHUB_ENV
             echo "PROJECT_ID=${{ secrets.GCP_PROJECT_ID_STAGING }}" >> $GITHUB_ENV
           fi
 
