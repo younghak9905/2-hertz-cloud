@@ -4,20 +4,21 @@ on:
   workflow_dispatch:
     inputs:
       rollback:
-        description: '롤백 배포를 수행할까요?'
+        description: "롤백 배포를 수행할까요?"
         required: false
-        default: 'false'
+        default: "false"
         type: choice
         options:
-          - 'false'
-          - 'true'
+          - "false"
+          - "true"
 
 env:
   PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
   ZONE: ${{ secrets.GCP_ZONE }}
-  INSTANCE: ${{ secrets.GCP_AI_INSTANCE }}
-  HOST: ${{ secrets.GCP_AI_SERVER_HOST }}
+  STAGING_INSTANCE: ${{ secrets.STAGING_INSTANCE_AI }}
+  PROD_INSTANCE: ${{ secrets.PROD_INSTANCE_AI }}
   GCP_SA_KEY: ${{ secrets.GCP_SA_KEY }}
+  GCP_SA_KEY_STAGING: ${{ secrets.GCP_SA_KEY_STAGING }}
 
 jobs:
   deploy:
@@ -28,7 +29,19 @@ jobs:
         run: |
           BRANCH="${{ github.ref_name }}"
           echo "BRANCH=$BRANCH" >> $GITHUB_ENV
-          echo "ENV=production" >> $GITHUB_ENV
+
+          if [[ "$BRANCH" == "main" ]]; then
+            echo "ENV=production" >> $GITHUB_ENV
+            echo "HOST=${{ secrets.PROD_SERVER_HOST }}" >> $GITHUB_ENV
+            echo "INSTANCE=${{ env.PROD_INSTANCE_AI }}" >> $GITHUB_ENV
+            echo "PROJECT_ID=${{ secrets.GCP_PROJECT_ID }}" >> $GITHUB_ENV
+          else
+            echo "ENV=stage" >> $GITHUB_ENV
+            echo "HOST=${{ secrets.STAGING_SERVER_HOST }}" >> $GITHUB_ENV
+            echo "INSTANCE=${{ env.STAGING_INSTANCE_AI }}" >> $GITHUB_ENV
+            echo "PROJECT_ID=${{ secrets.GCP_PROJECT_ID_STAGING }}" >> $GITHUB_ENV
+          fi
+
           echo "ROLLBACK=${{ github.event.inputs.rollback }}" >> $GITHUB_ENV
           echo "COMMIT_HASH=${{ github.sha }}" >> $GITHUB_ENV
 
@@ -41,9 +54,16 @@ jobs:
           fi
 
       - name: Authenticate to GCP
+        if: github.ref_name == 'main'
         uses: google-github-actions/auth@v1
         with:
-          credentials_json: ${{ secrets.GCP_AI_SA_KEY }}
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Authenticate to GCP (Stage)
+        if: github.ref_name != 'main'
+        uses: google-github-actions/auth@v1
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY_STAGING }}
 
       - name: Setup gcloud CLI
         uses: google-github-actions/setup-gcloud@v1
@@ -90,20 +110,20 @@ jobs:
 
       - name: Health check AI server
         run: |
-            echo "🔍 AI 서버 헬스체크 시작 (FastAPI Swagger docs)... 최대 3회 시도합니다."
-            for i in {1..3}; do
-              echo "⏱️ 시도 $i: http://${{ env.HOST }}:8000/docs"
-              if curl -sf http://${{ env.HOST }}:8000/docs; then
-                echo "✅ 헬스체크 성공 🎉"
-                exit 0
-              else
-                echo "⚠️ 헬스체크 실패. 15초 후 재시도..."
-                sleep 15
-              fi
-            done
-        
-            echo "❌ 3회 헬스체크 실패 - AI 서버가 정상 기동되지 않음"
-            exit 1
+          echo "🔍 AI 서버 헬스체크 시작 (FastAPI Swagger docs)... 최대 3회 시도합니다."
+          for i in {1..3}; do
+            echo "⏱️ 시도 $i: http://${{ env.HOST }}:8000/docs"
+            if curl -sf http://${{ env.HOST }}:8000/docs; then
+              echo "✅ 헬스체크 성공 🎉"
+              exit 0
+            else
+              echo "⚠️ 헬스체크 실패. 15초 후 재시도..."
+              sleep 15
+            fi
+          done
+
+          echo "❌ 3회 헬스체크 실패 - AI 서버가 정상 기동되지 않음"
+          exit 1
 
       - name: Send notification
         if: success()
