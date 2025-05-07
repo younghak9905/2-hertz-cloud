@@ -17,6 +17,8 @@ env:
   ZONE: ${{ secrets.GCP_ZONE }}
   STAGING_INSTANCE: ${{ secrets.STAGING_INSTANCE }}
   PROD_INSTANCE: ${{ secrets.PROD_INSTANCE }}
+  GCP_SA_KEY: ${{ secrets.GCP_SA_KEY }}
+  GCP_SA_KEY_STAGING: ${{ secrets.GCP_SA_KEY_STAGING }}
 
 jobs:
   deploy:
@@ -32,17 +34,14 @@ jobs:
             echo "ENV=production" >> $GITHUB_ENV
             echo "HOST=${{ secrets.PROD_SERVER_HOST }}" >> $GITHUB_ENV
             echo "INSTANCE=${{ env.PROD_INSTANCE }}" >> $GITHUB_ENV
-            echo "PROJECT_ID=${{ secrets.GCP_PROJECT_ID_PROD }}" >> $GITHUB_ENV
-          elif [[ "$BRANCH" == "develop" ]]; then
+            echo "PROJECT_ID=${{ secrets.GCP_PROJECT_ID }}" >> $GITHUB_ENV
+            echo "SELECTED_SA_KEY=${{ secrets.GCP_SA_KEY }}" >> $GITHUB_ENV
+          else
             echo "ENV=stage" >> $GITHUB_ENV
             echo "HOST=${{ secrets.STAGING_SERVER_HOST }}" >> $GITHUB_ENV
             echo "INSTANCE=${{ env.STAGING_INSTANCE }}" >> $GITHUB_ENV
             echo "PROJECT_ID=${{ secrets.GCP_PROJECT_ID_STAGING }}" >> $GITHUB_ENV
-          else
-            echo "ENV=staging" >> $GITHUB_ENV
-            echo "HOST=${{ secrets.STAGING_SERVER_HOST }}" >> $GITHUB_ENV
-            echo "INSTANCE=${{ env.STAGING_INSTANCE }}" >> $GITHUB_ENV
-            echo "PROJECT_ID=${{ secrets.GCP_PROJECT_ID_STAGING }}" >> $GITHUB_ENV
+            echo "SELECTED_SA_KEY=${{ secrets.GCP_SA_KEY_STAGING }}" >> $GITHUB_ENV
           fi
       
           echo "ROLLBACK=${{ github.event.inputs.rollback }}" >> $GITHUB_ENV
@@ -59,7 +58,7 @@ jobs:
       - name: Authenticate to GCP
         uses: google-github-actions/auth@v1
         with:
-          credentials_json: ${{ secrets.GCP_SA_KEY }}
+          credentials_json: ${{ env.SELECTED_SA_KEY }}
 
       - name: Setup gcloud CLI
         uses: google-github-actions/setup-gcloud@v1
