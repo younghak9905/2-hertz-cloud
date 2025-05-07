@@ -1,0 +1,88 @@
+name: Stop GCP Instance
+
+on:
+  workflow_dispatch:
+    inputs:
+      target:
+        description: '중지할 인스턴스 선택'
+        required: true
+        default: 'BE'
+        type: choice
+        options:
+          - 'BE'
+          - 'AI'
+
+env:
+  PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+  PROJECT_ID_STAGING: ${{ secrets.GCP_PROJECT_ID_STAGING }}
+  ZONE: ${{ secrets.GCP_ZONE }}
+  PROD_INSTANCE: ${{ secrets.PROD_INSTANCE }}
+  STAGING_INSTANCE: ${{ secrets.STAGING_INSTANCE }}
+  PROD_INSTANCE_AI: ${{ secrets.STAGING_INSTANCE_AI }}
+  STAGING_INSTANCE_AI: ${{ secrets.STAGING_INSTANCE_AI }}
+
+jobs:
+  stop-instance:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Set environment
+        run: |
+          BRANCH="${{ github.ref_name }}"
+          TARGET="${{ github.event.inputs.target }}"
+          echo "BRANCH=$BRANCH" >> $GITHUB_ENV
+          echo "TARGET=$TARGET" >> $GITHUB_ENV
+
+          if [[ "$BRANCH" == "main" ]]; then
+            echo "ENV=production" >> $GITHUB_ENV
+            echo "PROJECT_ID=${{ env.PROJECT_ID }}" >> $GITHUB_ENV
+            if [[ "$TARGET" == "AI" ]]; then
+              echo "INSTANCE=${{ env.PROD_INSTANCE_AI }}" >> $GITHUB_ENV
+            else
+              echo "INSTANCE=${{ env.PROD_INSTANCE }}" >> $GITHUB_ENV
+            fi
+          else
+            echo "ENV=stage" >> $GITHUB_ENV
+            echo "PROJECT_ID=${{ env.PROJECT_ID_STAGING }}" >> $GITHUB_ENV
+            if [[ "$TARGET" == "AI" ]]; then
+              echo "INSTANCE=${{ env.STAGING_INSTANCE_AI }}" >> $GITHUB_ENV
+            else
+              echo "INSTANCE=${{ env.STAGING_INSTANCE }}" >> $GITHUB_ENV
+            fi
+          fi
+
+      - name: Authenticate to GCP
+        if: github.ref_name == 'main'
+        uses: google-github-actions/auth@v1
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Authenticate to GCP (Stage)
+        if: github.ref_name != 'main'
+        uses: google-github-actions/auth@v1
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY_STAGING }}
+
+      - name: Setup gcloud CLI
+        uses: google-github-actions/setup-gcloud@v1
+
+      - name: Stop target instance
+        run: |
+          echo "⚡ 중지할 인스턴스: $INSTANCE (zone: $ZONE)"
+          STATUS=$(gcloud compute instances describe "$INSTANCE" --zone="$ZONE" --format='get(status)')
+          echo "🔎 현재 상태: $STATUS"
+
+          if [[ "$STATUS" == "RUNNING" ]]; then
+            gcloud compute instances stop "$INSTANCE" --zone="$ZONE"
+            echo "🛑 인스턴스 중지 완료"
+          else
+            echo "ℹ️ 중지 생략: 현재 상태는 '$STATUS'"
+          fi
+
+      - name: Send notification
+        if: success()
+        run: |
+          curl -H "Content-Type: application/json" \
+               -X POST \
+               -d "{\"content\": \"🛑 [GCP 인스턴스 중지 완료] **${{ env.ENV }}** - 대상: ${{ env.TARGET }} (브랜치: \`${{ env.BRANCH }}\`)\"}" \
+               ${{ secrets.DISCORD_WEBHOOK_CICD_URL }}
