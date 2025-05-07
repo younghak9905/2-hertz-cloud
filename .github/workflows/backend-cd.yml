@@ -104,8 +104,8 @@ jobs:
         run: |
           echo "🔍 헬스체크 시작: 최대 3회 시도합니다."
           for i in {1..3}; do
-            echo "⏱️ 시도 $i: https://hertz-tuning.com/api/ping"
-            if curl -sf https://hertz-tuning.com/api/ping; then
+            echo "⏱️ 시도 $i: http://${{ env.HOST }}:8080/api/ping"
+            if curl -sf http://${{ env.HOST }}:8080/api/ping; then
               echo "✅ 헬스체크 성공 🎉"
               exit 0
             else
