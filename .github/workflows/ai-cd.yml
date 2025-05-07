@@ -118,10 +118,18 @@ jobs:
           echo "❌ 3회 헬스체크 실패 - AI 서버가 정상 기동되지 않음"
           exit 1
 
-      - name: Send notification
+      - name: Send success notification
         if: success()
         run: |
           curl -H "Content-Type: application/json" \
                -X POST \
                -d "{\"content\": \"${{ env.DEPLOY_MESSAGE }} **${{ env.ENV }}** AI 서버 (브랜치: \`${{ env.BRANCH }}\`)\\n🔖 Commit: ${{ env.COMMIT_HASH }}\"}" \
+               ${{ secrets.DISCORD_WEBHOOK_CICD_URL }}
+
+      - name: Send failure notification
+        if: failure()
+        run: |
+          curl -H "Content-Type: application/json" \
+               -X POST \
+               -d "{\"content\": \"❌ [AI 배포 실패] **${{ env.ENV }}** AI 서버 (브랜치: \`${{ env.BRANCH }}\`)\\n🔖 Commit: ${{ env.COMMIT_HASH }}\\n⚠️ 원인: 워크플로우 실행 중 오류 발생\"}" \
                ${{ secrets.DISCORD_WEBHOOK_CICD_URL }}
