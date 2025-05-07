@@ -9,4 +9,4 @@
 | STAGING_SERVER_HOST | 스테이징 서버 SSH IP 또는 도메인 | 34.97.xxx.xxx |
 | SSH_USERNAME | SSH 접속 계정명 | deploy |
 | SSH_PRIVATE_KEY | SSH 개인 키 (예: ~/.ssh/gcp_tuning_deploy) | -----BEGIN OPENSSH PRIVATE KEY----- ... |
-| DISCORD_WEBHOOK_URL | 배포 성공 알림용 Discord Webhook | https://discord.com/api/webhooks/... |
+| DISCORD_WEBHOOK_CICD_URL | 배포 성공 알림용 Discord Webhook | https://discord.com/api/webhooks/... |
