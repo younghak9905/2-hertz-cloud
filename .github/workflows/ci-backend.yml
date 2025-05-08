@@ -1,0 +1,102 @@
+# .github/workflows/backend-ci.yml
+
+name: Backend CI
+
+on:
+  pull_request:
+  types: [closed]
+    branches:
+      - main
+      - develop PR이 main 또는 develop 브랜치로 열릴 때 트리거
+
+jobs:
+  backend-ci:
+    runs-on: ubuntu-latest  # GitHub Actions의 실행 환경(OS)
+
+    steps:
+    # 1. 소스 코드 체크아웃
+    - name: Checkout repository
+      uses: actions/checkout@v3
+  
+
+    # 2. Java 21 설치 (Spring Boot 3.x 기준)
+    - name: Set up JDK
+      uses: actions/setup-java@v3
+      with:
+        java-version: '21'
+        distribution: 'temurin'
+        cache: 'gradle'
+
+    # 3. Gradle 캐시 적용 (빌드 시간 단축)
+    - name: Cache Gradle
+      uses: actions/cache@v3
+      with:
+        path: |
+          ~/.gradle/caches
+          ~/.gradle/wrapper
+          ~/.gradle/buildOutputCleanup
+          build/
+        key: gradle-${{ runner.os }}-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+        restore-keys: |
+          gradle-${{ runner.os }}-
+          gradle-
+
+     # 4. 단위 테스트 실행 (모든 PR에서 실행)
+    - name: Run Unit Tests
+      run: ./gradlew test --no-daemon --parallel --max-workers=2 --stacktrace
+      env:
+        GRADLE_OPTS: -Dorg.gradle.daemon=false -Dorg.gradle.parallel=true -Dorg.gradle.workers.max=2
+
+    # 5. 통합 테스트 실행 (main 브랜치 PR에서만 실행)
+    - name: Run Integration Tests
+      if: github.base_ref == 'main'
+      run: ./gradlew integrationTest --no-daemon --parallel --max-workers=2 --stacktrace
+      env:
+        GRADLE_OPTS: -Dorg.gradle.daemon=false -Dorg.gradle.parallel=true -Dorg.gradle.workers.max=2
+      continue-on-error: false
+
+    # 6. 애플리케이션 빌드
+    - name: Build Spring Boot Application
+      if: success()
+      run: ./gradlew build -x test -x integrationTest --no-daemon --parallel --max-workers=2
+      env:
+        GRADLE_OPTS: -Dorg.gradle.daemon=false -Dorg.gradle.parallel=true -Dorg.gradle.workers.max=2
+        # MySQL 설정
+        DB_HOST: ${{ secrets.TEST_DB_HOST }}
+        DB_PORT: ${{ secrets.TEST_DB_PORT }}
+        DB_NAME: ${{ secrets.TEST_DB_NAME }}
+        DB_USERNAME: ${{ secrets.TEST_DB_USERNAME }}
+        DB_PASSWORD: ${{ secrets.TEST_DB_PASSWORD }}
+        # Redis 설정
+        REDIS_HOST: ${{ secrets.TEST_REDIS_HOST }}
+        REDIS_PORT: ${{ secrets.TEST_REDIS_PORT }}
+        REDIS_PASSWORD: ${{ secrets.TEST_REDIS_PASSWORD }}
+        # JWT 설정
+        JWT_SECRET: ${{ secrets.TEST_JWT_SECRET }}
+        # Swagger 설정
+        SWAGGER_ENABLED: ${{ github.base_ref == 'main' && 'false' || 'true' }}
+        # Kakao 설정
+        KAKAO_CLIENT_ID: ${{ secrets.KAKAO_CLIENT_ID }}
+        REDIRECT_URL: ${{ secrets.REDIRECT_URL }}
+        # AI 서버 설정
+        AI_SERVER_IP: ${{ secrets.AI_SERVER_IP }}
+        # 빌드 메타데이터
+        BUILD_NUMBER: ${{ github.run_number }}
+        GIT_COMMIT: ${{ github.sha }}
+
+    # 8. Discord로 CI 결과 전송 (성공/실패에 따라 다른 메시지 전송)
+    - name: Send success notification
+      if: success()
+      run: |
+        curl -H "Content-Type: application/json" \
+             -X POST \
+             -d "{\"username\": \"Backend CI\", \"content\": \"✅ [BE CI 성공] **${{ env.ENV }}** Backend 서버 (브랜치: \`${{ env.BRANCH }}\`)\\n🔖 Commit: ${{ env.COMMIT_HASH }}\"}" \
+             ${{ secrets.DISCORD_WEBHOOK_URL }}
+
+    - name: Send failure notification
+      if: failure()
+      run: |
+        curl -H "Content-Type: application/json" \
+             -X POST \
+             -d "{\"username\": \"Backend CI\", \"content\": \"❌ [BE CI 실패] **${{ env.ENV }}** Backend 서버 (브랜치: \`${{ env.BRANCH }}\`)\\n🔖 Commit: ${{ env.COMMIT_HASH }}\\n⚠️ 원인: 워크플로우 실행 중 오류 발생\"}" \
+             ${{ secrets.DISCORD_WEBHOOK_URL }}
