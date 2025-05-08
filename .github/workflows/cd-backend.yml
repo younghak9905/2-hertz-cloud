@@ -1,4 +1,4 @@
-name: Deploy Backend (SSH)
+name: CD Backend (SSH)
 
 on:
   pull_request:
