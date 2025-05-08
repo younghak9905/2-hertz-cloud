@@ -52,10 +52,10 @@ jobs:
           HOST: ${{ env.HOST }}
           ENVIRONMENT: ${{ env.ENVIRONMENT }}
         run: |
-          echo "🔍 AI 서버 헬스체크 시작 (FastAPI Swagger docs)... 최대 3회 시도합니다."
+          echo "🔍 AI 서버 헬스체크 시작 ... 최대 3회 시도합니다."
           for i in {1..3}; do
-            echo "⏱️ 시도 $i: http://${{ env.HOST }}:8000/docs"
-            if curl -sf http://${{ env.HOST }}:8000/docs; then
+            echo "⏱️ 시도 $i: http://${{ env.HOST }}:8000/api/v1/health/chromadb"
+            if curl -sf http://${{ env.HOST }}:8000/api/v1/health/chromadb; then
               echo "✅ 헬스체크 성공 🎉"
               exit 0
             else
