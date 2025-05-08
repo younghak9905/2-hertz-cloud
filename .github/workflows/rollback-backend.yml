@@ -30,6 +30,13 @@ jobs:
         with:
           credentials_json: ${{ secrets.GCP_SA_KEY_STAGING }}
 
+      - name: Send rollback start notification
+        run: |
+          curl -H "Content-Type: application/json" \
+            -X POST \
+            -d "{\"content\": \"🔄 [BE 롤백 시작] \`${{ inputs.environment }}\` 환경에서 롤백을 실행합니다.\"}" \
+            ${{ secrets.DISCORD_WEBHOOK_CICD_URL }}
+            
       - name: SSH into server and rollback
         uses: appleboy/ssh-action@master
         with:
