@@ -1,105 +1,66 @@
-name: Frontend CD
+name: CD Frontend (SSH)
 
 on:
-  workflow_call:
-    inputs:
-      rollback:
-        description: '롤백 배포를 수행할까요?'
-        required: false
-        default: false
-        type: boolean
-  workflow_dispatch:
-    inputs:
-      rollback:
-        description: '롤백 배포를 수행할까요?'
-        required: false
-        default: 'false'
-        type: choice
-        options:
-          - 'false'
-          - 'true'
-
-env:
-  PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
-  ZONE: ${{ secrets.GCP_ZONE }}
-  STAGING_INSTANCE: ${{ secrets.STAGING_INSTANCE }}
-  PROD_INSTANCE: ${{ secrets.PROD_INSTANCE }}
-  GCP_SA_KEY: ${{ secrets.GCP_SA_KEY }}
-  GCP_SA_KEY_STAGING: ${{ secrets.GCP_SA_KEY_STAGING }}
-
+  pull_request:
+    types: [closed] # PR이 닫혔을 때 (병합 포함)
+    branches:
+      - main # main 브랜치로 Merge 시 -> Production 환경에 배포
+      - develop # develop 브랜치로 Merge 시 -> Stage 환경에 배포
 jobs:
   deploy:
     runs-on: ubuntu-latest
-
     steps:
       - name: Set environment
         run: |
           BRANCH="${{ github.ref_name }}"
           echo "BRANCH=$BRANCH" >> $GITHUB_ENV
-      
+          echo "ZONE=${{ secrets.GCP_ZONE }}" >> $GITHUB_ENV
+
           if [[ "$BRANCH" == "main" ]]; then
             echo "ENV=production" >> $GITHUB_ENV
             echo "HOST=${{ secrets.PROD_SERVER_HOST }}" >> $GITHUB_ENV
-            echo "INSTANCE=${{ env.PROD_INSTANCE }}" >> $GITHUB_ENV
+            echo "INSTANCE=${{ secrets.PROD_INSTANCE }}" >> $GITHUB_ENV
             echo "PROJECT_ID=${{ secrets.GCP_PROJECT_ID }}" >> $GITHUB_ENV
           else
             echo "ENV=stage" >> $GITHUB_ENV
             echo "HOST=${{ secrets.STAGING_SERVER_HOST }}" >> $GITHUB_ENV
-            echo "INSTANCE=${{ env.STAGING_INSTANCE }}" >> $GITHUB_ENV
+            echo "INSTANCE=${{ secrets.STAGING_INSTANCE }}" >> $GITHUB_ENV
             echo "PROJECT_ID=${{ secrets.GCP_PROJECT_ID_STAGING }}" >> $GITHUB_ENV
           fi
-      
-          echo "ROLLBACK=${{ github.event.inputs.rollback }}" >> $GITHUB_ENV
+
           echo "COMMIT_HASH=${{ github.sha }}" >> $GITHUB_ENV
 
-      - name: Set deploy message
-        run: |
-          if [[ "${{ github.event.inputs.rollback }}" == "true" ]]; then
-            echo "DEPLOY_MESSAGE=🚨 [프론트엔드 롤백 배포 완료]" >> $GITHUB_ENV
-          else
-            echo "DEPLOY_MESSAGE=🚀 [프론트엔드 배포 완료]" >> $GITHUB_ENV
-          fi
-
-      - name: Cache GCP credentials
-        uses: actions/cache@v3
-        id: gcp-cache
-        with:
-          path: ~/.config/gcloud
-          key: ${{ runner.os }}-gcloud-${{ hashFiles('**/package-lock.json') }}
-          restore-keys: |
-            ${{ runner.os }}-gcloud-
-
       - name: Authenticate to GCP
-        if: github.ref_name == 'main' && steps.gcp-cache.outputs.cache-hit != 'true'
+        if: github.ref_name == 'main'
         uses: google-github-actions/auth@v1
         with:
-            credentials_json: ${{ secrets.GCP_SA_KEY }}
-          
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
       - name: Authenticate to GCP (Stage)
         if: github.ref_name != 'main'
         uses: google-github-actions/auth@v1
         with:
-            credentials_json: ${{ secrets.GCP_SA_KEY_STAGING }}
+          credentials_json: ${{ secrets.GCP_SA_KEY_STAGING }}
 
       - name: Setup gcloud CLI
         uses: google-github-actions/setup-gcloud@v1
 
-      - name: Boot target instance
+      - name: Boot target instance (start/resume with conditional wait)
         run: |
           echo "⚡ 인스턴스 상태 확인 중: $INSTANCE (zone: $ZONE)"
           STATUS=$(gcloud compute instances describe "$INSTANCE" --zone="$ZONE" --format='get(status)')
           echo "🔎 현재 상태: $STATUS"
-      
+
           if [[ "$STATUS" == "SUSPENDED" ]]; then
             echo "🔄 'resume' 명령 실행"
-            gcloud compute instances resume "$INSTANCE" --zone="$ZONE" --quiet
-            echo "⏳ 상태 변경 후 20초 대기..."
-            sleep 20
+            gcloud compute instances resume "$INSTANCE" --zone="$ZONE"
+            echo "⏳ 상태 변경 후 30초 대기..."
+            sleep 30
           elif [[ "$STATUS" == "TERMINATED" ]]; then
             echo "🔄 'start' 명령 실행"
-            gcloud compute instances start "$INSTANCE" --zone="$ZONE" --quiet
-            echo "⏳ 상태 변경 후 20초 대기..."
-            sleep 20
+            gcloud compute instances start "$INSTANCE" --zone="$ZONE"
+            echo "⏳ 상태 변경 후 30초 대기..."
+            sleep 30
           else
             echo "✅ 이미 실행 중 - 대기 생략"
           fi
@@ -111,54 +72,63 @@ jobs:
           username: ${{ secrets.SSH_USERNAME }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
-            cd /home/deploy/
+            cd /home/deploy
             chmod +x fe_deploy.sh
-            if [[ "${{ env.ROLLBACK }}" == "true" ]]; then
-              ./fe_deploy.sh --rollback
-            else
-              ./fe_deploy.sh
-            fi
+            ./fe_deploy.sh
 
-      - name: Wait for Next.js to start
+      - name: Wait for Next.JS to start
         run: |
-          echo "🕒 Next.js 서버 기동 대기 중..."
+          echo "🕒 Next.JS 서버 기동 대기 중..."
           sleep 15
 
       - name: Health check with retries
         run: |
           echo "🔍 헬스체크 시작: 최대 3회 시도합니다."
           if [[ "${{ env.ENV }}" == "production" ]]; then
-            HEALTH_CHECK_URL="https://hertz-tuning.com/login"
+            CHECK_URL="https://hertz-tuning.com/login"
           else
-            HEALTH_CHECK_URL="http://${{ env.HOST }}:3000/login"
+            CHECK_URL="http://${{ env.HOST }}:3000/login"
           fi
-          
+
           for i in {1..3}; do
-            echo "⏱️ 시도 $i: $HEALTH_CHECK_URL"
-            if curl -sf --connect-timeout 5 --max-time 10 "$HEALTH_CHECK_URL"; then
+            echo "⏱️ 시도 $i: $CHECK_URL"
+            if curl -sf --connect-timeout 5 --max-time 10 "$CHECK_URL"; then
               echo "✅ 헬스체크 성공 🎉"
               exit 0
             else
-              echo "⚠️ 헬스체크 실패. 15초 후 재시도..."
+              echo "::error::헬스체크 시도 $i 실패"
               sleep 15
             fi
           done
 
-          echo "❌ 3회 헬스체크 실패 - 서버가 정상 기동되지 않음"
+          echo "::error::❌ 3회 헬스체크 실패 - 서버가 정상 기동되지 않음"
           exit 1
-
-      - name: Send success notification
-        if: success()
-        run: |
-            curl -H "Content-Type: application/json" \
-                 -X POST \
-                 -d "{\"content\": \"${{ env.DEPLOY_MESSAGE }} **${{ env.ENV }}** Next.js (브랜치: \`${{ env.BRANCH }}\`)\\n🔖 Commit: ${{ env.COMMIT_HASH }}\"}" \
-                 ${{ secrets.DISCORD_WEBHOOK_CICD_URL }}
 
       - name: Send failure notification
         if: failure()
         run: |
-            curl -H "Content-Type: application/json" \
-                 -X POST \
-                 -d "{\"content\": \"❌ [프론트엔드 배포 실패] **${{ env.ENV }}** Next.js (브랜치: \`${{ env.BRANCH }}\`)\\n🔖 Commit: ${{ env.COMMIT_HASH }}\\n⚠️ 원인: 헬스체크 실패 또는 배포 중 오류 발생\"}" \
-                 ${{ secrets.DISCORD_WEBHOOK_CICD_URL }}
+          curl -H "Content-Type: application/json" \
+              -X POST \
+              -d "{\"content\": \"❌ [FE 배포 실패] **${{ env.ENV }}** Frontend 서버 (브랜치: \`${{ env.BRANCH }}\`)\\n🔖 Commit: ${{ env.COMMIT_HASH }}\\n⚠️ 원인: 워크플로우 실행 중 오류 발생\"}" \
+              ${{ secrets.DISCORD_WEBHOOK_CICD_URL }}
+
+      - name: Send success notification
+        if: success()
+        run: |
+          curl -H "Content-Type: application/json" \
+               -X POST \
+               -d "{\"content\": \"🚀 [FE 배포 완료] **${{ env.ENV }}** Frontend 서버 (브랜치: \`${{ env.BRANCH }}\`)\\n🔖 Commit: ${{ env.COMMIT_HASH }}\"}" \
+               ${{ secrets.DISCORD_WEBHOOK_CICD_URL }}
+
+  # 실패 시, 롤백 수행하는 job
+  rollback-production:
+    if: failure() && github.ref == 'refs/heads/main'
+    uses: 100-hours-a-week/2-hertz-cloud/.github/workflows/rollback-frontend.yml@main
+    with:
+      environment: production
+
+  rollback-stage:
+    if: failure() && github.ref == 'refs/heads/develop'
+    uses: 100-hours-a-week/2-hertz-cloud/.github/workflows/rollback-frontend.yml@develop
+    with:
+      environment: stage
