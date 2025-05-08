@@ -89,6 +89,7 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
             cd /home/deploy
+            pm2 restart ecosystem.config.js 
             chmod +x ai_deploy.sh
             if [[ "${{ env.ROLLBACK }}" == "true" ]]; then
               ./ai_deploy.sh --rollback
