@@ -16,7 +16,7 @@ jobs:
       - name: Set environment variables
         run: |
           echo "ENVIRONMENT=${{ inputs.environment }}" >> $GITHUB_ENV
-          echo "HOST=${{ inputs.environment == 'production' && secrets.PROD_SERVER_HOSTAI || secrets.STAGING_SERVER_HOSTAI }}" >> $GITHUB_ENV
+          echo "HOST=${{ inputs.environment == 'production' && secrets.PROD_SERVER_HOST_AI || secrets.STAGING_SERVER_HOST_AI }}" >> $GITHUB_ENV
 
       - name: Authenticate to GCP
         if: ${{ inputs.environment == 'production' }}
