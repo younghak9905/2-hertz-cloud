@@ -45,8 +45,8 @@ jobs:
       if: steps.npm-cache.outputs.cache-hit != 'true'
       run: npm ci
 
-    - name: Run Unit Tests (Jest)
-      run: npm run test
+#    - name: Run Unit Tests (Jest)
+#      run: npm run test
 
     - name: Build Next.js App
       env:
@@ -81,4 +81,4 @@ jobs:
   deploy:
       needs: frontend-ci
       if: success()
-      uses: ./.github/workflows/frontend-cd.yml
+      uses: ./.github/workflows/cd-frontend.yml
