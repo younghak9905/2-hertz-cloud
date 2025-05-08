@@ -111,7 +111,7 @@ jobs:
           username: ${{ secrets.SSH_USERNAME }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
-            cd /home/deploy/2-hertz-fe
+            cd /home/deploy/
             chmod +x fe_deploy.sh
             if [[ "${{ env.ROLLBACK }}" == "true" ]]; then
               ./fe_deploy.sh --rollback
