@@ -115,7 +115,7 @@ jobs:
 
       - name: Call rollback workflow on health check failure
         if: failure()
-        uses: ./.github/workflows/rollback.yml
+        uses: ./.github/workflows/rollback-backend.yml
         with:
           environment: ${{ env.ENV }}
 
