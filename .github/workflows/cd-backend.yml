@@ -1,20 +1,14 @@
-name: Backend CD (SSH)
+name: Deploy Backend (SSH)
 
 on:
-  workflow_dispatch:
-    inputs:
-      rollback:
-        description: "롤백 배포를 수행할까요?"
-        required: false
-        default: "false"
-        type: choice
-        options:
-          - "false"
-          - "true"
+  pull_request:
+    types: [closed] # PR이 닫혔을 때 (병합 포함)
+    branches:
+      - main # main 브랜치로 Merge 시 -> Production 환경에 배포
+      - develop # develop 브랜치로 Merge 시 -> Stage 환경에 배포
 jobs:
   deploy:
     runs-on: ubuntu-latest
-
     steps:
       - name: Set environment
         run: |
@@ -34,16 +28,7 @@ jobs:
             echo "PROJECT_ID=${{ secrets.GCP_PROJECT_ID_STAGING }}" >> $GITHUB_ENV
           fi
 
-          echo "ROLLBACK=${{ github.event.inputs.rollback }}" >> $GITHUB_ENV
           echo "COMMIT_HASH=${{ github.sha }}" >> $GITHUB_ENV
-
-      - name: Set deploy message
-        run: |
-          if [[ "${{ github.event.inputs.rollback }}" == "true" ]]; then
-            echo "DEPLOY_MESSAGE=🚨 [BE 롤백 배포 완료]" >> $GITHUB_ENV
-          else
-            echo "DEPLOY_MESSAGE=🚀 [BE 배포 완료]" >> $GITHUB_ENV
-          fi
 
       - name: Authenticate to GCP
         if: github.ref_name == 'main'
@@ -89,11 +74,7 @@ jobs:
           script: |
             cd /home/deploy
             chmod +x be_deploy.sh
-            if [[ "${{ env.ROLLBACK }}" == "true" ]]; then
-              ./be_deploy.sh --rollback
-            else
-              ./be_deploy.sh
-            fi
+            ./be_deploy.sh
 
       - name: Wait for Spring Boot to start
         run: |
@@ -124,18 +105,24 @@ jobs:
           echo "::error::❌ 3회 헬스체크 실패 - 서버가 정상 기동되지 않음"
           exit 1
 
-      - name: Send success notification
-        if: success()
-        run: |
-          curl -H "Content-Type: application/json" \
-               -X POST \
-               -d "{\"content\": \"${{ env.DEPLOY_MESSAGE }} **${{ env.ENV }}** Backend 서버 (브랜치: \`${{ env.BRANCH }}\`)\\n🔖 Commit: ${{ env.COMMIT_HASH }}\"}" \
-               ${{ secrets.DISCORD_WEBHOOK_CICD_URL }}
-
       - name: Send failure notification
         if: failure()
         run: |
           curl -H "Content-Type: application/json" \
               -X POST \
-              -d "{\"content\": \"❌ [BE 배포 실패] **${{ env.ENV }}** AI 서버 (브랜치: \`${{ env.BRANCH }}\`)\\n🔖 Commit: ${{ env.COMMIT_HASH }}\\n⚠️ 원인: 워크플로우 실행 중 오류 발생\"}" \
+              -d "{\"content\": \"❌ [BE 배포 실패] **${{ env.ENV }}** Backend 서버 (브랜치: \`${{ env.BRANCH }}\`)\\n🔖 Commit: ${{ env.COMMIT_HASH }}\\n⚠️ 원인: 워크플로우 실행 중 오류 발생\"}" \
               ${{ secrets.DISCORD_WEBHOOK_CICD_URL }}
+
+      - name: Call rollback workflow on health check failure
+        if: failure()
+        uses: ./.github/workflows/rollback.yml
+        with:
+          environment: ${{ env.ENV }}
+
+      - name: Send success notification
+        if: success()
+        run: |
+          curl -H "Content-Type: application/json" \
+               -X POST \
+               -d "{\"content\": \"🚀 [BE 배포 완료] **${{ env.ENV }}** Backend 서버 (브랜치: \`${{ env.BRANCH }}\`)\\n🔖 Commit: ${{ env.COMMIT_HASH }}\"}" \
+               ${{ secrets.DISCORD_WEBHOOK_CICD_URL }}
