@@ -6,8 +6,9 @@ on:
   pull_request:
   types: [closed]
     branches:
-      - main
-      - develop PR이 main 또는 develop 브랜치로 열릴 때 트리거
+       - feature/backend
+#      - main
+#      - develop #PR이 main 또는 develop 브랜치로 열릴 때 트리거
 
 jobs:
   backend-ci:
