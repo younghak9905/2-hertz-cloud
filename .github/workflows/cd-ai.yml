@@ -6,6 +6,7 @@ on:
     branches:
       - main # main 브랜치로 Merge 시 -> Production 환경에 배포
       - develop # develop 브랜치로 Merge 시 -> Stage 환경에 배포
+      
 jobs:
   deploy:
     runs-on: ubuntu-latest
@@ -16,17 +17,23 @@ jobs:
           echo "BRANCH=$BRANCH" >> $GITHUB_ENV
           echo "ZONE=${{ secrets.GCP_ZONE }}" >> $GITHUB_ENV
 
-          if [[ "$BRANCH" == "main" ]]; then
-            echo "ENV=production" >> $GITHUB_ENV
-            echo "HOST=${{ secrets.PROD_SERVER_HOST_AI }}" >> $GITHUB_ENV
-            echo "INSTANCE=${{ secrets.PROD_INSTANCE_AI }}" >> $GITHUB_ENV
-            echo "PROJECT_ID=${{ secrets.GCP_PROJECT_ID }}" >> $GITHUB_ENV
-          else
-            echo "ENV=stage" >> $GITHUB_ENV
-            echo "HOST=${{ secrets.STAGING_SERVER_HOST_AI }}" >> $GITHUB_ENV
-            echo "INSTANCE=${{ secrets.STAGING_INSTANCE_AI }}" >> $GITHUB_ENV
-            echo "PROJECT_ID=${{ secrets.GCP_PROJECT_ID_STAGING }}" >> $GITHUB_ENV
-          fi
+          # if [[ "$BRANCH" == "main" ]]; then
+          #   echo "ENV=production" >> $GITHUB_ENV
+          #   echo "HOST=${{ secrets.PROD_SERVER_HOST_AI }}" >> $GITHUB_ENV
+          #   echo "INSTANCE=${{ secrets.PROD_INSTANCE_AI }}" >> $GITHUB_ENV
+          #   echo "PROJECT_ID=${{ secrets.GCP_PROJECT_ID }}" >> $GITHUB_ENV
+          # else
+          #   echo "ENV=stage" >> $GITHUB_ENV
+          #   echo "HOST=${{ secrets.STAGING_SERVER_HOST_AI }}" >> $GITHUB_ENV
+          #   echo "INSTANCE=${{ secrets.STAGING_INSTANCE_AI }}" >> $GITHUB_ENV
+          #   echo "PROJECT_ID=${{ secrets.GCP_PROJECT_ID_STAGING }}" >> $GITHUB_ENV
+          # fi
+
+          # Stage 쪽 AI 서버가 준비될 때까지 main과 develop 브랜치 모두 Production 환경에서 실행
+          echo "ENV=production" >> $GITHUB_ENV                               # Stage 준비 완료 시 삭제
+          echo "HOST=${{ secrets.PROD_SERVER_HOST_AI }}" >> $GITHUB_ENV      # Stage 준비 완료 시 삭제
+          echo "INSTANCE=${{ secrets.PROD_INSTANCE_AI }}" >> $GITHUB_ENV     # Stage 준비 완료 시 삭제
+          echo "PROJECT_ID=${{ secrets.GCP_PROJECT_ID }}" >> $GITHUB_ENV     # Stage 준비 완료 시 삭제
 
           echo "COMMIT_HASH=${{ github.sha }}" >> $GITHUB_ENV
 
