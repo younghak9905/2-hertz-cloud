@@ -1,4 +1,4 @@
-name: CD Backend (SSH)
+name: CD AI (SSH)
 
 on:
   pull_request:
@@ -18,13 +18,13 @@ jobs:
 
           if [[ "$BRANCH" == "main" ]]; then
             echo "ENV=production" >> $GITHUB_ENV
-            echo "HOST=${{ secrets.PROD_SERVER_HOST }}" >> $GITHUB_ENV
-            echo "INSTANCE=${{ secrets.PROD_INSTANCE }}" >> $GITHUB_ENV
+            echo "HOST=${{ secrets.PROD_SERVER_HOST_AI }}" >> $GITHUB_ENV
+            echo "INSTANCE=${{ secrets.PROD_INSTANCE_AI }}" >> $GITHUB_ENV
             echo "PROJECT_ID=${{ secrets.GCP_PROJECT_ID }}" >> $GITHUB_ENV
           else
             echo "ENV=stage" >> $GITHUB_ENV
-            echo "HOST=${{ secrets.STAGING_SERVER_HOST }}" >> $GITHUB_ENV
-            echo "INSTANCE=${{ secrets.STAGING_INSTANCE }}" >> $GITHUB_ENV
+            echo "HOST=${{ secrets.STAGING_SERVER_HOST_AI }}" >> $GITHUB_ENV
+            echo "INSTANCE=${{ secrets.STAGING_INSTANCE_AI }}" >> $GITHUB_ENV
             echo "PROJECT_ID=${{ secrets.GCP_PROJECT_ID_STAGING }}" >> $GITHUB_ENV
           fi
 
@@ -73,31 +73,24 @@ jobs:
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
             cd /home/deploy
-            chmod +x be_deploy.sh
-            ./be_deploy.sh
+            chmod +x ai_deploy.sh
+            ./ai_deploy.sh
 
-      - name: Wait for Spring Boot to start
+      - name: Wait for FastAPI to start
         run: |
-          echo "🕒 Spring Boot 서버 기동 대기 중..."
+          echo "🕒 FastAPI 서버 기동 대기 중..."
           sleep 15
 
       - name: Health check with retries
         run: |
-          echo "🔍 헬스체크 시작: 최대 3회 시도합니다."
-
-          if [[ "${{ env.BRANCH }}" == "main" ]]; then
-            CHECK_URL="https://hertz-tuning.com/api/ping"
-          else
-            CHECK_URL="http://${{ env.HOST }}:8080/api/ping"
-          fi
-
+          echo "🔍 AI 서버 헬스체크 시작 (FastAPI Swagger docs)... 최대 3회 시도합니다."
           for i in {1..3}; do
-            echo "⏱️ 시도 $i: $CHECK_URL"
-            if curl -sf "$CHECK_URL"; then
+            echo "⏱️ 시도 $i: http://${{ env.HOST }}:8000/docs"
+            if curl -sf http://${{ env.HOST }}:8000/docs; then
               echo "✅ 헬스체크 성공 🎉"
               exit 0
             else
-              echo "::error::헬스체크 시도 $i 실패"
+              echo "⚠️ 헬스체크 실패. 15초 후 재시도..."
               sleep 15
             fi
           done
@@ -110,7 +103,7 @@ jobs:
         run: |
           curl -H "Content-Type: application/json" \
               -X POST \
-              -d "{\"content\": \"❌ [BE 배포 실패] **${{ env.ENV }}** Backend 서버 (브랜치: \`${{ env.BRANCH }}\`)\\n🔖 Commit: ${{ env.COMMIT_HASH }}\\n⚠️ 원인: 워크플로우 실행 중 오류 발생\"}" \
+              -d "{\"content\": \"❌ [AI 배포 실패] **${{ env.ENV }}** AI 서버 (브랜치: \`${{ env.BRANCH }}\`)\\n🔖 Commit: ${{ env.COMMIT_HASH }}\\n⚠️ 원인: 워크플로우 실행 중 오류 발생\"}" \
               ${{ secrets.DISCORD_WEBHOOK_CICD_URL }}
 
       - name: Send success notification
@@ -118,18 +111,18 @@ jobs:
         run: |
           curl -H "Content-Type: application/json" \
                -X POST \
-               -d "{\"content\": \"🚀 [BE 배포 완료] **${{ env.ENV }}** Backend 서버 (브랜치: \`${{ env.BRANCH }}\`)\\n🔖 Commit: ${{ env.COMMIT_HASH }}\"}" \
+               -d "{\"content\": \"🚀 [AI 배포 완료] **${{ env.ENV }}** AI 서버 (브랜치: \`${{ env.BRANCH }}\`)\\n🔖 Commit: ${{ env.COMMIT_HASH }}\"}" \
                ${{ secrets.DISCORD_WEBHOOK_CICD_URL }}
 
   # 실패 시, 롤백 수행하는 job
   rollback-production:
     if: failure() && github.ref == 'refs/heads/main'
-    uses: 100-hours-a-week/2-hertz-cloud/.github/workflows/rollback-backend.yml@main
+    uses: 100-hours-a-week/2-hertz-cloud/.github/workflows/rollback-ai.yml@main
     with:
       environment: production
 
   rollback-stage:
     if: failure() && github.ref == 'refs/heads/develop'
-    uses: 100-hours-a-week/2-hertz-cloud/.github/workflows/rollback-backend.yml@develop
+    uses: 100-hours-a-week/2-hertz-cloud/.github/workflows/rollback-ai.yml@develop
     with:
       environment: stage
