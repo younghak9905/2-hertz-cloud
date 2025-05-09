@@ -3,7 +3,7 @@ name: Rollback BE Deploy
 on:
   workflow_call:
     inputs:
-      environment: # 값: "production" 또는 "stage"
+      environment: # 값: "production" 또는 "develop"
         description: "대상 환경"
         required: true
         type: string
@@ -16,19 +16,19 @@ jobs:
       - name: Set environment variables
         run: |
           echo "ENVIRONMENT=${{ inputs.environment }}" >> $GITHUB_ENV
-          echo "HOST=${{ inputs.environment == 'production' && secrets.PROD_SERVER_HOST || secrets.STAGING_SERVER_HOST }}" >> $GITHUB_ENV
+          echo "HOST=${{ inputs.environment == 'production' && secrets.PROD_GCP_HOST || secrets.DEV_GCP_HOST }}" >> $GITHUB_ENV
 
       - name: Authenticate to GCP
         if: ${{ inputs.environment == 'production' }}
         uses: google-github-actions/auth@v1
         with:
-          credentials_json: ${{ secrets.GCP_SA_KEY }}
+          credentials_json: ${{ secrets.PROD_GCP_SA_KEY }}
 
-      - name: Authenticate to GCP (Stage)
+      - name: Authenticate to GCP (Develop)
         if: ${{ inputs.environment != 'production' }}
         uses: google-github-actions/auth@v1
         with:
-          credentials_json: ${{ secrets.GCP_SA_KEY_STAGING }}
+          credentials_json: ${{ secrets.DEV_GCP_SA_KEY }}
 
       - name: Send rollback start notification
         run: |
@@ -36,7 +36,7 @@ jobs:
             -X POST \
             -d "{\"content\": \"🔄 [BE 롤백 시작] \`${{ inputs.environment }}\` 환경에서 롤백을 실행합니다.\"}" \
             ${{ secrets.DISCORD_WEBHOOK_CICD_URL }}
-            
+
       - name: SSH into server and rollback
         uses: appleboy/ssh-action@master
         with:
