@@ -4,6 +4,7 @@ on:
   pull_request:
     types: [closed] # PR이 닫혔을 때 (병합 포함)
     branches:
+      - main
       - develop # develop 브랜치로 PR 병합 시 감지
 
 jobs:
