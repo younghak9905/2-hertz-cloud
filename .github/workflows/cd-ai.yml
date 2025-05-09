@@ -29,7 +29,7 @@ jobs:
             echo "INSTANCE=${{ secrets.PROD_GCP_INSTANCE_AI }}" >> $GITHUB_ENV
             echo "PROJECT_ID=${{ secrets.PROD_GCP_PROJECT_ID }}" >> $GITHUB_ENV
           else
-            echo "ENV=DEV" >> $GITHUB_ENV
+            echo "ENV=develop" >> $GITHUB_ENV
             echo "HOST=${{ secrets.DEV_GCP_HOST_AI }}" >> $GITHUB_ENV
             echo "INSTANCE=${{ secrets.DEV_GCP_INSTANCE_AI }}" >> $GITHUB_ENV
             echo "PROJECT_ID=${{ secrets.DEV_GCP_PROJECT_ID }}" >> $GITHUB_ENV
@@ -129,8 +129,8 @@ jobs:
     with:
       environment: production
 
-  rollback-dev:
+  rollback-develop:
     if: failure() && github.ref == 'refs/heads/develop'
     uses: 100-hours-a-week/2-hertz-cloud/.github/workflows/rollback-ai.yml@develop
     with:
-      environment: dev
+      environment: develop
