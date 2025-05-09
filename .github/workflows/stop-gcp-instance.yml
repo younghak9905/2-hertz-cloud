@@ -13,13 +13,13 @@ on:
           - 'AI'
 
 env:
-  PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
-  PROJECT_ID_STAGING: ${{ secrets.GCP_PROJECT_ID_STAGING }}
+  PROJECT_ID: ${{ secrets.PROD_GCP_PROJECT_ID }}
+  PROJECT_ID_DEV: ${{ secrets.DEV_GCP_PROJECT_ID }}
   ZONE: ${{ secrets.GCP_ZONE }}
-  PROD_INSTANCE: ${{ secrets.PROD_INSTANCE }}
-  STAGING_INSTANCE: ${{ secrets.STAGING_INSTANCE }}
-  PROD_INSTANCE_AI: ${{ secrets.STAGING_INSTANCE_AI }}
-  STAGING_INSTANCE_AI: ${{ secrets.STAGING_INSTANCE_AI }}
+  PROD_INSTANCE: ${{ secrets.PROD_GCP_INSTANCE }}
+  DEV_INSTANCE: ${{ secrets.DEV_GCP_INSTANCE }}
+  PROD_INSTANCE_AI: ${{ secrets.PROD_GCP_INSTANCE_AI }}
+  DEV_INSTANCE_AI: ${{ secrets.DEV_GCP_INSTANCE_AI }}
 
 jobs:
   stop-instance:
@@ -42,12 +42,12 @@ jobs:
               echo "INSTANCE=${{ env.PROD_INSTANCE }}" >> $GITHUB_ENV
             fi
           else
-            echo "ENV=stage" >> $GITHUB_ENV
-            echo "PROJECT_ID=${{ env.PROJECT_ID_STAGING }}" >> $GITHUB_ENV
+            echo "ENV=develop" >> $GITHUB_ENV
+            echo "PROJECT_ID=${{ env.PROJECT_ID_DEV }}" >> $GITHUB_ENV
             if [[ "$TARGET" == "AI" ]]; then
-              echo "INSTANCE=${{ env.STAGING_INSTANCE_AI }}" >> $GITHUB_ENV
+              echo "INSTANCE=${{ env.DEV_INSTANCE_AI }}" >> $GITHUB_ENV
             else
-              echo "INSTANCE=${{ env.STAGING_INSTANCE }}" >> $GITHUB_ENV
+              echo "INSTANCE=${{ env.DEV_INSTANCE }}" >> $GITHUB_ENV
             fi
           fi
 
@@ -55,13 +55,13 @@ jobs:
         if: github.ref_name == 'main'
         uses: google-github-actions/auth@v1
         with:
-          credentials_json: ${{ secrets.GCP_SA_KEY }}
+          credentials_json: ${{ secrets.PROD_GCP_PROJECT_ID }}
 
-      - name: Authenticate to GCP (Stage)
+      - name: Authenticate to GCP (develop)
         if: github.ref_name != 'main'
         uses: google-github-actions/auth@v1
         with:
-          credentials_json: ${{ secrets.GCP_SA_KEY_STAGING }}
+          credentials_json: ${{ secrets.DEV_GCP_PROJECT_ID }}
 
       - name: Setup gcloud CLI
         uses: google-github-actions/setup-gcloud@v1
