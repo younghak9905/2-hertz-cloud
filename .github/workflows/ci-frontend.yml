@@ -4,7 +4,11 @@ name: Frontend CI
 
 on:
   pull_request:
-    branches: [ feature/frontend ]
+    types: [closed]
+    branches: 
+      - feature/frontend
+#      - main
+#      - develop #PR이 main 또는 develop 브랜치로 열릴 때 트리거
 
 jobs:
   frontend-ci:
