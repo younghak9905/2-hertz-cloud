@@ -4,7 +4,7 @@ name: Backend CI
 
 on:
   pull_request:
-  types: [closed]
+    types: [closed]
     branches:
        - feature/backend
 #      - main
@@ -63,17 +63,17 @@ jobs:
       env:
         GRADLE_OPTS: -Dorg.gradle.daemon=false -Dorg.gradle.parallel=true -Dorg.gradle.workers.max=2
         # MySQL 설정
-        DB_HOST: ${{ secrets.TEST_DB_HOST }}
-        DB_PORT: ${{ secrets.TEST_DB_PORT }}
-        DB_NAME: ${{ secrets.TEST_DB_NAME }}
-        DB_USERNAME: ${{ secrets.TEST_DB_USERNAME }}
-        DB_PASSWORD: ${{ secrets.TEST_DB_PASSWORD }}
+        DB_HOST: ${{ secrets.DB_HOST }}
+        DB_PORT: ${{ secrets.DB_PORT }}
+        DB_NAME: ${{ secrets.DB_NAME }}
+        DB_USERNAME: ${{ secrets.DB_USERNAME }}
+        DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
         # Redis 설정
-        REDIS_HOST: ${{ secrets.TEST_REDIS_HOST }}
-        REDIS_PORT: ${{ secrets.TEST_REDIS_PORT }}
-        REDIS_PASSWORD: ${{ secrets.TEST_REDIS_PASSWORD }}
+        REDIS_HOST: ${{ secrets.REDIS_HOST }}
+        REDIS_PORT: ${{ secrets.REDIS_PORT }}
+        REDIS_PASSWORD: ${{ secrets.REDIS_PASSWORD }}
         # JWT 설정
-        JWT_SECRET: ${{ secrets.TEST_JWT_SECRET }}
+        JWT_SECRET: ${{ secrets.JWT_SECRET }}
         # Swagger 설정
         SWAGGER_ENABLED: ${{ github.base_ref == 'main' && 'false' || 'true' }}
         # Kakao 설정

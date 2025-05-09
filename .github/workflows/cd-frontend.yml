@@ -11,7 +11,7 @@ on:                               # 활성화 시 삭제
 #     types: [closed] # PR이 닫혔을 때 (병합 포함)
 #     branches:
 #       - main # main 브랜치로 Merge 시 -> Production 환경에 배포
-#       - develop # develop 브랜치로 Merge 시 -> Stage 환경에 배포
+#       - develop # develop 브랜치로 Merge 시 -> DEV 환경에 배포
 
 jobs:
   deploy:
@@ -25,14 +25,14 @@ jobs:
 
           if [[ "$BRANCH" == "main" ]]; then
             echo "ENV=production" >> $GITHUB_ENV
-            echo "HOST=${{ secrets.PROD_SERVER_HOST }}" >> $GITHUB_ENV
-            echo "INSTANCE=${{ secrets.PROD_INSTANCE }}" >> $GITHUB_ENV
-            echo "PROJECT_ID=${{ secrets.GCP_PROJECT_ID }}" >> $GITHUB_ENV
+            echo "HOST=${{ secrets.PROD_GCP_HOST }}" >> $GITHUB_ENV
+            echo "INSTANCE=${{ secrets.PROD_GCP_INSTANCE }}" >> $GITHUB_ENV
+            echo "PROJECT_ID=${{ secrets.PROD_GCP_PROJECT_ID }}" >> $GITHUB_ENV
           else
-            echo "ENV=stage" >> $GITHUB_ENV
-            echo "HOST=${{ secrets.STAGING_SERVER_HOST }}" >> $GITHUB_ENV
-            echo "INSTANCE=${{ secrets.STAGING_INSTANCE }}" >> $GITHUB_ENV
-            echo "PROJECT_ID=${{ secrets.GCP_PROJECT_ID_STAGING }}" >> $GITHUB_ENV
+            echo "ENV=develop" >> $GITHUB_ENV
+            echo "HOST=${{ secrets.DEV_GCP_HOST }}" >> $GITHUB_ENV
+            echo "INSTANCE=${{ secrets.DEV_GCP_INSTANCE }}" >> $GITHUB_ENV
+            echo "PROJECT_ID=${{ secrets.DEV_GCP_PROJECT_ID }}" >> $GITHUB_ENV
           fi
 
           echo "COMMIT_HASH=${{ github.sha }}" >> $GITHUB_ENV
@@ -41,13 +41,13 @@ jobs:
         if: github.ref_name == 'main'
         uses: google-github-actions/auth@v1
         with:
-          credentials_json: ${{ secrets.GCP_SA_KEY }}
+          credentials_json: ${{ secrets.PROD_GCP_SA_KEY }}
 
-      - name: Authenticate to GCP (Stage)
+      - name: Authenticate to GCP (DEV)
         if: github.ref_name != 'main'
         uses: google-github-actions/auth@v1
         with:
-          credentials_json: ${{ secrets.GCP_SA_KEY_STAGING }}
+          credentials_json: ${{ secrets.DEV_GCP_SA_KEY }}
 
       - name: Setup gcloud CLI
         uses: google-github-actions/setup-gcloud@v1
@@ -134,8 +134,8 @@ jobs:
     with:
       environment: production
 
-  rollback-stage:
+  rollback-develop:
     if: failure() && github.ref == 'refs/heads/develop'
     uses: 100-hours-a-week/2-hertz-cloud/.github/workflows/rollback-frontend.yml@develop
     with:
-      environment: stage
+      environment: develop
