@@ -1,0 +1,163 @@
+name: AI CD
+
+on:
+  workflow_run:
+    workflows: ["AI CI"]  # CI 워크플로우 이름에 맞게 수정하세요
+    types:
+      - completed
+    branches:
+      - main
+      - develop
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    
+    steps:
+      - name: Set environment variables
+        id: set-env
+        run: |
+
+          # 브랜치에 따른 환경 설정
+          BRANCH="${{ github.event.workflow_run.head_branch }}"
+          SHORT_SHA=$(echo "${{ github.event.workflow_run.head_sha }}" | cut -c1-7)
+          
+          # 태그 형식: [브랜치명]-[짧은 커밋 해시]
+          IMAGE_TAG="${BRANCH}-${SHORT_SHA}"
+
+          if [[ "${{ github.event.workflow_run.head_branch }}" == "main" ]]; then
+            echo "ENV=production" >> $GITHUB_ENV
+            echo "HOST=${{ secrets.PROD_GCP_HOST_AI }}" >> $GITHUB_ENV
+            echo "INSTANCE=${{ secrets.PROD_GCP_INSTANCE_AI }}" >> $GITHUB_ENV
+            echo "PROJECT_ID=${{ secrets.PROD_GCP_PROJECT_ID }}" >> $GITHUB_ENV
+            echo "GCP_SA_KEY=${{ secrets.PROD_GCP_SA_KEY }}" >> $GITHUB_ENV
+          else
+            echo "ENV=develop" >> $GITHUB_ENV
+            echo "HOST=${{ secrets.DEV_GCP_HOST_AI }}" >> $GITHUB_ENV
+            echo "INSTANCE=${{ secrets.DEV_GCP_INSTANCE_AI }}" >> $GITHUB_ENV
+            echo "PROJECT_ID=${{ secrets.DEV_GCP_PROJECT_ID }}" >> $GITHUB_ENV
+            echo "GCP_SA_KEY=${{ secrets.DEV_GCP_SA_KEY }}" >> $GITHUB_ENV
+          fi
+          
+          echo "IMAGE_TAG=${{ github.event.workflow_run.head_sha }}" >> $GITHUB_ENV
+          echo "ZONE=${{ secrets.GCP_ZONE }}" >> $GITHUB_ENV
+
+      - name: Authenticate to GCP
+        uses: google-github-actions/auth@v1
+        with:
+          credentials_json: ${{ env.GCP_SA_KEY }}
+
+      - name: Setup gcloud CLI
+        uses: google-github-actions/setup-gcloud@v1
+
+      - name: Boot target instance
+        run: |
+          echo "⚡ 인스턴스 상태 확인 중: ${{ env.INSTANCE }} (zone: ${{ env.ZONE }})"
+          STATUS=$(gcloud compute instances describe "${{ env.INSTANCE }}" --zone="${{ env.ZONE }}" --format='get(status)')
+          echo "🔎 현재 상태: $STATUS"
+
+          if [[ "$STATUS" == "SUSPENDED" ]]; then
+            echo "🔄 'resume' 명령 실행"
+            gcloud compute instances resume "${{ env.INSTANCE }}" --zone="${{ env.ZONE }}"
+            echo "⏳ 상태 변경 후 30초 대기..."
+            sleep 30
+          elif [[ "$STATUS" == "TERMINATED" ]]; then
+            echo "🔄 'start' 명령 실행"
+            gcloud compute instances start "${{ env.INSTANCE }}" --zone="${{ env.ZONE }}"
+            echo "⏳ 상태 변경 후 30초 대기..."
+            sleep 30
+          else
+            echo "✅ 이미 실행 중 - 대기 생략"
+          fi
+
+      - name: Deploy to GCP
+        uses: appleboy/ssh-action@v0.1.10
+        with:
+          host: ${{ env.HOST }}
+          username: ${{ secrets.SSH_USERNAME }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: 22
+          script_stop: true
+          envs: |
+            IMAGE_TAG=${{ env.IMAGE_TAG }}
+            ENV=${{ env.ENV }}
+            AWS_REGION=${{ secrets.AWS_REGION }}
+            AWS_ACCOUNT_ID=${{ secrets.AWS_ACCOUNT_ID }}
+          script: |
+            # 배포 디렉토리로 이동
+            cd /home/deploy
+            
+            # .env 파일 생성 (필요한 경우)
+            cat > .env << EOF
+            # AWS 설정
+            AWS_ACCOUNT_ID=$AWS_ACCOUNT_ID
+            AWS_REGION=$AWS_REGION
+            IMAGE_TAG=$IMAGE_TAG
+            EOF
+            
+            # AWS ECR 로그인 (ECR 사용하는 경우)
+            if [ -n "$AWS_REGION" ] && [ -n "$AWS_ACCOUNT_ID" ]; then
+              aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
+            fi
+            
+            # FastAPI 서비스만 재시작 (ChromaDB는 유지)
+            docker-compose pull tuning-api  # API 이미지만 pull
+            docker-compose stop tuning-api  # API 컨테이너만 중지
+            docker-compose rm -f tuning-api  # API 컨테이너만 제거
+            docker-compose up -d tuning-api  # API 컨테이너만 다시 시작
+            
+            # ChromaDB가 실행 중인지 확인하고, 없다면 시작
+            if ! docker-compose ps chromadb | grep -q "Up"; then
+              echo "ChromaDB가 실행되지 않았습니다. ChromaDB 시작 중..."
+              docker-compose up -d chromadb
+            fi
+            
+            # 서비스 상태 확인
+            docker-compose ps
+
+      - name: Wait for FastAPI to start
+        run: |
+          echo "🕒 FastAPI 서버 기동 대기 중..."
+          sleep 15
+
+      - name: Health check
+        run: |
+          echo "🔍 API 서비스 헬스체크 중..."
+          for i in {1..15}; do
+            if curl -sf http://${{ env.HOST }}:8000/api/v1/health; then
+              echo "✅ API 서비스가 정상적으로 시작되었습니다."
+              
+              # ChromaDB 연결 확인
+              echo "🔍 ChromaDB 연결 상태 확인 중..."
+              if curl -sf http://${{ env.HOST }}:8000/api/v1/health/chromadb; then
+                echo "✅ ChromaDB가 정상적으로 작동 중입니다."
+              else
+                echo "⚠️ 경고: ChromaDB 연결을 확인할 수 없습니다."
+              fi
+              exit 0
+            fi
+            echo "⏱️ API 서비스 준비 대기 중... ($i/15)"
+            sleep 10
+          done
+          
+          echo "::error::❌ 헬스체크 실패: API 서비스가 응답하지 않습니다."
+          exit 1
+
+      - name: Send success notification
+        if: success()
+        run: |
+          curl -H "Content-Type: application/json" \
+              -X POST \
+              -d "{\"content\": \"✅ [AI CD 성공] **${{ env.ENV }}** 환경 배포 완료\\n🔖 이미지: tuning-api:${{ env.IMAGE_TAG }}\\n⚙️ API 서비스만 재시작 (ChromaDB 유지)\"}" \
+              ${{ secrets.DISCORD_WEBHOOK_CICD_URL }}
+
+      - name: Send failure notification
+        if: failure()
+        run: |
+          WORKFLOW_URL="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          curl -H "Content-Type: application/json" \
+              -X POST \
+              -d "{\"content\": \"❌ [AI CD 실패] **${{ env.ENV }}** 환경 배포 실패\\n🔖 이미지: tuning-api:${{ env.IMAGE_TAG }}\\n⚠️ 원인: API 배포 과정 중 오류 발생\\n🔗 [워크플로우 로그]($WORKFLOW_URL)\"}" \
+              ${{ secrets.DISCORD_WEBHOOK_CICD_URL }}
+
