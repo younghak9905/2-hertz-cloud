@@ -86,7 +86,7 @@ jobs:
             AWS_ACCOUNT_ID=${{ secrets.AWS_ACCOUNT_ID }}
           script: |
             # 배포 디렉토리로 이동
-            cd /home/deploy
+            cd /home/${{ secrets.SSH_USERNAME }}
             
             # .env 파일 생성 (필요한 경우)
             cat > .env << EOF
