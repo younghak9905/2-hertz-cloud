@@ -1,0 +1,78 @@
+version: '3.8'
+
+services:
+  tuning-api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: always
+    ports:
+      - "8000:8000"
+    cap_add:
+      - SYS_PTRACE
+    environment:
+      # e2-standard-4 고정 설정
+      - GUNICORN_WORKERS=4
+      # ChromaDB 연결 설정
+      - CHROMA_HOST=chromadb
+      - CHROMA_PORT=8001
+      - CHROMA_MODE=server
+      - SENTENCE_TRANSFORMERS_HOME=/app/models
+      - TOKENIZERS_PARALLELISM=false
+    volumes:
+      - tuning_logs:/app/logs
+      - tuning_models:/app/models
+    depends_on:
+      - chromadb
+    deploy:
+      resources:
+        limits:
+          # e2-standard-4 고정 리소스 제한
+          cpus: "3.0"
+          memory: "11G"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    networks:
+      - app_network
+
+  chromadb:
+    image: ghcr.io/chroma-core/chroma:0.4.13
+    restart: always
+    # 내부 통신만 허용
+    expose:
+      - "8001"
+    cap_add:
+      - SYS_PTRACE
+    volumes:
+      - chroma_data:/chroma/chroma
+    environment:
+      - ALLOW_RESET=true
+      - ANONYMIZED_TELEMETRY=false
+      - CHROMA_SERVER_HOST=0.0.0.0
+      - CHROMA_SERVER_HTTP_PORT=8001
+    deploy:
+      resources:
+        limits:
+          # e2-standard-4 고정 리소스 제한
+          cpus: "0.8"
+          memory: "4.5G"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/api/v2/heartbeat"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - app_network
+
+volumes:
+  tuning_logs:
+  tuning_models:
+  chroma_data:
+
+networks:
+  app_network:
+    driver: bridge
