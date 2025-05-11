@@ -132,12 +132,12 @@ jobs:
   # 실패 시, 롤백 수행하는 job
   rollback-production:
     if: failure() && github.ref == 'refs/heads/main'
-    uses: 100-hours-a-week/2-hertz-cloud/.github/workflows/rollback-backend.yml@main
+    uses: 100-hours-a-week/2-hertz-be/.github/workflows/rollback-backend.yml@main
     with:
       environment: production
 
   rollback-develop:
     if: failure() && github.ref == 'refs/heads/develop'
-    uses: 100-hours-a-week/2-hertz-cloud/.github/workflows/rollback-backend.yml@develop
+    uses: 100-hours-a-week/2-hertz-be/.github/workflows/rollback-backend.yml@develop
     with:
       environment: develop
