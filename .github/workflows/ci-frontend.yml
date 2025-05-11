@@ -83,5 +83,5 @@ jobs:
       run: |
        curl -H "Content-Type: application/json" \
        -X POST \
-       -d "{\"content\": \"❌ [FE CI 실패] **${{ env.ENV }}** AI 서버 (브랜치: \`${{ env.BRANCH }}\`)\\n🔖 Commit: ${{ env.COMMIT_HASH }}\\n⚠️ 원인: 워크플로우 실행 중 오류 발생\"}" \
+       -d "{\"content\": \"❌ [FE CI 실패] **${{ env.ENV }}** AI 서버 (브랜치: \`${{ env.BRANCH }}\`)\\n🔖 Commit: ${{ env.COMMIT_HASH }}\\n⚠️ [워크플로우 로그 보기]($WORKFLOW_URL)\"}" \
        ${{ secrets.DISCORD_WEBHOOK_CICD_URL }}
