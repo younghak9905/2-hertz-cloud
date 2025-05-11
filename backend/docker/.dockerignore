@@ -1,0 +1,16 @@
+# 빌드 산출물 및 캐시
+build/
+.gradle/
+out/
+
+# IDE 및 환경 설정 파일
+*.iml
+*.idea/
+*.vscode/
+*.log
+
+# 기타 불필요 항목
+.git/
+.gitignore
+Dockerfile
+README.md

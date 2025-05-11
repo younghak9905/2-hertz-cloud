@@ -65,6 +65,7 @@ jobs:
     - name: Send failure notification
       if: failure()
       run: |
+        WORKFLOW_URL="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
         curl -H "Content-Type: application/json" \
              -X POST \
              -d "{\"username\": \"AI CI\", \"content\": \"❌ [AI CI 실패] **${{ github.base_ref }}** AI 서버 (브랜치: \`${{ github.head_ref }}\`)\\n🔖 Commit: ${{ github.sha }}\\n⚠️ [워크플로우 로그 보기]($WORKFLOW_URL)\"}" \

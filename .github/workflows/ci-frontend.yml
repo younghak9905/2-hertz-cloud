@@ -18,70 +18,71 @@ on: # 활성화 시 삭제
 jobs:
   frontend-ci:
     runs-on: ubuntu-latest
-    
+
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v3
+      - name: Checkout repository
+        uses: actions/checkout@v3
 
-    - name: Setup Node.js
-      uses: actions/setup-node@v3
-      with:
-        node-version: '18'
-        cache: 'npm'  # npm 캐시 활성화
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: "18"
+          cache: "npm" # npm 캐시 활성화
 
-    # npm 캐시 최적화
-    - name: Cache npm dependencies
-      uses: actions/cache@v3
-      id: npm-cache
-      with:
-        path: ~/.npm
-        key: ${{ runner.os }}-npm-${{ hashFiles('**/package-lock.json') }}
-        restore-keys: |
-          ${{ runner.os }}-npm-
+      # npm 캐시 최적화
+      - name: Cache npm dependencies
+        uses: actions/cache@v3
+        id: npm-cache
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-npm-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-npm-
 
-    # Next.js 빌드 캐시
-    - name: Cache Next.js build
-      uses: actions/cache@v3
-      id: nextjs-cache
-      with:
-        path: |
-          .next/cache
-        key: ${{ runner.os }}-nextjs-${{ hashFiles('**/package-lock.json') }}
-        restore-keys: |
-          ${{ runner.os }}-nextjs-
+      # Next.js 빌드 캐시
+      - name: Cache Next.js build
+        uses: actions/cache@v3
+        id: nextjs-cache
+        with:
+          path: |
+            .next/cache
+          key: ${{ runner.os }}-nextjs-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-nextjs-
 
-    - name: Install dependencies
-      if: steps.npm-cache.outputs.cache-hit != 'true'
-      run: npm ci
+      - name: Install dependencies
+        if: steps.npm-cache.outputs.cache-hit != 'true'
+        run: npm ci
 
-#    - name: Run Unit Tests (Jest)
-#      run: npm run test
+      #    - name: Run Unit Tests (Jest)
+      #      run: npm run test
 
-    - name: Build Next.js App
-      env:
-        NEXT_PUBLIC_API_BASE_URL: ${{ secrets.NEXT_PUBLIC_API_BASE_URL }}
-      run: npm run build
+      - name: Build Next.js App
+        env:
+          NEXT_PUBLIC_API_BASE_URL: ${{ secrets.NEXT_PUBLIC_API_BASE_URL }}
+        run: npm run build
 
-#    # 6. 빌드 결과 아티팩트 업로드 (.next 폴더)
-#    - name: Upload .next Build Artifact
-#      uses: actions/upload-artifact@v3
-#      with:
-#        name: nextjs-app
-#        path: .next
+      #    # 6. 빌드 결과 아티팩트 업로드 (.next 폴더)
+      #    - name: Upload .next Build Artifact
+      #      uses: actions/upload-artifact@v3
+      #      with:
+      #        name: nextjs-app
+      #        path: .next
 
-    # 7. Discord 알림 전송 (성공/실패 관계없이 항상 실행됨)
-    - name: Send success notification
-      if: success()
-      run: |
-       curl -H "Content-Type: application/json" \
-       -X POST \
-       -d "{\"content\": \"${{ env.DEPLOY_MESSAGE }} **${{ env.ENV }}** Fronted 서버 (브랜치: \`${{ env.BRANCH }}\`)\\n🔖 Commit: ${{ env.COMMIT_HASH }}\"}" \
-       ${{ secrets.DISCORD_WEBHOOK_CICD_URL }}
+      # 7. Discord 알림 전송 (성공/실패 관계없이 항상 실행됨)
+      - name: Send success notification
+        if: success()
+        run: |
+          curl -H "Content-Type: application/json" \
+          -X POST \
+          -d "{\"content\": \"${{ env.DEPLOY_MESSAGE }} **${{ env.ENV }}** Fronted 서버 (브랜치: \`${{ env.BRANCH }}\`)\\n🔖 Commit: ${{ env.COMMIT_HASH }}\"}" \
+          ${{ secrets.DISCORD_WEBHOOK_CICD_URL }}
 
-    - name: Send failure notification
-      if: failure()
-      run: |
-       curl -H "Content-Type: application/json" \
-       -X POST \
-       -d "{\"content\": \"❌ [FE CI 실패] **${{ env.ENV }}** AI 서버 (브랜치: \`${{ env.BRANCH }}\`)\\n🔖 Commit: ${{ env.COMMIT_HASH }}\\n⚠️ [워크플로우 로그 보기]($WORKFLOW_URL)\"}" \
-       ${{ secrets.DISCORD_WEBHOOK_CICD_URL }}
+      - name: Send failure notification
+        if: failure()
+        run: |
+          WORKFLOW_URL="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          curl -H "Content-Type: application/json" \
+          -X POST \
+          -d "{\"content\": \"❌ [FE CI 실패] **${{ env.ENV }}** AI 서버 (브랜치: \`${{ env.BRANCH }}\`)\\n🔖 Commit: ${{ env.COMMIT_HASH }}\\n⚠️ [워크플로우 로그 보기]($WORKFLOW_URL)\"}" \
+          ${{ secrets.DISCORD_WEBHOOK_CICD_URL }}
