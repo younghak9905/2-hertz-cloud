@@ -3,7 +3,7 @@
 APP_DIR="/home/ec2-user/app"
 cd "$APP_DIR" || exit 1
 
-CONTAINER_NAME="springboot-server"
+CONTAINER_NAME="nextjs-frontend"
 ENV_FILE="$APP_DIR/.env"
 
 # .env 파일 확인
@@ -12,7 +12,7 @@ if [ ! -f "$ENV_FILE" ]; then
   exit 1
 fi
 
-# 안전한 환경변수 로딩 (key=value 형식만)
+# 안전한 환경변수 로딩
 set -a
 . "$ENV_FILE"
 set +a
@@ -23,7 +23,7 @@ if [[ -z "$AWS_ACCOUNT_ID" || -z "$AWS_REGION" || -z "$IMAGE_TAG" ]]; then
   exit 1
 fi
 
-IMAGE_NAME="$AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/tuning-backend:$IMAGE_TAG"
+IMAGE_NAME="$AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/hertz-fe:$IMAGE_TAG"
 
 # ECR 로그인
 echo "🔐 ECR 로그인 중..."
@@ -39,20 +39,25 @@ echo "🛑 기존 컨테이너 종료 및 삭제: $CONTAINER_NAME"
 docker stop "$CONTAINER_NAME" || true
 docker rm "$CONTAINER_NAME" || true
 
-
-  # 새 컨테이너 실행 (t3.medium 최적화)
+# 새 컨테이너 실행
 echo "🚀 새 컨테이너 실행 중..."
 docker run -d \
   --name "$CONTAINER_NAME" \
-  -p 8080:8080 \
+  -p 3000:3000 \
   --restart always \
-  --memory="3g" \
-  --cpus="1.8" \
-  --env-file "$ENV_FILE" \
+  --memory="1.5g" \
+  --cpus="1.5" \
   "$IMAGE_NAME"
 
 # 컨테이너 상태 확인
 echo "📋 실행 중인 컨테이너 상태"
 docker ps --filter "name=$CONTAINER_NAME"
 
+# 실행 확인
+if ! docker ps | grep -q "$CONTAINER_NAME"; then
+  echo "❌ 컨테이너 실행 실패"
+  exit 1
+fi
+
+echo "✅ 컨테이너 실행 성공"
 exit 0
