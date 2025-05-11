@@ -39,12 +39,15 @@ echo "🛑 기존 컨테이너 종료 및 삭제: $CONTAINER_NAME"
 docker stop "$CONTAINER_NAME" || true
 docker rm "$CONTAINER_NAME" || true
 
-# 새 컨테이너 실행
+
+  # 새 컨테이너 실행 (t3.medium 최적화)
 echo "🚀 새 컨테이너 실행 중..."
 docker run -d \
   --name "$CONTAINER_NAME" \
   -p 8080:8080 \
   --restart always \
+  --memory="3g" \
+  --cpus="1.8" \
   --env-file "$ENV_FILE" \
   "$IMAGE_NAME"
 
