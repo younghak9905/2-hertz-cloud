@@ -102,6 +102,7 @@ jobs:
     - name: Send failure notification
       if: failure()
       run: |
+        WORKFLOW_URL="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
         curl -H "Content-Type: application/json" \
              -X POST \
              -d "{\"username\": \"Backend CI\", \"content\": \"❌ [BE CI 실패] **${{ env.ENV }}** Backend 서버 (브랜치: \`${{ env.BRANCH }}\`)\\n🔖 Commit: ${{ env.COMMIT_HASH }}\\n⚠️ [워크플로우 로그 보기]($WORKFLOW_URL)\"}" \
