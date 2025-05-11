@@ -1,8 +1,8 @@
-name: AI CD
+name: AI Docker CD
 
 on:
   workflow_run:
-    workflows: ["AI CI"]  # CI 워크플로우 이름에 맞게 수정하세요
+    workflows: ["AI Docker CI"]  # CI 워크플로우 이름에 맞게 수정하세요
     types:
       - completed
     branches:

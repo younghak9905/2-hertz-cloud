@@ -1,0 +1,136 @@
+name: Backend Docker CI
+
+on:
+  pull_request:
+    types: [closed]
+    branches:
+      - main
+      - develop
+
+jobs:
+  test-and-build:
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. 소스 코드 Checkout
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 1
+
+      # 2. Java 21 설정
+      - name: Set up JDK 21
+        uses: actions/setup-java@v3
+        with:
+          java-version: "21"
+          distribution: "temurin"
+          cache: gradle
+
+      # 3. Gradle 캐시
+      - name: Cache Gradle
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+            ~/.gradle/buildOutputCleanup
+            build/
+          key: gradle-${{ runner.os }}-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
+          restore-keys: |
+            gradle-${{ runner.os }}-
+            gradle-
+
+      # 4. 단위 테스트 실행
+      - name: Run Unit Tests
+        run: ./gradlew test --no-daemon --parallel --max-workers=2 --stacktrace
+        env:
+          GRADLE_OPTS: -Dorg.gradle.daemon=false -Dorg.gradle.parallel=true -Dorg.gradle.workers.max=2
+
+      # 5. 통합 테스트 (main 브랜치에 한함)
+      - name: Run Integration Tests
+        if: github.base_ref == 'main'
+        run: ./gradlew integrationTest --no-daemon --parallel --max-workers=2 --stacktrace
+        env:
+          GRADLE_OPTS: -Dorg.gradle.daemon=false -Dorg.gradle.parallel=true -Dorg.gradle.workers.max=2
+        continue-on-error: false
+
+      # 6. 빌드 (테스트 생략)
+      - name: Build Spring Boot Application
+        run: |
+          chmod +x ./gradlew
+          ./gradlew build -x test -x integrationTest --no-daemon --parallel --max-workers=2
+        env:
+          GRADLE_OPTS: -Dorg.gradle.daemon=false -Dorg.gradle.parallel=true -Dorg.gradle.workers.max=2
+
+      # 7. AWS 자격증명 설정
+      - name: Configure AWS credentials
+        if: success()
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      # 8. ECR 로그인
+      - name: Login to Amazon ECR
+        if: success()
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v1
+
+      # 9. 태그 정보 생성
+      - name: Generate image tags
+        if: success()
+        id: generate-tags
+        run: |
+          BRANCH=${{ github.base_ref }}
+          SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
+          IMAGE_TAG="${BRANCH}-${SHORT_SHA}"
+
+          if [ "$BRANCH" = "main" ]; then
+            ENV_TAG="main-latest"
+          else
+            ENV_TAG="develop-latest"
+          fi
+
+          echo "BRANCH=$BRANCH" >> $GITHUB_ENV
+          echo "SHORT_SHA=$SHORT_SHA" >> $GITHUB_ENV
+          echo "IMAGE_TAG=$IMAGE_TAG" >> $GITHUB_ENV
+          echo "ENV_TAG=$ENV_TAG" >> $GITHUB_ENV
+
+      # 10. Docker 빌드 및 푸시
+      - name: Build and push Docker image
+        if: success()
+        run: |
+          ECR_REGISTRY=${{ steps.login-ecr.outputs.registry }}
+          REPOSITORY=tuning-backend
+
+          echo "🏗️ Docker 이미지 빌드 시작..."
+
+          docker build -t $ECR_REGISTRY/$REPOSITORY:${{ env.IMAGE_TAG }} .
+          docker tag $ECR_REGISTRY/$REPOSITORY:${{ env.IMAGE_TAG }} $ECR_REGISTRY/$REPOSITORY:${{ env.ENV_TAG }}
+
+          echo "📤 Docker 이미지 푸시 중..."
+          docker push $ECR_REGISTRY/$REPOSITORY:${{ env.IMAGE_TAG }}
+          docker push $ECR_REGISTRY/$REPOSITORY:${{ env.ENV_TAG }}
+
+          echo "FULL_IMAGE=$ECR_REGISTRY/$REPOSITORY:${{ env.IMAGE_TAG }}" >> $GITHUB_ENV
+
+      # 11. 성공 알림
+      - name: Notify Discord on Success
+        if: success()
+        run: |
+          curl -H "Content-Type: application/json" \
+              -X POST \
+              -d "{\"username\": \"Backend CI\", \"content\": \"✅ [백엔드 CI 성공] **${{ env.BRANCH }}** 브랜치\\n🔖 태그: ${{ env.IMAGE_TAG }}\\n🆔 Commit: ${{ env.SHORT_SHA }}\\n📦 이미지: ${{ env.FULL_IMAGE }}\"}" \
+              ${{ secrets.DISCORD_WEBHOOK_URL }}
+
+      # 12. 실패 알림
+      - name: Notify Discord on Failure
+        if: failure()
+        run: |
+          WORKFLOW_URL="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          curl -H "Content-Type: application/json" \
+              -X POST \
+              -d "{\"username\": \"Backend CI\", \"content\": \"❌ [백엔드 CI 실패] **${{ env.BRANCH }}** 브랜치\\n🔖 Commit: ${{ env.SHORT_SHA }}\\n⚠️ [워크플로우 로그 보기]($WORKFLOW_URL)\"}" \
+              ${{ secrets.DISCORD_WEBHOOK_URL }}
