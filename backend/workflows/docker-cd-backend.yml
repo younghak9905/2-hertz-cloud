@@ -1,0 +1,90 @@
+name: Backend Docker CD
+
+on:
+  workflow_run:
+    workflows: ["Backend Docker CI"]
+    types:
+      - completed
+    branches:
+      - main
+      - develop
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+
+    steps:
+      - name: Set environment variables
+        run: |
+          BRANCH="${{ github.event.workflow_run.head_branch }}"
+          SHORT_SHA=$(echo "${{ github.event.workflow_run.head_sha }}" | cut -c1-7)
+          IMAGE_TAG="${BRANCH}-${SHORT_SHA}"
+
+          if [[ "$BRANCH" == "main" ]]; then
+            echo "ENV=production" >> $GITHUB_ENV
+            echo "APPLICATION_NAME=${{ secrets.PROD_APPLICATION_NAME }}" >> $GITHUB_ENV
+            echo "DEPLOYMENT_GROUP_NAME=${{ secrets.PROD_DEPLOY_GROUP_NAME }}" >> $GITHUB_ENV
+          else
+            echo "ENV=develop" >> $GITHUB_ENV
+            echo "APPLICATION_NAME=${{ secrets.DEV_APPLICATION_NAME }}" >> $GITHUB_ENV
+            echo "DEPLOYMENT_GROUP_NAME=${{ secrets.DEV_DEPLOY_GROUP_NAME }}" >> $GITHUB_ENV
+          fi
+
+          echo "IMAGE_TAG=$IMAGE_TAG" >> $GITHUB_ENV
+          echo "S3_BUCKET=${{ secrets.CODEDEPLOY_BUCKET }}" >> $GITHUB_ENV
+
+      - name: Prepare deployment bundle
+        run: |
+          echo "🔧 환경 변수 주입 중..."
+
+          mkdir -p codedeploy
+
+          echo "DB_HOST=${{ secrets.DB_HOST }}" > codedeploy/.env
+          echo "DB_PORT=${{ secrets.DB_PORT }}" >> codedeploy/.env
+          echo "DB_NAME=${{ secrets.DB_NAME }}" >> codedeploy/.env
+          echo "DB_USERNAME=${{ secrets.DB_USERNAME }}" >> codedeploy/.env
+          echo "DB_PASSWORD=${{ secrets.DB_PASSWORD }}" >> codedeploy/.env
+          echo "SWAGGER_ENABLED=${{ secrets.SWAGGER_ENABLED }}" >> codedeploy/.env
+          echo "REDIS_HOST=${{ secrets.REDIS_HOST }}" >> codedeploy/.env
+          echo "REDIS_PORT=${{ secrets.REDIS_PORT }}" >> codedeploy/.env
+          echo "REDIS_PASSWORD=${{ secrets.REDIS_PASSWORD }}" >> codedeploy/.env
+          echo "KAKAO_CLIENT_ID=${{ secrets.KAKAO_CLIENT_ID }}" >> codedeploy/.env
+          echo "REDIRECT_URL=${{ secrets.REDIRECT_URL }}" >> codedeploy/.env
+          echo "JWT_SECRET=${{ secrets.JWT_SECRET }}" >> codedeploy/.env
+          echo "AI_SERVER_IP=${{ secrets.AI_SERVER_IP }}" >> codedeploy/.env
+          echo "AWS_REGION=${{ secrets.AWS_REGION }}" >> codedeploy/.env
+          echo "AWS_ACCOUNT_ID=${{ secrets.AWS_ACCOUNT_ID }}" >> codedeploy/.env
+          echo "IMAGE_TAG=${{ env.IMAGE_TAG }}" >> codedeploy/.env
+
+      - name: Zip and upload to S3
+        run: |
+          zip -r codedeploy_bundle.zip codedeploy/
+          aws s3 cp codedeploy_bundle.zip s3://$S3_BUCKET/backend/$IMAGE_TAG/codedeploy_bundle.zip
+
+      - name: Trigger CodeDeploy Blue/Green Deployment
+        run: |
+          aws deploy create-deployment \
+            --application-name "$APPLICATION_NAME" \
+            --deployment-group-name "$DEPLOYMENT_GROUP_NAME" \
+            --deployment-config-name CodeDeployDefault.AllAtOnce \
+            --s3-location bucket=$S3_BUCKET,bundleType=zip,key=backend/$IMAGE_TAG/codedeploy_bundle.zip \
+            --file-exists-behavior OVERWRITE \
+            --deployment-style deploymentType=BLUE_GREEN,deploymentOption=WITH_TRAFFIC_CONTROL
+
+      - name: Send success notification
+        if: success()
+        run: |
+          curl -H "Content-Type: application/json" \
+              -X POST \
+              -d "{\"content\": \"✅ [Backend CD 성공] **${{ env.ENV }}** 환경 Blue/Green 배포 완료\\n🔖 이미지: tuning-backend:${{ env.IMAGE_TAG }}\"}" \
+              ${{ secrets.DISCORD_WEBHOOK_CICD_URL }}
+
+      - name: Send failure notification
+        if: failure()
+        run: |
+          WORKFLOW_URL="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          curl -H "Content-Type: application/json" \
+              -X POST \
+              -d "{\"content\": \"❌ [Backend CD 실패] **${{ env.ENV }}** 환경 배포 실패\\n🔖 이미지: tuning-backend:${{ env.IMAGE_TAG }}\\n⚠️ 오류 발생\\n🔗 [워크플로우 로그 보기]($WORKFLOW_URL)\"}" \
+              ${{ secrets.DISCORD_WEBHOOK_CICD_URL }}
