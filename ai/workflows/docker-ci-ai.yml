@@ -1,4 +1,4 @@
-name: AI CI
+name: AI Docker CI
 
 on:
    pull_request:
