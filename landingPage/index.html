@@ -1,0 +1,626 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TUNING - 당신만의 주파수를 찾다</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&display=swap');
+        
+        :root {
+            --primary: #7B9EFF;
+            --secondary: #3f3d56;
+            --accent: #5C7CFA;
+            --light: #f8f9fa;
+            --dark: #212529;
+            --gradient: linear-gradient(135deg, #7B9EFF 0%, #4EAEFF 100%);
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Noto Sans KR', sans-serif;
+            line-height: 1.6;
+            color: var(--dark);
+            overflow-x: hidden;
+            background-color: var(--light);
+        }
+        
+        .container {
+            width: 100%;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+        
+        header {
+            background-color: var(--light);
+            position: fixed;
+            width: 100%;
+            z-index: 1000;
+            top: 0;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .header-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px 0;
+        }
+        
+        .logo {
+            display: flex;
+            align-items: center;
+        }
+        
+        .logo img {
+            height: 40px;
+            margin-right: 10px;
+        }
+        
+        .logo h1 {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--primary);
+        }
+        
+        .cta-buttons {
+            display: flex;
+            gap: 15px;
+        }
+        
+        .btn {
+            padding: 10px 20px;
+            border-radius: 30px;
+            font-weight: 500;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        
+        .btn-primary {
+            background: var(--gradient);
+            color: white;
+            border: none;
+            box-shadow: 0 4px 15px rgba(123, 158, 255, 0.4);
+        }
+        
+        .btn-secondary {
+            background-color: transparent;
+            color: var(--primary);
+            border: 2px solid var(--primary);
+        }
+        
+        .btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 20px rgba(78, 174, 255, 0.4);
+        }
+        
+        .hero {
+            height: 80vh;
+            display: flex;
+            align-items: center;
+            background: url('배경_이미지_경로.jpg') no-repeat center center;
+            background-size: cover;
+            margin-top: 80px;
+            position: relative;
+        }
+        
+        .hero::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(to right, rgba(255,255,255,0.9) 0%, rgba(255,255,255,0.7) 50%, rgba(255,255,255,0.5) 100%);
+        }
+        
+        .hero-content {
+            position: relative;
+            z-index: 1;
+            max-width: 800px;
+        }
+        
+        .hero h2 {
+            font-size: 3rem;
+            margin-bottom: 20px;
+            line-height: 1.2;
+            color: var(--secondary);
+        }
+        
+        .hero p {
+            font-size: 1.2rem;
+            margin-bottom: 30px;
+            color: var(--dark);
+        }
+        
+        .antenna-icon {
+            font-size: 2rem;
+            margin-right: 10px;
+            color: var(--primary);
+        }
+        
+        .section {
+            padding: 100px 0;
+        }
+        
+        .section-title {
+            text-align: center;
+            margin-bottom: 60px;
+        }
+        
+        .section-title h3 {
+            font-size: 2.5rem;
+            color: var(--secondary);
+            margin-bottom: 20px;
+        }
+        
+        .section-title p {
+            font-size: 1.2rem;
+            max-width: 700px;
+            margin: 0 auto;
+            color: var(--dark);
+        }
+        
+        .features {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 30px;
+        }
+        
+        .feature-card {
+            background-color: white;
+            border-radius: 10px;
+            padding: 30px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+            transition: all 0.3s ease;
+        }
+        
+        .feature-card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 15px 30px rgba(0,0,0,0.1);
+        }
+        
+        .feature-icon {
+            font-size: 2.5rem;
+            color: var(--primary);
+            margin-bottom: 20px;
+        }
+        
+        .feature-card h4 {
+            font-size: 1.5rem;
+            margin-bottom: 15px;
+            color: var(--secondary);
+        }
+        
+        .target-users {
+            background-color: var(--secondary);
+            color: white;
+        }
+        
+        .target-users .section-title h3 {
+            color: white;
+        }
+        
+        .target-users .section-title p {
+            color: rgba(255,255,255,0.8);
+        }
+        
+        .user-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 30px;
+        }
+        
+        .user-card {
+            background-color: rgba(255,255,255,0.1);
+            border-radius: 10px;
+            padding: 30px;
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+        
+        .user-card:hover {
+            background-color: rgba(255,255,255,0.2);
+            transform: scale(1.05);
+        }
+        
+        .user-icon {
+            font-size: 3rem;
+            margin-bottom: 20px;
+            color: #7B9EFF;
+        }
+        
+        .user-card h4 {
+            font-size: 1.5rem;
+            margin-bottom: 15px;
+        }
+        
+        .competitors {
+            background-color: var(--light);
+        }
+        
+        .comp-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 30px;
+            background-color: white;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+        }
+        
+        .comp-table th, .comp-table td {
+            padding: 15px;
+            text-align: left;
+            border-bottom: 1px solid rgba(0,0,0,0.1);
+        }
+        
+        .comp-table th {
+            background-color: var(--primary);
+            color: white;
+            font-weight: 500;
+        }
+        
+        .comp-table tr:last-child td {
+            border-bottom: none;
+        }
+        
+        .comp-table tr:hover {
+            background-color: rgba(108, 99, 255, 0.05);
+        }
+        
+        .comp-table .checkmark {
+            color: var(--primary);
+            font-weight: bold;
+        }
+        
+        .comp-table .x-mark {
+            color: var(--accent);
+        }
+        
+        .cta-section {
+    background: linear-gradient(135deg, #7B9EFF 0%, #4EAEFF 100%);
+    color: white;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+}
+
+.cta-section::before, .cta-section::after {
+    display: none;
+}
+        .cta-section h3 {
+            font-size: 2.5rem;
+            margin-bottom: 20px;
+        }
+        
+        .cta-section p {
+            font-size: 1.2rem;
+            margin-bottom: 30px;
+            max-width: 700px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        
+        .cta-big {
+            padding: 15px 40px;
+            font-size: 1.2rem;
+            background-color: white;
+            color: var(--primary);
+            border: none;
+        }
+        
+        footer {
+            background-color: var(--secondary);
+            color: white;
+            padding: 50px 0 20px;
+        }
+        
+        .footer-content {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            margin-bottom: 30px;
+        }
+        
+        .footer-section {
+            flex: 1;
+            min-width: 200px;
+            margin-bottom: 30px;
+        }
+        
+        .footer-section h4 {
+            font-size: 1.2rem;
+            margin-bottom: 20px;
+            position: relative;
+            padding-bottom: 10px;
+        }
+        
+        .footer-section h4::after {
+            content: '';
+            position: absolute;
+            left: 0;
+            bottom: 0;
+            width: 50px;
+            height: 2px;
+            background-color: var(--accent);
+        }
+        
+        .footer-section p, .footer-section a {
+            color: rgba(255,255,255,0.7);
+            margin-bottom: 10px;
+            display: block;
+            text-decoration: none;
+            transition: all 0.3s ease;
+        }
+        
+        .footer-section a:hover {
+            color: white;
+            transform: translateX(5px);
+        }
+        
+        .social-icons {
+            display: flex;
+            gap: 15px;
+            margin-top: 20px;
+        }
+        
+        .social-icons a {
+            display: inline-block;
+            width: 40px;
+            height: 40px;
+            background-color: rgba(255,255,255,0.1);
+            border-radius: 50%;
+            text-align: center;
+            line-height: 40px;
+            transition: all 0.3s ease;
+        }
+        
+        .social-icons a:hover {
+            background-color: var(--primary);
+            transform: translateY(-5px);
+        }
+        
+        .copyright {
+            text-align: center;
+            padding-top: 20px;
+            border-top: 1px solid rgba(255,255,255,0.1);
+            color: rgba(255,255,255,0.5);
+        }
+
+        .tuning-text {
+    font-weight: 800;
+    background: linear-gradient(90deg, #4EAEFF, #7B9EFF);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    text-fill-color: transparent;
+    position: relative;
+    display: inline-block;
+    padding: 0 5px;
+}
+
+.tuning-text::before {
+    content: '';
+    position: absolute;
+    width: 100%;
+    height: 8px;
+    background: linear-gradient(90deg, rgba(78, 174, 255, 0.3), rgba(123, 158, 255, 0.3));
+    bottom: 5px;
+    left: 0;
+    z-index: -1;
+    border-radius: 4px;
+}
+
+.tuning-text::after {
+    content: '📡';
+    font-size: 0.7em;
+    position: absolute;
+    top: -15px;
+    right: -10px;
+}
+        
+        @media (max-width: 768px) {
+            .hero h2 {
+                font-size: 2.5rem;
+            }
+            
+            .section-title h3 {
+                font-size: 2rem;
+            }
+            
+            .cta-buttons {
+                flex-direction: column;
+            }
+            
+            .header-container {
+                flex-direction: column;
+                text-align: center;
+                gap: 20px;
+            }
+            
+            .cta-section h3 {
+                font-size: 2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="container header-container">
+            <div class="logo">
+                <img src="favicon.png"  style="height: 40px;">
+
+                <h1>TUNING</h1>
+            </div>
+            <div class="cta-buttons">
+                <a href="#download" class="btn btn-primary">앱 다운로드</a>
+                <a href="#about" class="btn btn-secondary">서비스 소개</a>
+            </div>
+        </div>
+    </header>
+    
+    <section class="hero">
+        <div class="container">
+            <div class="hero-content">
+                <h2>당신만의 주파수를 찾고 있다면,<br>지금 <span class="tuning-text">TUNING</span>으로 시작해보세요!</h2>
+                <p>TUNING은 조직 내부 사용자 간의 자연스럽고 부담 없는 소통을 돕는 소셜 매칭 서비스입니다. 복잡한 설정 없이 <span style="color: var(--primary); font-weight: 500;">관심사 기반의 감정 신호</span>를 통해 자신과 유사한 주파수를 가진 사람들과 연결되세요.</p>                <a href="#download" class="btn btn-primary">지금 시작하기</a>
+            </div>
+        </div>
+    </section>
+    
+    <section id="about" class="section">
+        <div class="container">
+            <div class="section-title">
+                <h3>TUNING이란?</h3>
+                <p>당신의 조직 내에서 진정한 인연을 발견하는 새로운 방법</p>
+            </div>
+            <div class="features">
+                <div class="feature-card">
+                    <div class="feature-icon">💬</div>
+                    <h4>자연스러운 소통</h4>
+                    <p>구성원들이 자연스럽게 소통할 수 있는 커뮤니티를 제공합니다. 복잡한 설정 없이 관심사 기반으로 연결됩니다.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">📻</div>
+                    <h4>AI 기반 매칭</h4>
+                    <p>인공지능이 당신의 관심사와 성향을 분석하여 조직 내에서 가장 잘 맞는 사람들을 찾아줍니다.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">📰</div>
+                    <h4>튜닝 리포트</h4>
+                    <p>매칭된 두 사용자에 대한 힌트를 담은 튜닝 리포트를 뉴스 속보처럼 전달하여 소통의 재미와 설렘을 제공합니다.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+    
+    <section class="target-users section">
+        <div class="container">
+            <div class="section-title">
+                <h3>주요 고객</h3>
+                <p>TUNING은 이런 분들에게 특히 유용합니다</p>
+            </div>
+            <div class="user-cards">
+                <div class="user-card">
+                    <div class="user-icon">👨‍💼</div>
+                    <h4>MZ세대 구성원</h4>
+                    <p>새로운 방식의 소통과 연결을 원하는 젊은 세대에게 최적화된 서비스입니다.</p>
+                </div>
+                <div class="user-card">
+                    <div class="user-icon">👩‍💼</div>
+                    <h4>조직 내 소통 촉진</h4>
+                    <p>조직 내 소통을 활성화하고 구성원 간의 유대감을 강화하고 싶은 관리자에게 적합합니다.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+    
+    <section class="competitors section">
+        <div class="container">
+            <div class="section-title">
+                <h3>TUNING의 차별성</h3>
+                <p>다른 서비스와 비교해 TUNING이 가진 특별한 가치</p>
+            </div>
+            <table class="comp-table">
+                <thead>
+                    <tr>
+                        <th>기능</th>
+                        <th>TUNING</th>
+                        <th>데이팅 앱</th>
+                        <th>일반 커뮤니티</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>조직 내 신뢰 기반 매칭</td>
+                        <td class="checkmark">✓</td>
+                        <td class="x-mark">✗</td>
+                        <td class="x-mark">✗</td>
+                    </tr>
+                    <tr>
+                        <td>AI 기반 맞춤형 매칭</td>
+                        <td class="checkmark">✓</td>
+                        <td class="checkmark">✓</td>
+                        <td class="x-mark">✗</td>
+                    </tr>
+                    <tr>
+                        <td>튜닝 리포트(뉴스)</td>
+                        <td class="checkmark">✓</td>
+                        <td class="x-mark">✗</td>
+                        <td class="x-mark">✗</td>
+                    </tr>
+                    <tr>
+                        <td>익명 기반 소통</td>
+                        <td class="checkmark">✓</td>
+                        <td class="x-mark">✗</td>
+                        <td class="checkmark">✓</td>
+                    </tr>
+                    <tr>
+                        <td>결과의 콘텐츠화</td>
+                        <td class="checkmark">✓</td>
+                        <td class="x-mark">✗</td>
+                        <td class="x-mark">✗</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </section>
+    
+    <section id="download" class="cta-section section">
+        <div class="container">
+            <div style="display: flex; justify-content: center; margin-bottom: 30px;">
+                <img src="favicon.png" alt="TUNING 앱 아이콘" style="width: 120px; height: 120px; border-radius: 24px;">
+            </div>
+            <h3>당신만의 특별한 주파수를 찾을 준비가 되셨나요?</h3>
+            <p>지금 TUNING을 시작하고 조직 내에서 자신과 유사한 주파수를 가진 사람들과 연결되세요. 새로운 방식의 소통과 연결, 그리고 재미있는 매칭 경험이 기다리고 있습니다.</p>
+            <a href="#" class="btn cta-big">지금 다운로드하기</a>
+        </div>
+    </section>
+    
+    <footer>
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-section">
+                    <h4>About TUNING</h4>
+                
+                    <p>TUNING은 조직 내부 사용자 간의 자연스럽고 부담 없는 소통을 돕는 소셜 매칭 서비스입니다.</p>
+                    <div class="social-icons">
+                        <a href="#"><i class="fab fa-facebook-f"></i></a>
+                        <a href="#"><i class="fab fa-twitter"></i></a>
+                        <a href="#"><i class="fab fa-instagram"></i></a>
+                        <a href="#"><i class="fab fa-linkedin-in"></i></a>
+                    </div>
+                </div>
+                <div class="footer-section">
+                    <h4>링크</h4>
+                    <a href="#">서비스 소개</a>
+                    <a href="#">다운로드</a>
+                    <a href="#">자주 묻는 질문</a>
+                    <a href="#">블로그</a>
+                </div>
+                <div class="footer-section">
+                    <h4>연락처</h4>
+                    <p>이메일: info@kakaotech</p>
+                    <p>전화: 02-123-4567</p>
+                    <p>주소: 경기 성남시 분당구 대왕판교로 660 유스페이스 1 A동 405호</p>
+                </div>
+            </div>
+            <div class="copyright">
+                <p>&copy; 2025 TUNING. All rights reserved.</p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Font Awesome 아이콘 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/js/all.min.js"></script>
+</body>
+</html>
