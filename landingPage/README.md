@@ -5,15 +5,15 @@
 ```
   # 랜딩 페이지 경로 추가
     location /landing/ {
-        alias /home/deploy/2-hertz-cloud/landingPage;
+        alias /home/devops/2-hertz-cloud/landingPage;
         index index.html;
         try_files $uri $uri/ =404;
     }
 ```
 
 ```
-sudo chown -R nginx:nginx /home/deploy/2-hertz-cloud/landingPage
-sudo chmod -R 755 /home/deploy/2-hertz-cloud/landingPage
+sudo chown -R devops:devops /home/devops/2-hertz-cloud/landingPage
+sudo chmod -R 755 /home/devops/2-hertz-cloud/landingPage
 
 sudo nginx -t  # 설정 문법 검사
 sudo systemctl reload nginx  # 설정 적용
