@@ -7,12 +7,18 @@ resource "aws_route_table" "this" {
   }
 }
 
-resource "aws_route" "default" {
+resource "aws_route" "public" { # public 전용
+  count = var.is_public ? 1 : 0
+
   route_table_id         = aws_route_table.this.id
   destination_cidr_block = "0.0.0.0/0"
+  gateway_id             = var.igw_id
+}
 
-  gateway_id       = var.is_public ? var.igw_id : null
-  nat_gateway_id   = var.is_public ? null : var.nat_gateway_id
+resource "aws_route" "private" { # private 전용
+  count = var.is_public ? 0 : 1
 
-  depends_on = [aws_route_table.this]
+  route_table_id         = aws_route_table.this.id
+  destination_cidr_block = "0.0.0.0/0"
+  nat_gateway_id         = var.nat_gateway_id
 }

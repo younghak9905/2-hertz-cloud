@@ -1,6 +1,6 @@
 resource "aws_route_table_association" "this" {
-  for_each = toset(var.subnet_ids)
+  count = length(var.subnet_ids)
 
-  subnet_id      = each.value
+  subnet_id      = var.subnet_ids[count.index]
   route_table_id = var.route_table_id
 }
