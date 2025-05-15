@@ -1,9 +1,17 @@
 name: CD Backend (SSH)
 
+# ### 스크립트 비활성화를 위한 트리거
+# on: # 활성화 시 삭제
+#   push: # 활성화 시 삭제
+#     branches: # 활성화 시 삭제
+#       - _never_run_this_branch # 활성화 시 삭제
+
 on:
-  push:
+  pull_request:
+    types: [closed] # PR이 닫혔을 때 (병합 포함)
     branches:
-      - _never_run_this_branch # 활성화 시 제거
+      - main # main 브랜치로 Merge 시 -> Production 환경에 배포
+      - develop # develop 브랜치로 Merge 시 -> DEV 환경에 배포
 
 jobs:
   deploy:
