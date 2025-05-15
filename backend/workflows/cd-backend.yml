@@ -18,6 +18,10 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Install required tools
+        run: |
+          apt-get update && apt-get install -y awscli curl jq
+
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v2
         with:
@@ -35,7 +39,13 @@ jobs:
           }
 
           load_secret_to_file() {
-            VALUE=$(aws ssm get-parameter --name "$1" --with-decryption --query "Parameter.Value" --output text)
+            VALUE=$(aws ssm get-parameter --name "$1" --with-decryption --output json | jq -r .Parameter.Value)
+
+            # 멀티라인 마스킹 처리
+            echo "$VALUE" | while IFS= read -r line; do
+              echo "::add-mask::$line"
+            done
+
             echo "$VALUE" > "$2"
           }
 
@@ -58,6 +68,11 @@ jobs:
             load_secret_to_file "/global/gcp/DEV_GCP_SA_KEY" gcp-sa-key.json
           fi
 
+          echo "SA_KEY<<EOF" >> $GITHUB_ENV
+          cat gcp-sa-key.json >> $GITHUB_ENV
+          echo "EOF" >> $GITHUB_ENV
+
+
           load_param "/global/gcp/SSH_USERNAME" SSH_USERNAME
           load_secret_to_file "/global/gcp/SSH_PRIVATE_KEY" id_rsa
           chmod 600 id_rsa
@@ -67,14 +82,14 @@ jobs:
       - name: Read GCP SA key JSON
         id: read_sa_key
         run: |
-          echo "key<<EOF" >> $GITHUB_OUTPUT
-          cat gcp-sa-key.json >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
+          echo "SA_KEY<<EOF" >> $GITHUB_ENV
+          cat gcp-sa-key.json >> $GITHUB_ENV
+          echo "EOF" >> $GITHUB_ENV
 
       - name: Authenticate to GCP
         uses: google-github-actions/auth@v1
         with:
-          credentials_json: '${{ steps.read_sa_key.outputs.key }}'
+          credentials_json: '${{ env.SA_KEY }}'
 
       - name: Setup gcloud CLI
         uses: google-github-actions/setup-gcloud@v1
