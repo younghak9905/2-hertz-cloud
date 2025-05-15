@@ -7,12 +7,12 @@ name: CD Backend (SSH)
 #       - _never_run_this_branch # 활성화 시 삭제
 
 on:
-  pull_request:
-    types: [closed] # PR이 닫혔을 때 (병합 포함)
-    branches:
-      - main # main 브랜치로 Merge 시 -> Production 환경에 배포
-      - develop # develop 브랜치로 Merge 시 -> DEV 환경에 배포
-      
+  # pull_request:
+  #   types: [closed] # PR이 닫혔을 때 (병합 포함)
+  #   branches:
+  #     - main # main 브랜치로 Merge 시 -> Production 환경에 배포
+  #     - develop # develop 브랜치로 Merge 시 -> DEV 환경에 배포
+
   workflow_dispatch:  # ✅ 수동 실행 트리거 추가
     inputs:
       env:
