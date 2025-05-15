@@ -12,6 +12,19 @@ on:
     branches:
       - main # main 브랜치로 Merge 시 -> Production 환경에 배포
       - develop # develop 브랜치로 Merge 시 -> DEV 환경에 배포
+      
+  workflow_dispatch:  # ✅ 수동 실행 트리거 추가
+    inputs:
+      env:
+        description: "배포 환경"
+        required: true
+        default: "develop"
+        type: choice
+        options:
+          - develop
+          - production
+
+
 
 jobs:
   deploy:
@@ -34,6 +47,11 @@ jobs:
             echo "$2=$VALUE" >> $GITHUB_ENV
           }
 
+          load_secret_to_file() {
+            VALUE=$(aws ssm get-parameter --name "$1" --with-decryption --query "Parameter.Value" --output text)
+            echo "$VALUE" > "$2"
+          }
+
           BRANCH="${{ github.ref_name }}"
           echo "BRANCH=$BRANCH" >> $GITHUB_ENV
 
@@ -44,19 +62,18 @@ jobs:
             load_param "/global/gcp/PROD_GCP_HOST" HOST
             load_param "/global/gcp/PROD_GCP_INSTANCE" INSTANCE
             load_param "/global/gcp/PROD_GCP_PROJECT_ID" PROJECT_ID
-            load_param "/global/gcp/PROD_GCP_SA_KEY" SA_KEY
+            load_secret_to_file "/global/gcp/PROD_GCP_SA_KEY" gcp-sa-key.json
           else
             echo "ENV=develop" >> $GITHUB_ENV
             load_param "/global/gcp/DEV_GCP_HOST" HOST
             load_param "/global/gcp/DEV_GCP_INSTANCE" INSTANCE
             load_param "/global/gcp/DEV_GCP_PROJECT_ID" PROJECT_ID
-            load_param "/global/gcp/DEV_GCP_SA_KEY" SA_KEY
+            load_secret_to_file "/global/gcp/DEV_GCP_SA_KEY" gcp-sa-key.json
           fi
 
           load_param "/global/gcp/SSH_USERNAME" SSH_USERNAME
           load_param "/global/gcp/SSH_PRIVATE_KEY" SSH_PRIVATE_KEY
           load_param "/global/gcp/DISCORD_WEBHOOK_CICD_URL" DISCORD_WEBHOOK_CICD_URL
-
           echo "COMMIT_HASH=${{ github.sha }}" >> $GITHUB_ENV
 
       - name: Create GCP credentials file
