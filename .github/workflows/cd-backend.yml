@@ -13,22 +13,8 @@ on:
       - main # main 브랜치로 Merge 시 -> Production 환경에 배포
       - develop # develop 브랜치로 Merge 시 -> DEV 환경에 배포
 
-  workflow_dispatch:  # ✅ 수동 실행 트리거 추가
-    inputs:
-      env:
-        description: "배포 환경"
-        required: true
-        default: "develop"
-        type: choice
-        options:
-          - develop
-          - production
-
-
-
 jobs:
   deploy:
-    if: github.event.pull_request.merged == true
     runs-on: ubuntu-latest
 
     steps:
@@ -37,7 +23,7 @@ jobs:
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ap-northeast-2
+          aws-region: ${{ secrets.AWS_REGION}}
 
       - name: Set environment variables from SSM
         id: ssm
@@ -72,17 +58,22 @@ jobs:
           fi
 
           load_param "/global/gcp/SSH_USERNAME" SSH_USERNAME
-          load_param "/global/gcp/SSH_PRIVATE_KEY" SSH_PRIVATE_KEY
-          load_param "/global/gcp/DISCORD_WEBHOOK_CICD_URL" DISCORD_WEBHOOK_CICD_URL
+          load_secret_to_file "/global/gcp/SSH_PRIVATE_KEY" id_rsa
+          chmod 600 id_rsa
+          echo "SSH_KEY_PATH=id_rsa" >> $GITHUB_ENV
           echo "COMMIT_HASH=${{ github.sha }}" >> $GITHUB_ENV
 
-      - name: Create GCP credentials file
-        run: echo "$SA_KEY" > gcp-sa-key.json
+      - name: Read GCP SA key JSON
+        id: read_sa_key
+        run: |
+          echo "key<<EOF" >> $GITHUB_OUTPUT
+          cat gcp-sa-key.json >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
 
       - name: Authenticate to GCP
         uses: google-github-actions/auth@v1
         with:
-          credentials_json: ${{ env.SA_KEY }}
+          credentials_json: '${{ steps.read_sa_key.outputs.key }}'
 
       - name: Setup gcloud CLI
         uses: google-github-actions/setup-gcloud@v1
@@ -110,7 +101,7 @@ jobs:
         with:
           host: ${{ env.HOST }}
           username: ${{ env.SSH_USERNAME }}
-          key: ${{ env.SSH_PRIVATE_KEY }}
+          key: ${{ env.SSH_KEY_PATH }}
           script: |
             cd /home/deploy
             chmod +x be_deploy.sh
