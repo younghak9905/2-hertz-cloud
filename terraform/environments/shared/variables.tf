@@ -22,3 +22,8 @@ variable "nat_subnet_cidrs" {
   type        = list(string)
   description = "List of NAT subnet CIDRs"
 }
+
+variable "key_name" {
+  type        = string
+  description = "EC2 SSH 접속을 위한 key pair 이름"
+}
