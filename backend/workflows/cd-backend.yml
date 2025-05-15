@@ -131,7 +131,7 @@ jobs:
           curl -H "Content-Type: application/json" \
             -X POST \
             -d "{\"content\": \"❌ [BE 배포 실패] **${{ env.ENV }}** Backend 서버 (브랜치: \`${{ env.BRANCH }}\`)\\n🔖 Commit: ${{ env.COMMIT_HASH }}\\n⚠️ [워크플로우 로그 보기]($WORKFLOW_URL)\"}" \
-            ${{ env.DISCORD_WEBHOOK_CICD_URL }}
+            ${{ secrets.DISCORD_WEBHOOK_CICD_URL }}
 
       - name: Send success notification
         if: success()
@@ -139,7 +139,7 @@ jobs:
           curl -H "Content-Type: application/json" \
             -X POST \
             -d "{\"content\": \"🚀 [BE 배포 완료] **${{ env.ENV }}** Backend 서버 (브랜치: \`${{ env.BRANCH }}\`)\\n🔖 Commit: ${{ env.COMMIT_HASH }}\"}" \
-            ${{ env.DISCORD_WEBHOOK_CICD_URL }}
+            ${{ secrets.DISCORD_WEBHOOK_CICD_URL }}
 
   rollback-production:
     if: failure() && github.ref == 'refs/heads/main'
