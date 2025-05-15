@@ -3,33 +3,29 @@ version: '3.8'
 services:
   tuning-api:
     image: ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/tuning-api:${IMAGE_TAG:-latest}
+    container_name: fastapi-ai-server
     restart: always
     ports:
       - "8000:8000"
     cap_add:
       - SYS_PTRACE
     environment:
-      # e2-standard-4 고정 설정
-      - GUNICORN_WORKERS=4
-      # ChromaDB 연결 설정
+      - UVICORN_WORKERS=2
       - CHROMA_HOST=chromadb
-      - CHROMA_PORT=8000
+      - CHROMA_PORT=8001
       - CHROMA_MODE=server
-      - SENTENCE_TRANSFORMERS_HOME=/app/models
       - TOKENIZERS_PARALLELISM=false
     volumes:
       - tuning_logs:/app/logs
-      - tuning_models:/app/models
     depends_on:
       - chromadb
     deploy:
       resources:
         limits:
-          # e2-standard-4 고정 리소스 제한
           cpus: "3.0"
           memory: "11G"
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/health/chromadb"]
       interval: 15s
       timeout: 10s
       retries: 5
@@ -38,9 +34,9 @@ services:
       - app_network
 
   chromadb:
-    image: ghcr.io/chroma-core/chroma:0.4.13
+    image: ghcr.io/chroma-core/chroma:0.4.13  # 또는 :latest
+    container_name: chromadb
     restart: always
-    # 내부 통신만 허용
     expose:
       - "8001"
     cap_add:
@@ -55,7 +51,6 @@ services:
     deploy:
       resources:
         limits:
-          # e2-standard-4 고정 리소스 제한
           cpus: "0.8"
           memory: "4.5G"
     healthcheck:
@@ -68,7 +63,6 @@ services:
 
 volumes:
   tuning_logs:
-  tuning_models:
   chroma_data:
 
 networks:
