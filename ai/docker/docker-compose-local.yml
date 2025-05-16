@@ -5,14 +5,14 @@ services:
     container_name: fastapi-ai-server
     build:
       context: .
-      dockerfile: Dockerfile.SERVER
+      dockerfile: Dockerfile
     restart: always
     ports:
       - "8000:8000"
     cap_add:
       - SYS_PTRACE
     environment:
-      - UVICORN_WORKERS=4
+      - UVICORN_WORKERS=1
       - CHROMA_HOST=chromadb
       - CHROMA_PORT=8001
       - CHROMA_MODE=server
