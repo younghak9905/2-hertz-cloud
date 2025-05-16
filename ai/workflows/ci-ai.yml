@@ -33,7 +33,7 @@ jobs:
         cache: 'pip'
         cache-dependency-path: |
           requirements.txt
-          requirements-dev.txt
+         
 
     # 3. 가상환경 생성 및 활성화
     - name: Create and activate virtual environment
@@ -44,14 +44,20 @@ jobs:
     # 4. 의존성 설치 (병렬 처리 및 캐시 활용)
     - name: Install dependencies
       run: |
-        python -m pip install --upgrade pip
+        pip install --upgrade pip setuptools wheel
         # requirements.txt 설치 (없으면 건너뜀)
         pip install -r requirements.txt || echo "📦 requirements.txt 없음, 건너뜀"
-        # requirements-dev.txt 설치 (없으면 건너뜀)
-        pip install -r requirements-dev.txt || echo "📦 requirements-dev.txt 없음, 건너뜀"
         # 기본 의존성 설치 (한 번에 설치)
-        pip install "pydantic[email]" fastapi uvicorn transformers torch pytest pytest-asyncio httpx
+        pip install uvicorn
 
+    - name: Launch FastAPI server in background
+      run: |
+        nohup uvicorn app.main:app --host 127.0.0.1 --port 8000 > uvicorn.log 2>&1 &
+        sleep 5  # 서버 기동 대기
+
+    - name: Health check
+      run: |
+        curl -f http://127.0.0.1:8000/docs || (cat uvicorn.log && exit 1)
 
     # 5. Discord 알림
     - name: Send success notification
