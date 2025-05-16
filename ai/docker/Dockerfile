@@ -21,14 +21,10 @@ RUN apt-get update && apt-get install -y \
 
 # requirements 복사 및 설치 (PIP 캐시 사용 → 속도 빠름)
 # requirements 복사 및 설치
-COPY requirements.txt requirements-dev.txt* ./
+COPY requirements.txt ./
 RUN pip install --upgrade pip setuptools wheel && \
-    pip install -r requirements.txt && \
-    pip install transformers==4.32.0 uvicorn && \
-    if [ -f requirements-dev.txt ]; then \
-        pip install -r requirements-dev.txt; \
-    fi
-
+    pip install -r requirements.txt
+   
 
 # 앱 복사 (마지막에)
 COPY app ./app
