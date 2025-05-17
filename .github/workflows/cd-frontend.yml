@@ -16,6 +16,9 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    outputs:
+      deploy_status: ${{ steps.set-output.outputs.status }}
+      target_branch: ${{ steps.set-output.outputs.branch }}
     steps:
       # # ✅ act 테스트용 필요 패키지 설치
       # - name: Install required tools
@@ -29,9 +32,12 @@ jobs:
 
 
       - name: Force failure for rollback test
+        id: set-output
         run: |
-          echo "🚨 테스트용 에러 유도 중"
-          exit 1
+          echo "🚨 테스트 실패 유도"
+          echo "status=failure" >> $GITHUB_OUTPUT
+          echo "branch=${{ github.ref_name }}" >> $GITHUB_OUTPUT
+          exit 0
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v2
@@ -185,8 +191,15 @@ jobs:
   #   with:
   #     environment: production
 
+  # rollback-develop:
+  #   if: failure() && (github.ref_name == 'develop' || (github.event_name == 'pull_request' && github.event.pull_request.merged == true))
+  #   uses: 100-hours-a-week/2-hertz-cloud/.github/workflows/rollback-frontend.yml@develop
+  #   with:
+  #     environment: develop
+
   rollback-develop:
-    if: failure() && (github.ref_name == 'develop' || (github.event_name == 'pull_request' && github.event.pull_request.merged == true))
+    needs: deploy
+    if: needs.deploy.outputs.deploy_status == 'failure' && needs.deploy.outputs.target_branch == 'develop'
     uses: 100-hours-a-week/2-hertz-cloud/.github/workflows/rollback-frontend.yml@develop
     with:
       environment: develop
