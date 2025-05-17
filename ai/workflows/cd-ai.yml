@@ -1,21 +1,25 @@
-name: CD AI (SSH)
+name: AI CD
 
-### 스크립트 비활성화를 위한 트리거
-on:                               # 활성화 시 삭제
-  push:                           # 활성화 시 삭제
-    branches:                     # 활성화 시 삭제
-      - _never_run_this_branch    # 활성화 시 삭제
-
-      # on:
-#   pull_request:
-#     types: [closed] # PR이 닫혔을 때 (병합 포함)
-#     branches:
-#       - main # main 브랜치로 Merge 시 -> Production 환경에 배포
-#       - develop # develop 브랜치로 Merge 시 -> DEV 환경에 배포
+on:
+  workflow_run:
+    workflows: ['AI CI'] # 정확히 CI 워크플로우 이름과 일치해야 함
+    types:
+      - completed
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy (main or develop)'
+        required: true
+        default: "develop"
+        type: choice
+        options:
+          - "main"
+          - "develop"
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    if: github.event.workflow_run.conclusion == 'success' || github.event_name == 'workflow_dispatch'
     steps:
       - name: Set environment
         run: |
@@ -38,17 +42,16 @@ jobs:
           echo "COMMIT_HASH=${{ github.sha }}" >> $GITHUB_ENV
 
       - name: Authenticate to GCP
-        # if: github.ref_name == 'main'                 # DEV 서버 준비되면 주석 해제(그 전에는 모두 Production 환경에서 진행)
+        if: github.ref_name == 'main'
         uses: google-github-actions/auth@v1
         with:
           credentials_json: ${{ secrets.PROD_GCP_SA_KEY }}
 
-      # DEV 서버 준비되면 주석 해제(그 전에는 모두 Production 환경에서 진행)
-      # - name: Authenticate to GCP (DEV)
-      #   if: github.ref_name != 'main'
-      #   uses: google-github-actions/auth@v1
-      #   with:
-      #     credentials_json: ${{ secrets.DEV_GCP_SA_KEY }}
+      - name: Authenticate to GCP (DEV)
+        if: github.ref_name != 'main'
+        uses: google-github-actions/auth@v1
+        with:
+          credentials_json: ${{ secrets.DEV_GCP_SA_KEY }}
 
       - name: Setup gcloud CLI
         uses: google-github-actions/setup-gcloud@v1
@@ -113,7 +116,7 @@ jobs:
           curl -H "Content-Type: application/json" \
               -X POST \
               -d "{\"content\": \"❌ [AI 배포 실패] **${{ env.ENV }}** AI 서버 (브랜치: \`${{ env.BRANCH }}\`)\\n🔖 Commit: ${{ env.COMMIT_HASH }}\\n⚠️ [워크플로우 로그 보기]($WORKFLOW_URL)\"}" \
-              ${{ secrets.DISCORD_WEBHOOK_CICD_URL }}
+              ${{ secrets.DISCORD_WEBHOOK_PR_URL }}
 
       - name: Send success notification
         if: success()
@@ -121,17 +124,21 @@ jobs:
           curl -H "Content-Type: application/json" \
                -X POST \
                -d "{\"content\": \"🚀 [AI 배포 완료] **${{ env.ENV }}** AI 서버 (브랜치: \`${{ env.BRANCH }}\`)\\n🔖 Commit: ${{ env.COMMIT_HASH }}\"}" \
-               ${{ secrets.DISCORD_WEBHOOK_CICD_URL }}
+               ${{ secrets.DISCORD_WEBHOOK_PR_URL }}
 
-  # 실패 시, 롤백 수행하는 job
   rollback-production:
-    if: failure() && github.ref == 'refs/heads/main'
+    needs: deploy
+    if: ${{ needs.deploy.result == 'failure' && github.ref_name == 'main' }}
     uses: 100-hours-a-week/2-hertz-ai/.github/workflows/rollback-ai.yml@main
     with:
       environment: production
 
   rollback-develop:
-    if: failure() && github.ref == 'refs/heads/develop'
+    needs: deploy
+    if: ${{ needs.deploy.result == 'failure' && github.ref_name == 'develop' }}
     uses: 100-hours-a-week/2-hertz-ai/.github/workflows/rollback-ai.yml@develop
     with:
       environment: develop
+
+
+

@@ -1,14 +1,11 @@
 # .github/workflows/fastapi-ai-ci.yml
-
 name: AI CI
-
-
 on:
   pull_request:
-   types: [closed] # PR이 닫혔을 때 (병합 포함)
-     branches:
-       - main # main 브랜치로 Merge 시 -> Production 환경에 배포
-       - develop # develop 브랜치로 Merge 시 -> DEV 환경에 배포
+    types: [closed]
+    branches:
+      - main
+      - develop
 jobs:
   ai-ci:
     runs-on: ubuntu-latest
@@ -39,20 +36,17 @@ jobs:
     # 4. 의존성 설치 (병렬 처리 및 캐시 활용)
     - name: Install dependencies
       run: |
-        pip install --upgrade pip setuptools wheel
-        # requirements.txt 설치 (없으면 건너뜀)
-        pip install -r requirements.txt || echo "📦 requirements.txt 없음, 건너뜀"
-        # 기본 의존성 설치 (한 번에 설치)
-        pip install uvicorn
+        pip install --upgrade pip
+        pip install -r requirements.txt
 
     - name: Launch FastAPI server in background
       run: |
         nohup uvicorn app.main:app --host 127.0.0.1 --port 8000 > uvicorn.log 2>&1 &
-        sleep 5  # 서버 기동 대기
+        sleep 10  # 서버 기동 대기
 
     - name: Health check
       run: |
-        curl -f http://127.0.0.1:8000/docs || (cat uvicorn.log && exit 1)
+           curl -f http://127.0.0.1:8000/docs || (echo "❌ 서버 실행 실패. 로그 출력:" && cat uvicorn.log && exit 1)
 
     # 5. Discord 알림
     - name: Send success notification
@@ -61,7 +55,7 @@ jobs:
         curl -H "Content-Type: application/json" \
              -X POST \
              -d "{\"username\": \"AI CI\", \"content\": \"✅ [AI CI 성공] **${{ github.base_ref }}** AI 서버 (브랜치: \`${{ github.head_ref }}\`)\\n🔖 Commit: ${{ github.sha }}\"}" \
-             ${{ secrets.DISCORD_WEBHOOK_URL }}
+             ${{ secrets.DISCORD_WEBHOOK_PR_URL }}
 
     - name: Send failure notification
       if: failure()
@@ -70,4 +64,4 @@ jobs:
         curl -H "Content-Type: application/json" \
              -X POST \
              -d "{\"username\": \"AI CI\", \"content\": \"❌ [AI CI 실패] **${{ github.base_ref }}** AI 서버 (브랜치: \`${{ github.head_ref }}\`)\\n🔖 Commit: ${{ github.sha }}\\n⚠️ [워크플로우 로그 보기]($WORKFLOW_URL)\"}" \
-             ${{ secrets.DISCORD_WEBHOOK_URL }}
+             ${{ secrets.DISCORD_WEBHOOK_PR_URL }}

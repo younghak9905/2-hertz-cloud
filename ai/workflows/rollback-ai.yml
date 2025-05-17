@@ -35,7 +35,7 @@ jobs:
           curl -H "Content-Type: application/json" \
             -X POST \
             -d "{\"content\": \"🔄 [AI 롤백 시작] \`${{ inputs.environment }}\` 환경에서 롤백을 실행합니다.\"}" \
-            ${{ secrets.DISCORD_WEBHOOK_CICD_URL }}
+            ${{ secrets.DISCORD_WEBHOOK_PR_URL }}
             
       - name: SSH into server and rollback
         uses: appleboy/ssh-action@master
@@ -73,7 +73,7 @@ jobs:
           curl -H "Content-Type: application/json" \
             -X POST \
             -d "{\"content\": \"✅ [AI 롤백 완료] \`${{ inputs.environment }}\` 환경\"}" \
-            ${{ secrets.DISCORD_WEBHOOK_CICD_URL }}
+            ${{ secrets.DISCORD_WEBHOOK_PR_URL }}
 
       - name: Send failure notification
         if: failure()
@@ -81,4 +81,4 @@ jobs:
           curl -H "Content-Type: application/json" \
             -X POST \
             -d "{\"content\": \"❌ [AI 롤백 실패] \`${{ inputs.environment }}\` 환경\"}" \
-            ${{ secrets.DISCORD_WEBHOOK_CICD_URL }}
+            ${{ secrets.DISCORD_WEBHOOK_PR_URL }}

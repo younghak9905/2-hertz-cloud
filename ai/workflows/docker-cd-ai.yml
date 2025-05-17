@@ -150,7 +150,7 @@ jobs:
           curl -H "Content-Type: application/json" \
               -X POST \
               -d "{\"content\": \"✅ [AI CD 성공] **${{ env.ENV }}** 환경 배포 완료\\n🔖 이미지: tuning-api:${{ env.IMAGE_TAG }}\\n⚙️ API 서비스만 재시작 (ChromaDB 유지)\"}" \
-              ${{ secrets.DISCORD_WEBHOOK_CICD_URL }}
+               ${{ secrets.DISCORD_WEBHOOK_PR_URL }}
 
       - name: Send failure notification
         if: failure()
@@ -159,5 +159,5 @@ jobs:
           curl -H "Content-Type: application/json" \
               -X POST \
               -d "{\"content\": \"❌ [AI CD 실패] **${{ env.ENV }}** 환경 배포 실패\\n🔖 이미지: tuning-api:${{ env.IMAGE_TAG }}\\n⚠️ 원인: API 배포 과정 중 오류 발생\\n🔗 [워크플로우 로그]($WORKFLOW_URL)\"}" \
-              ${{ secrets.DISCORD_WEBHOOK_CICD_URL }}
+               ${{ secrets.DISCORD_WEBHOOK_PR_URL }}
 
