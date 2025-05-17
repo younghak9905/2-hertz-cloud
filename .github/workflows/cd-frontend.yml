@@ -137,8 +137,7 @@ jobs:
             echo "⏱️ 시도 $i: $CHECK_URL"
             if curl -sf --connect-timeout 5 --max-time 10 "$CHECK_URL"; then
               echo "✅ 헬스체크 성공 🎉"
-              # echo "status=success" >> $GITHUB_OUTPUT
-              echo "status=failure" >> $GITHUB_OUTPUT
+              echo "status=success" >> $GITHUB_OUTPUT
               exit 0
             else
               echo "::error::헬스체크 시도 $i 실패"
