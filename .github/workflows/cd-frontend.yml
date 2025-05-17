@@ -122,6 +122,11 @@ jobs:
             chmod +x fe_deploy.sh
             ./fe_deploy.sh
 
+      - name: Force failure for rollback test
+        run: |
+          echo "🚨 테스트용 에러 유도 중"
+          exit 1
+
       - name: Wait for Next.JS to start
         run: |
           echo "🕒 Next.JS 서버 기동 대기 중..."
