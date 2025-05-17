@@ -1,6 +1,6 @@
 module "ssm_db_host" {
   source      = "../../../../modules/ssm_parameter"
-  name        = "/global/backend/DB_HOST"
+  name        = "/global/springboot/DB_HOST"
   description = "MySQL host"
   type        = "String"
   value       = var.db_host
@@ -9,7 +9,7 @@ module "ssm_db_host" {
 
 module "ssm_db_port" {
   source      = "../../../../modules/ssm_parameter"
-  name        = "/global/backend/DB_PORT"
+  name        = "/global/springboot/DB_PORT"
   description = "MySQL port"
   type        = "String"
   value       = var.db_port
@@ -18,7 +18,7 @@ module "ssm_db_port" {
 
 module "ssm_db_name" {
   source      = "../../../../modules/ssm_parameter"
-  name        = "/global/backend/DB_NAME"
+  name        = "/global/springboot/DB_NAME"
   description = "MySQL database name"
   type        = "String"
   value       = var.db_name
@@ -27,7 +27,7 @@ module "ssm_db_name" {
 
 module "ssm_db_username" {
   source      = "../../../../modules/ssm_parameter"
-  name        = "/global/backend/DB_USERNAME"
+  name        = "/global/springboot/DB_USERNAME"
   description = "MySQL username"
   type        = "String"
   value       = var.db_username
@@ -36,7 +36,7 @@ module "ssm_db_username" {
 
 module "ssm_db_password" {
   source      = "../../../../modules/ssm_parameter"
-  name        = "/global/backend/DB_PASSWORD"
+  name        = "/global/springboot/DB_PASSWORD"
   description = "MySQL password"
   type        = "SecureString"
   value       = var.db_password
@@ -45,7 +45,7 @@ module "ssm_db_password" {
 
 module "ssm_swagger_enabled" {
   source      = "../../../../modules/ssm_parameter"
-  name        = "/global/backend/SWAGGER_ENABLED"
+  name        = "/global/springboot/SWAGGER_ENABLED"
   description = "Enable Swagger in local only"
   type        = "String"
   value       = var.swagger_enabled
@@ -54,7 +54,7 @@ module "ssm_swagger_enabled" {
 
 module "ssm_redis_host" {
   source      = "../../../../modules/ssm_parameter"
-  name        = "/global/backend/REDIS_HOST"
+  name        = "/global/springboot/REDIS_HOST"
   description = "Redis host"
   type        = "String"
   value       = var.redis_host
@@ -63,7 +63,7 @@ module "ssm_redis_host" {
 
 module "ssm_redis_port" {
   source      = "../../../../modules/ssm_parameter"
-  name        = "/global/backend/REDIS_PORT"
+  name        = "/global/springboot/REDIS_PORT"
   description = "Redis port"
   type        = "String"
   value       = var.redis_port
@@ -72,7 +72,7 @@ module "ssm_redis_port" {
 
 module "ssm_redis_password" {
   source      = "../../../../modules/ssm_parameter"
-  name        = "/global/backend/REDIS_PASSWORD"
+  name        = "/global/springboot/REDIS_PASSWORD"
   description = "Redis password"
   type        = "SecureString"
   value       = var.redis_password
@@ -81,7 +81,7 @@ module "ssm_redis_password" {
 
 module "ssm_kakao_client_id" {
   source      = "../../../../modules/ssm_parameter"
-  name        = "/global/backend/KAKAO_CLIENT_ID"
+  name        = "/global/springboot/KAKAO_CLIENT_ID"
   description = "Kakao OAuth client ID"
   type        = "SecureString"
   value       = var.kakao_client_id
@@ -90,7 +90,7 @@ module "ssm_kakao_client_id" {
 
 module "ssm_redirect_url_prod" {
   source      = "../../../../modules/ssm_parameter"
-  name        = "/global/backend/REDIRECT_URL_PROD"
+  name        = "/global/springboot/REDIRECT_URL_PROD"
   description = "Redirect URL for production"
   type        = "String"
   value       = var.redirect_url_prod
@@ -99,7 +99,7 @@ module "ssm_redirect_url_prod" {
 
 module "ssm_redirect_url_dev" {
   source      = "../../../../modules/ssm_parameter"
-  name        = "/global/backend/REDIRECT_URL_DEV"
+  name        = "/global/springboot/REDIRECT_URL_DEV"
   description = "Redirect URL for development"
   type        = "String"
   value       = var.redirect_url_dev
@@ -108,7 +108,7 @@ module "ssm_redirect_url_dev" {
 
 module "ssm_jwt_secret" {
   source      = "../../../../modules/ssm_parameter"
-  name        = "/global/backend/JWT_SECRET"
+  name        = "/global/springboot/JWT_SECRET"
   description = "JWT signing secret"
   type        = "SecureString"
   value       = var.jwt_secret
@@ -117,7 +117,7 @@ module "ssm_jwt_secret" {
 
 module "ssm_ai_server_ip_dev" {
   source      = "../../../../modules/ssm_parameter"
-  name        = "/global/backend/AI_SERVER_IP_DEV"
+  name        = "/global/springboot/AI_SERVER_IP_DEV"
   description = "AI 서버 주소 (dev)"
   type        = "String"
   value       = var.ai_server_ip_dev
@@ -126,7 +126,7 @@ module "ssm_ai_server_ip_dev" {
 
 module "ssm_ai_server_ip_prod" {
   source      = "../../../../modules/ssm_parameter"
-  name        = "/global/backend/AI_SERVER_IP_PROD"
+  name        = "/global/springboot/AI_SERVER_IP_PROD"
   description = "AI 서버 주소 (prod)"
   type        = "String"
   value       = var.ai_server_ip_prod
