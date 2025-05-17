@@ -1,0 +1,148 @@
+name: Rollback FE Deploy
+
+on:
+  workflow_call:
+    inputs:
+      environment: # 값: "production" 또는 "develop"
+        description: "대상 환경"
+        required: true
+        type: string
+
+  # ✅ act 테스트용 수동 트리거
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "테스트용 환경 선택"
+        required: true
+        type: choice
+        options:
+          - production
+          - develop
+
+jobs:
+  rollback:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Install required tools
+        run: |
+          apt-get update && apt-get install -y awscli curl jq
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION}}
+
+      - name: Set environment variables from SSM
+        run: |
+          load_param() {
+            VALUE=$(aws ssm get-parameter --name "$1" --with-decryption --query "Parameter.Value" --output text)
+            echo "::add-mask::$VALUE"
+            echo "$2=$VALUE" >> $GITHUB_ENV
+          }
+
+          load_secret_to_file() {
+            VALUE=$(aws ssm get-parameter --name "$1" --with-decryption --output json | jq -r .Parameter.Value)
+
+            # 멀티라인 마스킹 처리
+            echo "$VALUE" | while IFS= read -r line; do
+              echo "::add-mask::$line"
+            done
+
+            echo "$VALUE" > "$2"
+          }
+
+          ENV="${{ inputs.environment }}"
+          echo "ENVIRONMENT=$ENV" >> $GITHUB_ENV
+
+          if [[ "$ENV" == "production" ]]; then
+            load_param "/global/gcp/PROD_GCP_HOST" HOST
+            load_secret_to_file "/global/gcp/PROD_GCP_SA_KEY" gcp-sa-key.json
+          else
+            load_param "/global/gcp/DEV_GCP_HOST" HOST
+            load_secret_to_file "/global/gcp/DEV_GCP_SA_KEY" gcp-sa-key.json
+          fi
+
+          echo "SA_KEY<<EOF" >> $GITHUB_ENV
+          cat gcp-sa-key.json >> $GITHUB_ENV
+          echo "EOF" >> $GITHUB_ENV
+
+          load_param "/global/gcp/SSH_USERNAME" SSH_USERNAME
+          load_secret_to_file "/global/gcp/SSH_PRIVATE_KEY" id_rsa
+          chmod 600 id_rsa
+          echo "SSH_KEY_PATH=id_rsa" >> $GITHUB_ENV
+          echo "COMMIT_HASH=${{ github.sha }}" >> $GITHUB_ENV
+
+      - name: Read GCP SA key JSON
+        id: read_sa_key
+        run: |
+          echo "SA_KEY<<EOF" >> $GITHUB_ENV
+          cat gcp-sa-key.json >> $GITHUB_ENV
+          echo "EOF" >> $GITHUB_ENV
+
+      - name: Authenticate to GCP
+        uses: google-github-actions/auth@v1
+        with:
+          credentials_json: "${{ env.SA_KEY }}"
+
+      - name: Send rollback start notification
+        run: |
+          curl -H "Content-Type: application/json" \
+            -X POST \
+            -d "{\"content\": \"🔄 [FE 롤백 시작] \`${{ inputs.environment }}\` 환경에서 롤백을 실행합니다.\"}" \
+            ${{ secrets.DISCORD_WEBHOOK_CICD_URL }}
+
+      - name: SSH into server and rollback
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ env.HOST }}
+          username: ${{ env.SSH_USERNAME }}
+          key: ${{ env.SSH_PRIVATE_KEY }}
+          script: |
+            cd /home/deploy
+            ./fe_deploy.sh --rollback || exit 1
+
+      - name: Health check with retries
+        env:
+          HOST: ${{ env.HOST }}
+          ENVIRONMENT: ${{ env.ENVIRONMENT }}
+        run: |
+          echo "(Rollback) 🔍 헬스체크 시작: 최대 3회 시도합니다."
+
+          if [[ "$ENVIRONMENT" == "production" ]]; then
+            CHECK_URL="https://hertz-tuning.com/login"
+          else
+            CHECK_URL="http://${{ env.HOST }}:3000/login"
+          fi
+
+          for i in {1..3}; do
+            echo "⏱️ 시도 $i: $CHECK_URL"
+            if curl -sf --connect-timeout 5 --max-time 10 "$CHECK_URL"; then
+              echo "✅ 헬스체크 성공 🎉"
+              exit 0
+            else
+              echo "::error::헬스체크 시도 $i 실패"
+              sleep 15
+            fi
+          done
+
+          echo "::error::❌ 3회 헬스체크 실패 - 서버가 정상 기동되지 않음"
+          exit 1
+
+      - name: Send success notification
+        if: success()
+        run: |
+          curl -H "Content-Type: application/json" \
+            -X POST \
+            -d "{\"content\": \"✅ [FE 롤백 완료] \`${{ inputs.environment }}\` 환경\"}" \
+            ${{ secrets.DISCORD_WEBHOOK_CICD_URL }}
+
+      - name: Send failure notification
+        if: failure()
+        run: |
+          curl -H "Content-Type: application/json" \
+            -X POST \
+            -d "{\"content\": \"❌ [FE 롤백 실패] \`${{ inputs.environment }}\` 환경\"}" \
+            ${{ secrets.DISCORD_WEBHOOK_CICD_URL }}
