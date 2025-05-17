@@ -7,20 +7,20 @@ on:
       - main # main 브랜치로 Merge 시 -> Production 환경에 배포
       - develop # develop 브랜치로 Merge 시 -> DEV 환경에 배포
 
-  # ✅ act 테스트용 수동 트리거
-  push:
-    branches:
-      - main
-      - develop
+  # # ✅ act 테스트용 수동 트리거
+  # push:
+  #   branches:
+  #     - main
+  #     - develop
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
-      # ✅ act 테스트용 필요 패키지 설치
-      - name: Install required tools
-        run: |
-          apt-get update && apt-get install -y awscli curl jq
+      # # ✅ act 테스트용 필요 패키지 설치
+      # - name: Install required tools
+      #   run: |
+      #     apt-get update && apt-get install -y awscli curl jq
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v2
