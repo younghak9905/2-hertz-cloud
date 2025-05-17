@@ -38,7 +38,6 @@ jobs:
   #         BRANCH="${{ github.ref_name }}"
   #         echo "BRANCH=$BRANCH" >> $GITHUB_ENV
 
-
   #         if [[ "$BRANCH" == "main" ]]; then
   #           echo "ENV=PROD" >> $GITHUB_ENV
   #           load_param "/global/nextjs/NEXT_PUBLIC_API_BASE_URL_PROD" NEXT_PUBLIC_API_BASE_URL
@@ -371,7 +370,7 @@ jobs:
         run: |
           echo "(Rollback) 🔍 헬스체크 시작: 최대 3회 시도합니다."
 
-          if [[ "$ENVIRONMENT" == "PROD" ]]; then
+          if [[ "$ENV" == "PROD" ]]; then
             CHECK_URL="https://hertz-tuning.com/login"
           else
             CHECK_URL="http://${{ env.HOST }}:3000/login"
