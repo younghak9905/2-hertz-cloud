@@ -180,7 +180,7 @@ jobs:
       environment: production
 
   rollback-develop:
-    if: failure() && github.ref == 'refs/heads/develop'
+    if: failure() && (github.ref == 'refs/heads/develop' || github.event.pull_request.base.ref == 'develop')
     uses: 100-hours-a-week/2-hertz-cloud/.github/workflows/rollback-frontend.yml@develop
     with:
       environment: develop
