@@ -174,9 +174,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       # ✅ act 테스트용 필요 패키지 설치
-      - name: Install required tools
-        run: |
-          apt-get update && apt-get install -y awscli curl jq
+      # - name: Install required tools
+      #   run: |
+      #     apt-get update && apt-get install -y awscli curl jq
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v2
@@ -250,7 +250,7 @@ jobs:
         run: |
           curl -H "Content-Type: application/json" \
             -X POST \
-            -d "{\"content\": \"🔄 [FE 롤백 시작] \`${{ github.ref_name }}\` 환경에서 롤백을 실행합니다.\"}" \
+            -d "{\"content\": \"🔄 [FE 롤백 시작] \`${{ env.ENV }}\` 환경에서 롤백을 실행합니다.\"}" \
             ${{ secrets.DISCORD_WEBHOOK_CICD_URL }}
 
       - name: SSH into server and rollback
@@ -264,9 +264,6 @@ jobs:
             ./fe_deploy.sh --rollback || exit 1
 
       - name: Health check with retries
-        env:
-          HOST: ${{ env.HOST }}
-          ENVIRONMENT: ${{ github.ref_name }}
         run: |
           echo "(Rollback) 🔍 헬스체크 시작: 최대 3회 시도합니다."
 
@@ -295,7 +292,7 @@ jobs:
         run: |
           curl -H "Content-Type: application/json" \
             -X POST \
-            -d "{\"content\": \"✅ [FE 롤백 완료] \`${{ env.ENVIRONMENT }}\` 환경\"}" \
+            -d "{\"content\": \"✅ [FE 롤백 완료] \`${{ env.ENV }}\` 환경\"}" \
             ${{ secrets.DISCORD_WEBHOOK_CICD_URL }}
 
       - name: Send failure notification
@@ -303,5 +300,5 @@ jobs:
         run: |
           curl -H "Content-Type: application/json" \
             -X POST \
-            -d "{\"content\": \"❌ [FE 롤백 실패] \`${{ env.ENVIRONMENT }}\` 환경\"}" \
+            -d "{\"content\": \"❌ [FE 롤백 실패] \`${{ env.ENV }}\` 환경\"}" \
             ${{ secrets.DISCORD_WEBHOOK_CICD_URL }}
