@@ -22,6 +22,17 @@ jobs:
       #   run: |
       #     apt-get update && apt-get install -y awscli curl jq
 
+      - name: Debug ref
+        run: |
+          echo "github.ref = ${{ github.ref }}"
+          echo "github.ref_name = ${{ github.ref_name }}"
+
+
+      - name: Force failure for rollback test
+        run: |
+          echo "🚨 테스트용 에러 유도 중"
+          exit 1
+
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v2
         with:
@@ -122,11 +133,6 @@ jobs:
             chmod +x fe_deploy.sh
             ./fe_deploy.sh
 
-      - name: Force failure for rollback test
-        run: |
-          echo "🚨 테스트용 에러 유도 중"
-          exit 1
-
       - name: Wait for Next.JS to start
         run: |
           echo "🕒 Next.JS 서버 기동 대기 중..."
@@ -180,7 +186,7 @@ jobs:
   #     environment: production
 
   rollback-develop:
-    if: failure() && (github.ref == 'refs/heads/develop' || github.event.pull_request.base.ref == 'develop')
+    if: failure() && (github.ref_name == 'develop' || (github.event_name == 'pull_request' && github.event.pull_request.merged == true))
     uses: 100-hours-a-week/2-hertz-cloud/.github/workflows/rollback-frontend.yml@develop
     with:
       environment: develop
