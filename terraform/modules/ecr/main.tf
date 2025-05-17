@@ -6,7 +6,6 @@ resource "aws_ecr_repository" "this" {
   tags = {
     Name      = "${var.env}-${var.name}-ecr"
     Component = "ecr"
-    Env       = var.env
   }
 }
 
