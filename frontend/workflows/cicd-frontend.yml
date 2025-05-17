@@ -4,7 +4,7 @@ on:
   pull_request:
     types: [closed] # PR이 닫혔을 때 (병합 포함)
     branches:
-      - main # main 브랜치로 Merge 시 -> Production 환경에 배포
+      - main # main 브랜치로 Merge 시 -> PROD 환경에 배포
       - develop # develop 브랜치로 Merge 시 -> DEV 환경에 배포
 
 jobs:
@@ -38,12 +38,11 @@ jobs:
   #         BRANCH="${{ github.ref_name }}"
   #         echo "BRANCH=$BRANCH" >> $GITHUB_ENV
 
-
   #         if [[ "$BRANCH" == "main" ]]; then
-  #           echo "ENV=production" >> $GITHUB_ENV
+  #           echo "ENV=PROD" >> $GITHUB_ENV
   #           load_param "/global/nextjs/NEXT_PUBLIC_API_BASE_URL_PROD" NEXT_PUBLIC_API_BASE_URL
   #         else
-  #           echo "ENV=develop" >> $GITHUB_ENV
+  #           echo "ENV=DEV" >> $GITHUB_ENV
   #           load_param "/global/nextjs/NEXT_PUBLIC_API_BASE_URL_DEV" NEXT_PUBLIC_API_BASE_URL
   #         fi
 
@@ -155,13 +154,13 @@ jobs:
           load_param "/global/gcp/GCP_ZONE" ZONE
 
           if [[ "$BRANCH" == "main" ]]; then
-            echo "ENV=production" >> $GITHUB_ENV
+            echo "ENV=PROD" >> $GITHUB_ENV
             load_param "/global/gcp/PROD_GCP_HOST" HOST
             load_param "/global/gcp/PROD_GCP_INSTANCE" INSTANCE
             load_param "/global/gcp/PROD_GCP_PROJECT_ID" PROJECT_ID
             load_secret_to_file "/global/gcp/PROD_GCP_SA_KEY" gcp-sa-key.json
           else
-            echo "ENV=develop" >> $GITHUB_ENV
+            echo "ENV=DEV" >> $GITHUB_ENV
             load_param "/global/gcp/DEV_GCP_HOST" HOST
             load_param "/global/gcp/DEV_GCP_INSTANCE" INSTANCE
             load_param "/global/gcp/DEV_GCP_PROJECT_ID" PROJECT_ID
@@ -232,7 +231,7 @@ jobs:
         id: set-result
         run: |
           echo "🔍 헬스체크 시작: 최대 3회 시도합니다."
-          if [[ "${{ env.ENV }}" == "production" ]]; then
+          if [[ "${{ env.ENV }}" == "PROD" ]]; then
             CHECK_URL="https://hertz-tuning.com/login"
           else
             CHECK_URL="http://${{ env.HOST }}:3000/login"
@@ -313,13 +312,13 @@ jobs:
           load_param "/global/gcp/GCP_ZONE" ZONE
 
           if [[ "$BRANCH" == "main" ]]; then
-            echo "ENV=production" >> $GITHUB_ENV
+            echo "ENV=PROD" >> $GITHUB_ENV
             load_param "/global/gcp/PROD_GCP_HOST" HOST
             load_param "/global/gcp/PROD_GCP_INSTANCE" INSTANCE
             load_param "/global/gcp/PROD_GCP_PROJECT_ID" PROJECT_ID
             load_secret_to_file "/global/gcp/PROD_GCP_SA_KEY" gcp-sa-key.json
           else
-            echo "ENV=develop" >> $GITHUB_ENV
+            echo "ENV=DEV" >> $GITHUB_ENV
             load_param "/global/gcp/DEV_GCP_HOST" HOST
             load_param "/global/gcp/DEV_GCP_INSTANCE" INSTANCE
             load_param "/global/gcp/DEV_GCP_PROJECT_ID" PROJECT_ID
@@ -371,7 +370,7 @@ jobs:
         run: |
           echo "(Rollback) 🔍 헬스체크 시작: 최대 3회 시도합니다."
 
-          if [[ "$ENVIRONMENT" == "production" ]]; then
+          if [[ "$ENV" == "PROD" ]]; then
             CHECK_URL="https://hertz-tuning.com/login"
           else
             CHECK_URL="http://${{ env.HOST }}:3000/login"
