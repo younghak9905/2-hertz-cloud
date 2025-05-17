@@ -173,11 +173,11 @@ jobs:
                ${{ secrets.DISCORD_WEBHOOK_CICD_URL }}
 
   # 실패 시, 롤백 수행하는 job
-  rollback-production:
-    if: failure() && github.ref == 'refs/heads/main'
-    uses: 100-hours-a-week/2-hertz-cloud/.github/workflows/rollback-frontend.yml@main
-    with:
-      environment: production
+  # rollback-production:
+  #   if: failure() && github.ref == 'refs/heads/main'
+  #   uses: 100-hours-a-week/2-hertz-cloud/.github/workflows/rollback-frontend.yml@main
+  #   with:
+  #     environment: production
 
   rollback-develop:
     if: failure() && (github.ref == 'refs/heads/develop' || github.event.pull_request.base.ref == 'develop')
