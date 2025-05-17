@@ -102,7 +102,7 @@ jobs:
 
       - name: Health check with retries
         run: |
-          echo "🔍 헬스체크 시작: 최대 3회 시도합니다."
+          echo "🔍 헬스체크 시작: 최대 5회 시도합니다."
 
           if [[ "${{ env.BRANCH }}" == "main" ]]; then
             CHECK_URL="https://hertz-tuning.com/api/ping"
@@ -110,7 +110,7 @@ jobs:
             CHECK_URL="http://${{ env.HOST }}:8080/api/ping"
           fi
 
-          for i in {1..3}; do
+          for i in {1..5}; do
             echo "⏱️ 시도 $i: $CHECK_URL"
             if curl -sf "$CHECK_URL"; then
               echo "✅ 헬스체크 성공 🎉"
