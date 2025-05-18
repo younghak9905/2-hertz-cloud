@@ -31,10 +31,8 @@ jobs:
     # 3. 의존성 설치
     - name: Install dependencies
       run: |
-        pip install --upgrade pip setuptools wheel
-        # requirements.txt 설치 (없으면 건너뜀)
-        pip install -r requirements.txt || echo "📦 requirements.txt 없음, 건너뜀"
-        # 기본 의존성 설치 (한 번에 설치)
+        pip install --upgrade pip
+        pip install -r requirements.txt
 
     # 4. 테스트 실행
     - name: Run tests
