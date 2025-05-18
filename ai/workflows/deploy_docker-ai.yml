@@ -60,32 +60,31 @@ jobs:
       if: success()
       id: login-ecr
       uses: aws-actions/amazon-ecr-login@v1
-
+  
     # 7. 태그 정보 생성
     - name: Generate tags
       if: success()
       id: generate-tags
       run: |
-        # PR이 merge된 대상 브랜치명 가져오기
         BRANCH=${{ github.base_ref }}
-        
-        # 짧은 커밋 해시 (7자리) 생성
         SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
-        
-        # 태그 형식: [브랜치명]-[짧은 커밋 해시]
         IMAGE_TAG="${BRANCH}-${SHORT_SHA}"
-        
-        # latest 태그용 환경 설정
         if [ "$BRANCH" = "main" ]; then
           ENV_TAG="main-latest"
         else
           ENV_TAG="develop-latest"
         fi
-        
-        echo "BRANCH=$BRANCH" >> $GITHUB_ENV
-        echo "SHORT_SHA=$SHORT_SHA" >> $GITHUB_ENV
-        echo "IMAGE_TAG=$IMAGE_TAG" >> $GITHUB_ENV
-        echo "ENV_TAG=$ENV_TAG" >> $GITHUB_ENV
+        ECR_REGISTRY=${{ steps.login-ecr.outputs.registry }}
+        REPOSITORY=tuning-api
+        FULL_IMAGE="$ECR_REGISTRY/$REPOSITORY:$IMAGE_TAG"
+
+        echo "branch=$BRANCH" >> $GITHUB_OUTPUT
+        echo "short_sha=$SHORT_SHA" >> $GITHUB_OUTPUT
+        echo "image_tag=$IMAGE_TAG" >> $GITHUB_OUTPUT
+        echo "env_tag=$ENV_TAG" >> $GITHUB_OUTPUT
+        echo "full_image=$FULL_IMAGE" >> $GITHUB_OUTPUT
+        echo "ecr_registry=$ECR_REGISTRY" >> $GITHUB_OUTPUT
+        echo "repository=$REPOSITORY" >> $GITHUB_OUTPUT
 
     # 8. Docker 이미지 빌드 및 푸시
     - name: Build and push Docker image
@@ -93,40 +92,43 @@ jobs:
       run: |
         ECR_REGISTRY=${{ steps.login-ecr.outputs.registry }}
         REPOSITORY=tuning-api
+        IMAGE_TAG=${{ steps.generate-tags.outputs.image_tag }}
+        ENV_TAG=${{ steps.generate-tags.outputs.env_tag }}
         
         echo "🏗️ Docker 이미지 빌드 시작..."
-        
-        # Docker 빌드
-        docker build -t $ECR_REGISTRY/$REPOSITORY:${{ env.IMAGE_TAG }} .
-        docker tag $ECR_REGISTRY/$REPOSITORY:${{ env.IMAGE_TAG }} $ECR_REGISTRY/$REPOSITORY:${{ env.ENV_TAG }}
-        
-        # Docker 푸시
-        echo "📤 Docker 이미지 푸시 중..."
-        docker push $ECR_REGISTRY/$REPOSITORY:${{ env.IMAGE_TAG }}
-        docker push $ECR_REGISTRY/$REPOSITORY:${{ env.ENV_TAG }}
-        
-        # 배포에 필요한 정보 저장
-        echo "ECR_REGISTRY=$ECR_REGISTRY" >> $GITHUB_ENV
-        echo "REPOSITORY=$REPOSITORY" >> $GITHUB_ENV
-        echo "FULL_IMAGE=$ECR_REGISTRY/$REPOSITORY:${{ env.IMAGE_TAG }}" >> $GITHUB_ENV
+        docker build -t $ECR_REGISTRY/$REPOSITORY:$IMAGE_TAG .
+        docker tag $ECR_REGISTRY/$REPOSITORY:$IMAGE_TAG $ECR_REGISTRY/$REPOSITORY:$ENV_TAG
 
-    # 9. Discord 알림
+        echo "📤 Docker 이미지 푸시 중..."
+        docker push $ECR_REGISTRY/$REPOSITORY:$IMAGE_TAG
+        docker push $ECR_REGISTRY/$REPOSITORY:$ENV_TAG
+
+
     - name: Send success notification
       if: success()
       run: |
         curl -H "Content-Type: application/json" \
-             -X POST \
-             -d "{\"username\": \"AI CI\", \"content\": \"✅ [AI CI 성공] **${{ env.BRANCH }}** 브랜치\\n🔖 태그: ${{ env.IMAGE_TAG }}\\n🆔 Commit: ${{ env.SHORT_SHA }}\\n📦 이미지: ${{ env.FULL_IMAGE }}\"}" \
-             ${{ secrets.DISCORD_WEBHOOK_URL }}
+              -X POST \
+              -d "{\"username\": \"AI CI\", \"content\": \"✅ [AI CI 성공] **${{ steps.generate-tags.outputs.branch }}** 브랜치\\n🔖 태그: ${{ steps.generate-tags.outputs.image_tag }}\\n🆔 Commit: ${{ steps.generate-tags.outputs.short_sha }}\\n📦 이미지: ${{ steps.generate-tags.outputs.full_image }}\"}" \
+              ${{ secrets.DISCORD_WEBHOOK_PR_URL }}
 
     - name: Send failure notification
       if: failure()
       run: |
         curl -H "Content-Type: application/json" \
-             -X POST \
-             -d "{\"username\": \"AI CI\", \"content\": \"❌ [AI CI 실패] **${{ github.base_ref }}** 브랜치\\n🔖 Commit: ${{ github.sha }}\\n⚠️ 원인: 빌드 또는 테스트 실패\"}" \
-             ${{ secrets.DISCORD_WEBHOOK_URL }}
+              -X POST \
+              -d "{\"username\": \"AI CI\", \"content\": \"❌ [AI CI 실패] **${{ github.base_ref }}** 브랜치\\n🔖 Commit: ${{ github.sha }}\\n⚠️ 원인: 빌드 또는 테스트 실패\"}" \
+              ${{ secrets.DISCORD_WEBHOOK_PR_URL }}
 
+  
+    outputs:
+      branch: ${{ steps.generate-tags.outputs.branch }}
+      image_tag: ${{ steps.generate-tags.outputs.image_tag }}
+      env_tag: ${{ steps.generate-tags.outputs.env_tag }}
+      full_image: ${{ steps.generate-tags.outputs.full_image }}
+      short_sha: ${{ steps.generate-tags.outputs.short_sha }}
+      ecr_registry: ${{ steps.generate-tags.outputs.ecr_registry }}
+      repository: ${{ steps.generate-tags.outputs.repository }} 
   # CD 작업: 배포
   cd:
     needs: ci  # CI 작업이 성공한 후에 실행
@@ -160,9 +162,16 @@ jobs:
           echo "FULL_IMAGE=${{ needs.ci.outputs.full_image }}" >> $GITHUB_ENV
 
       - name: Authenticate to GCP
+        if: env.ENV == 'production'
         uses: google-github-actions/auth@v1
         with:
           credentials_json: ${{ env.GCP_SA_KEY }}
+      - name: Authenticate to GCP DEV
+        if: env.ENV == 'develop'
+        uses: google-github-actions/auth@v1
+        with:
+          credentials_json: ${{ env.GCP_SA_KEY }}
+
 
       - name: Setup gcloud CLI
         uses: google-github-actions/setup-gcloud@v1
@@ -240,7 +249,7 @@ jobs:
       - name: Health check
         run: |
           echo "🔍 API 서비스 헬스체크 중..."
-          for i in {1..15}; do
+          for i in {1..3}; do
             if curl -sf http://${{ env.HOST }}:8000/api/v1/health; then
               echo "✅ API 서비스가 정상적으로 시작되었습니다."
               
@@ -253,8 +262,8 @@ jobs:
               fi
               exit 0
             fi
-            echo "⏱️ API 서비스 준비 대기 중... ($i/15)"
-            sleep 10
+            echo "⏱️ API 서비스 준비 대기 중... ($i/3)"
+            sleep 5
           done
           
           echo "::error::❌ 헬스체크 실패: API 서비스가 응답하지 않습니다."
@@ -266,7 +275,7 @@ jobs:
           curl -H "Content-Type: application/json" \
               -X POST \
               -d "{\"content\": \"✅ [AI CD 성공] **${{ env.ENV }}** 환경 배포 완료\\n🔖 이미지: ${{ env.FULL_IMAGE }}\\n⚙️ API 서비스만 재시작 (ChromaDB 유지)\"}" \
-               ${{ secrets.DISCORD_WEBHOOK_URL }}
+              ${{ secrets.DISCORD_WEBHOOK_PR_URL }}
 
       - name: Send failure notification
         if: failure()
@@ -275,4 +284,4 @@ jobs:
           curl -H "Content-Type: application/json" \
               -X POST \
               -d "{\"content\": \"❌ [AI CD 실패] **${{ env.ENV }}** 환경 배포 실패\\n🔖 이미지: ${{ env.FULL_IMAGE }}\\n⚠️ 원인: API 배포 과정 중 오류 발생\\n🔗 [워크플로우 로그]($WORKFLOW_URL)\"}" \
-               ${{ secrets.DISCORD_WEBHOOK_URL }}
+              ${{ secrets.DISCORD_WEBHOOK_PR_URL }}
