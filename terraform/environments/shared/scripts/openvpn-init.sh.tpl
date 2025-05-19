@@ -18,7 +18,7 @@ chown openvpnas:openvpnas $${CONFIG_DIR}
 chmod 700 $${CONFIG_DIR}
 
 # 더 포괄적인 자동 응답 파일 생성 (NAT 옵션을 2로 수정)
-cat > /tmp/as-answers << 'EOF'
+cat > /tmp/as-answers << "EOF"
 yes
 yes
 1
@@ -81,7 +81,7 @@ cp $${CONFIG_DIR}/openvpn-info.txt /root/openvpn-info.txt
 chmod 600 /root/openvpn-info.txt
 
 # 유용한 스크립트 생성
-cat > $${OPENVPN_HOME}/get-profiles.sh << 'EOF'
+cat > $${OPENVPN_HOME}/get-profiles.sh << "EOF"
 #!/bin/bash
 # 사용자 프로필 파일을 가져오는 스크립트
 
@@ -118,7 +118,7 @@ chmod 755 $${OPENVPN_HOME}/get-profiles.sh
 chown openvpnas:openvpnas $${OPENVPN_HOME}/get-profiles.sh
 
 # 사용자 추가 스크립트 생성
-cat > $${OPENVPN_HOME}/add-user.sh << 'EOF'
+cat > $${OPENVPN_HOME}/add-user.sh << "EOF"
 #!/bin/bash
 # OpenVPN 사용자 추가 스크립트
 
@@ -163,16 +163,16 @@ echo 'net.ipv4.ip_forward = 1' >> /etc/sysctl.conf
 sysctl -p
 
 # README 파일 생성
-cat > $${OPENVPN_HOME}/README.txt << EOF
+cat > $${OPENVPN_HOME}/README.txt << "EOF"
 === OpenVPN Access Server 사용 안내 ===
 
 1. 관리자 웹 인터페이스:
-   URL: https://$${SERVER_IP}:943/admin
+   URL: https://SERVER_IP:943/admin
    사용자 이름: openvpn
-   비밀번호: $${CUSTOM_PASSWORD}
+   비밀번호: ADMIN_PASSWORD
 
 2. 클라이언트 웹 인터페이스:
-   URL: https://$${SERVER_IP}:943/
+   URL: https://SERVER_IP:943/
 
 3. 유용한 스크립트:
    - add-user.sh: 새 사용자 추가
@@ -191,6 +191,10 @@ cat > $${OPENVPN_HOME}/README.txt << EOF
    - /var/log/openvpnas.log
    - /usr/local/openvpn_as/log/openvpn.log
 EOF
+
+# README 파일에 실제 IP와 비밀번호 채우기
+sed -i "s/SERVER_IP/$${SERVER_IP}/g" $${OPENVPN_HOME}/README.txt
+sed -i "s/ADMIN_PASSWORD/$${CUSTOM_PASSWORD}/g" $${OPENVPN_HOME}/README.txt
 
 chmod 644 $${OPENVPN_HOME}/README.txt
 chown openvpnas:openvpnas $${OPENVPN_HOME}/README.txt
