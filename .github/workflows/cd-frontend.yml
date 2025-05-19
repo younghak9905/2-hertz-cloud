@@ -1,26 +1,152 @@
-name: CD Frontend (SSH)
+name: CI/CD Frontend (SSH)
 
 on:
   pull_request:
     types: [closed] # PR이 닫혔을 때 (병합 포함)
     branches:
-      - main # main 브랜치로 Merge 시 -> Production 환경에 배포
+      - main # main 브랜치로 Merge 시 -> PROD 환경에 배포
       - develop # develop 브랜치로 Merge 시 -> DEV 환경에 배포
 
-  # # ✅ act 테스트용 수동 트리거
-  # push:
-  #   branches:
-  #     - main
-  #     - develop
+  # ✅ 수동 `실행 트리거 추가
+  workflow_dispatch:
+    inputs:
+      env:
+        description: "배포 환경 선택"
+        required: true
+        default: "DEV"
+        type: choice
+        options:
+          - DEV
+          - PROD
 
 jobs:
-  deploy:
+  # frontend-ci:
+  #   runs-on: ubuntu-latest
+
+  #   steps:
+  #     # ✅ act 테스트용 필요 패키지 설치
+  #     # - name: Install required tools
+  #     #   run: |
+  #     #     apt-get update && apt-get install -y awscli curl jq
+
+  #     - name: Checkout repository
+  #       uses: actions/checkout@v3
+
+  #     - name: Configure AWS credentials
+  #       uses: aws-actions/configure-aws-credentials@v2
+  #       with:
+  #         aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+  #         aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+  #         aws-region: ${{ secrets.AWS_REGION }}
+
+  #     - name: Set environment variables from SSM
+  #       run: |
+  #         load_param() {
+  #           VALUE=$(aws ssm get-parameter --name "$1" --with-decryption --query "Parameter.Value" --output text)
+  #           echo "::add-mask::$VALUE"
+  #           echo "$2=$VALUE" >> $GITHUB_ENV
+  #         }
+
+  #         if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+  #           echo "💥 trigger: [workflow_dispatch]"
+  #           if [[ "${{ github.event.inputs.env }}" == "PROD" ]]; then
+  #             echo "BRANCH=main" >> $GITHUB_ENV
+  #             BRANCH=main
+  #           else
+  #             echo "BRANCH=develop" >> $GITHUB_ENV
+  #             BRANCH=develop
+  #           fi
+  #         else
+  #           echo "💥 trigger: [PR merge]"
+  #           echo "BRANCH=${{ github.ref_name }}" >> $GITHUB_ENV
+  #           BRANCH="${{ github.ref_name }}"
+  #         fi
+  #         echo "🍀 BRANCH=$BRANCH"
+
+  #         if [[ "$BRANCH" == "main" ]]; then
+  #           echo "ENV=PROD" >> $GITHUB_ENV
+  #           load_param "/global/nextjs/NEXT_PUBLIC_API_BASE_URL_PROD" NEXT_PUBLIC_API_BASE_URL
+  #         else
+  #           echo "ENV=DEV" >> $GITHUB_ENV
+  #           load_param "/global/nextjs/NEXT_PUBLIC_API_BASE_URL_DEV" NEXT_PUBLIC_API_BASE_URL
+  #         fi
+
+  #     - name: Setup Node.js
+  #       uses: actions/setup-node@v3
+  #       with:
+  #         node-version: "18"
+  #         cache: "npm" # npm 캐시 활성화
+
+  #     # npm 캐시 최적화
+  #     - name: Cache npm dependencies
+  #       uses: actions/cache@v3
+  #       id: npm-cache
+  #       with:
+  #         path: ~/.npm
+  #         key: ${{ runner.os }}-npm-${{ hashFiles('**/package-lock.json') }}
+  #         restore-keys: |
+  #           ${{ runner.os }}-npm-
+
+  #     # Next.js 빌드 캐시
+  #     - name: Cache Next.js build
+  #       uses: actions/cache@v3
+  #       id: nextjs-cache
+  #       with:
+  #         path: |
+  #           .next/cache
+  #         key: ${{ runner.os }}-nextjs-${{ hashFiles('**/package-lock.json') }}
+  #         restore-keys: |
+  #           ${{ runner.os }}-nextjs-
+
+  #     - name: Install dependencies
+  #       if: steps.npm-cache.outputs.cache-hit != 'true'
+  #       run: npm ci
+
+  #     #    - name: Run Unit Tests (Jest)
+  #     #      run: npm run test
+
+  #     - name: Build Next.js App
+  #       env:
+  #         NEXT_PUBLIC_API_BASE_URL: ${{ env.NEXT_PUBLIC_API_BASE_URL }}
+  #       run: npm run build
+
+  #     #    # 6. 빌드 결과 아티팩트 업로드 (.next 폴더)
+  #     #    - name: Upload .next Build Artifact
+  #     #      uses: actions/upload-artifact@v3
+  #     #      with:
+  #     #        name: nextjs-app
+  #     #        path: .next
+
+  #     # 7. Discord 알림 전송 (성공/실패 관계없이 항상 실행됨)
+  #     - name: Send failure notification
+  #       if: failure()
+  #       run: |
+  #         echo "branch=${{ github.ref_name }}" >> $GITHUB_OUTPUT
+  #         WORKFLOW_URL="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+  #         curl -H "Content-Type: application/json" \
+  #             -X POST \
+  #             -d "{\"content\": \"❌ [FE CI 실패] **${{ env.ENV }}** Frontend 서버 (브랜치: \`${{ env.BRANCH }}\`)\\n🔖 Commit: ${{ env.COMMIT_HASH }}\\n⚠️ [워크플로우 로그 보기]($WORKFLOW_URL)\"}" \
+  #             ${{ secrets.DISCORD_WEBHOOK_CICD_URL }}
+
+  #     - name: Send success notification
+  #       if: success()
+  #       run: |
+  #         curl -H "Content-Type: application/json" \
+  #              -X POST \
+  #              -d "{\"content\": \"🚀 [FE CI 완료] **${{ env.ENV }}** Frontend 서버 (브랜치: \`${{ env.BRANCH }}\`)\\n🔖 Commit: ${{ env.COMMIT_HASH }}\"}" \
+  #              ${{ secrets.DISCORD_WEBHOOK_CICD_URL }}
+
+  frontend-cd:
+    # needs: frontend-ci
     runs-on: ubuntu-latest
+    outputs:
+      deploy_status: ${{ steps.set-result.outputs.status }}
+      target_branch: ${{ steps.set-result.outputs.branch }}
     steps:
-      # # ✅ act 테스트용 필요 패키지 설치
-      # - name: Install required tools
-      #   run: |
-      #     apt-get update && apt-get install -y awscli curl jq
+      # ✅ act 테스트용 필요 패키지 설치 (명령어: act workflow_dispatch -W .github/workflows/cicd-frontend.yml -P ubuntu-latest=ghcr.io/catthehacker/ubuntu:act-latest)
+      - name: Install required tools
+        run: |
+          apt-get update && apt-get install -y awscli curl jq
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v2
@@ -47,28 +173,23 @@ jobs:
             echo "$VALUE" > "$2"
           }
 
-          BRANCH="${{ github.ref_name }}"
-          echo "BRANCH=$BRANCH" >> $GITHUB_ENV
-
           load_param "/global/gcp/GCP_ZONE" ZONE
 
+          BRANCH="${{ github.ref_name }}"
+          echo "BRANCH=$BRANCH" >> $GITHUB_ENV
           if [[ "$BRANCH" == "main" ]]; then
-            echo "ENV=production" >> $GITHUB_ENV
+            echo "ENV=PROD" >> $GITHUB_ENV
             load_param "/global/gcp/PROD_GCP_HOST" HOST
             load_param "/global/gcp/PROD_GCP_INSTANCE" INSTANCE
             load_param "/global/gcp/PROD_GCP_PROJECT_ID" PROJECT_ID
             load_secret_to_file "/global/gcp/PROD_GCP_SA_KEY" gcp-sa-key.json
           else
-            echo "ENV=develop" >> $GITHUB_ENV
+            echo "ENV=DEV" >> $GITHUB_ENV
             load_param "/global/gcp/DEV_GCP_HOST" HOST
             load_param "/global/gcp/DEV_GCP_INSTANCE" INSTANCE
             load_param "/global/gcp/DEV_GCP_PROJECT_ID" PROJECT_ID
             load_secret_to_file "/global/gcp/DEV_GCP_SA_KEY" gcp-sa-key.json
           fi
-
-          echo "SA_KEY<<EOF" >> $GITHUB_ENV
-          cat gcp-sa-key.json >> $GITHUB_ENV
-          echo "EOF" >> $GITHUB_ENV
 
           load_param "/global/gcp/SSH_USERNAME" SSH_USERNAME
           load_secret_to_file "/global/gcp/SSH_PRIVATE_KEY" id_rsa
@@ -76,12 +197,11 @@ jobs:
           echo "SSH_KEY_PATH=id_rsa" >> $GITHUB_ENV
           echo "COMMIT_HASH=${{ github.sha }}" >> $GITHUB_ENV
 
-      - name: Read GCP SA key JSON
-        id: read_sa_key
-        run: |
-          echo "SA_KEY<<EOF" >> $GITHUB_ENV
-          cat gcp-sa-key.json >> $GITHUB_ENV
-          echo "EOF" >> $GITHUB_ENV
+      # - name: Read GCP SA key JSON
+      #   run: |
+      #     echo "SA_KEY<<EOF" >> $GITHUB_ENV
+      #     cat gcp-sa-key.json >> $GITHUB_ENV
+      #     echo "EOF" >> $GITHUB_ENV
 
       - name: Authenticate to GCP
         uses: google-github-actions/auth@v1
@@ -122,20 +242,150 @@ jobs:
             chmod +x fe_deploy.sh
             ./fe_deploy.sh
 
-      - name: Force failure for rollback test
-        run: |
-          echo "🚨 테스트용 에러 유도 중"
-          exit 1
-
       - name: Wait for Next.JS to start
         run: |
           echo "🕒 Next.JS 서버 기동 대기 중..."
           sleep 15
 
       - name: Health check with retries
+        id: set-result
         run: |
           echo "🔍 헬스체크 시작: 최대 3회 시도합니다."
-          if [[ "${{ env.ENV }}" == "production" ]]; then
+          if [[ "${{ env.ENV }}" == "PROD" ]]; then
+            CHECK_URL="https://hertz-tuning.com/login"
+          else
+            CHECK_URL="http://${{ env.HOST }}:3000/login"
+          fi
+
+          for i in {1..3}; do
+            echo "⏱️ 시도 $i: $CHECK_URL"
+            if curl -sf --connect-timeout 5 --max-time 10 "$CHECK_URL"; then
+              echo "✅ 헬스체크 성공 🎉"
+              echo "status=success" >> $GITHUB_OUTPUT
+              exit 0
+            else
+              echo "::error::헬스체크 시도 $i 실패"
+              sleep 15
+            fi
+          done
+
+          echo "::error::❌ 3회 헬스체크 실패 - 서버가 정상 기동되지 않음"
+          echo "status=failure" >> $GITHUB_OUTPUT
+          exit 0
+
+      - name: Send failure notification
+        if: failure() || steps.set-result.outputs.status == 'failure'
+        run: |
+          echo "branch=${{ github.ref_name }}" >> $GITHUB_OUTPUT
+          WORKFLOW_URL="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          curl -H "Content-Type: application/json" \
+              -X POST \
+              -d "{\"content\": \"❌ [FE 배포 실패] **${{ env.ENV }}** Frontend 서버 (브랜치: \`${{ env.BRANCH }}\`)\\n🔖 Commit: ${{ env.COMMIT_HASH }}\\n⚠️ [워크플로우 로그 보기]($WORKFLOW_URL)\"}" \
+              ${{ secrets.DISCORD_WEBHOOK_CICD_URL }}
+
+      - name: Send success notification
+        if: steps.set-result.outputs.status == 'success'
+        run: |
+          curl -H "Content-Type: application/json" \
+               -X POST \
+               -d "{\"content\": \"🚀 [FE 배포 완료] **${{ env.ENV }}** Frontend 서버 (브랜치: \`${{ env.BRANCH }}\`)\\n🔖 Commit: ${{ env.COMMIT_HASH }}\"}" \
+               ${{ secrets.DISCORD_WEBHOOK_CICD_URL }}
+
+  frontend-rollback:
+    needs: frontend-cd
+    if: needs.frontend-cd.outputs.deploy_status == 'failure'
+    runs-on: ubuntu-latest
+    steps:
+      # # ✅ act 테스트용 필요 패키지 설치
+      # - name: Install required tools
+      #   run: |
+      #     apt-get update && apt-get install -y awscli curl jq
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Set environment variables from SSM
+        run: |
+          load_param() {
+            VALUE=$(aws ssm get-parameter --name "$1" --with-decryption --query "Parameter.Value" --output text)
+            echo "::add-mask::$VALUE"
+            echo "$2=$VALUE" >> $GITHUB_ENV
+          }
+
+          load_secret_to_file() {
+            VALUE=$(aws ssm get-parameter --name "$1" --with-decryption --output json | jq -r .Parameter.Value)
+
+            echo "$VALUE" | while IFS= read -r line; do
+              echo "::add-mask::$line"
+            done
+
+            echo "$VALUE" > "$2"
+          }
+
+          load_param "/global/gcp/GCP_ZONE" ZONE
+
+          BRANCH="${{ github.ref_name }}"
+          echo "BRANCH=$BRANCH" >> $GITHUB_ENV
+          if [[ "$BRANCH" == "main" ]]; then
+            echo "ENV=PROD" >> $GITHUB_ENV
+            load_param "/global/gcp/PROD_GCP_HOST" HOST
+            load_param "/global/gcp/PROD_GCP_INSTANCE" INSTANCE
+            load_param "/global/gcp/PROD_GCP_PROJECT_ID" PROJECT_ID
+            load_secret_to_file "/global/gcp/PROD_GCP_SA_KEY" gcp-sa-key.json
+          else
+            echo "ENV=DEV" >> $GITHUB_ENV
+            load_param "/global/gcp/DEV_GCP_HOST" HOST
+            load_param "/global/gcp/DEV_GCP_INSTANCE" INSTANCE
+            load_param "/global/gcp/DEV_GCP_PROJECT_ID" PROJECT_ID
+            load_secret_to_file "/global/gcp/DEV_GCP_SA_KEY" gcp-sa-key.json
+          fi
+
+          load_param "/global/gcp/SSH_USERNAME" SSH_USERNAME
+          load_secret_to_file "/global/gcp/SSH_PRIVATE_KEY" id_rsa
+          chmod 600 id_rsa
+          echo "SSH_KEY_PATH=id_rsa" >> $GITHUB_ENV
+          echo "COMMIT_HASH=${{ github.sha }}" >> $GITHUB_ENV
+
+      - name: Read GCP SA key JSON
+        run: |
+          echo "SA_KEY<<EOF" >> $GITHUB_ENV
+          cat gcp-sa-key.json >> $GITHUB_ENV
+          echo "EOF" >> $GITHUB_ENV
+
+      - name: Authenticate to GCP
+        uses: google-github-actions/auth@v1
+        with:
+          credentials_json: "${{ env.SA_KEY }}"
+
+      - name: Setup gcloud CLI
+        uses: google-github-actions/setup-gcloud@v1
+
+      - name: Send rollback start notification
+        run: |
+          curl -H "Content-Type: application/json" \
+            -X POST \
+            -d "{\"content\": \"🔄 [FE 롤백 시작] \`${{ env.ENV }}\` 환경에서 롤백을 실행합니다.\"}" \
+            ${{ secrets.DISCORD_WEBHOOK_CICD_URL }}
+
+      - name: SSH into server and rollback
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ env.HOST }}
+          username: ${{ env.SSH_USERNAME }}
+          key: ${{ env.SSH_PRIVATE_KEY }}
+          script: |
+            cd /home/deploy
+            ./fe_deploy.sh --rollback || exit 1
+
+      - name: Health check with retries
+        run: |
+          echo "(Rollback) 🔍 헬스체크 시작: 최대 3회 시도합니다."
+
+          if [[ "$ENV" == "PROD" ]]; then
             CHECK_URL="https://hertz-tuning.com/login"
           else
             CHECK_URL="http://${{ env.HOST }}:3000/login"
@@ -155,32 +405,18 @@ jobs:
           echo "::error::❌ 3회 헬스체크 실패 - 서버가 정상 기동되지 않음"
           exit 1
 
-      - name: Send failure notification
-        if: failure()
-        run: |
-          WORKFLOW_URL="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-          curl -H "Content-Type: application/json" \
-              -X POST \
-              -d "{\"content\": \"❌ [FE 배포 실패] **${{ env.ENV }}** Frontend 서버 (브랜치: \`${{ env.BRANCH }}\`)\\n🔖 Commit: ${{ env.COMMIT_HASH }}\\n⚠️ [워크플로우 로그 보기]($WORKFLOW_URL)\"}" \
-              ${{ secrets.DISCORD_WEBHOOK_CICD_URL }}
-
       - name: Send success notification
         if: success()
         run: |
           curl -H "Content-Type: application/json" \
-               -X POST \
-               -d "{\"content\": \"🚀 [FE 배포 완료] **${{ env.ENV }}** Frontend 서버 (브랜치: \`${{ env.BRANCH }}\`)\\n🔖 Commit: ${{ env.COMMIT_HASH }}\"}" \
-               ${{ secrets.DISCORD_WEBHOOK_CICD_URL }}
+            -X POST \
+            -d "{\"content\": \"✅ [FE 롤백 완료] \`${{ env.ENV }}\` 환경\"}" \
+            ${{ secrets.DISCORD_WEBHOOK_CICD_URL }}
 
-  # 실패 시, 롤백 수행하는 job
-  rollback-production:
-    if: failure() && github.ref == 'refs/heads/main'
-    uses: 100-hours-a-week/2-hertz-cloud/.github/workflows/rollback-frontend.yml@main
-    with:
-      environment: production
-
-  rollback-develop:
-    if: failure() && github.ref == 'refs/heads/develop'
-    uses: 100-hours-a-week/2-hertz-cloud/.github/workflows/rollback-frontend.yml@develop
-    with:
-      environment: develop
+      - name: Send failure notification
+        if: failure()
+        run: |
+          curl -H "Content-Type: application/json" \
+            -X POST \
+            -d "{\"content\": \"❌ [FE 롤백 실패] \`${{ env.ENV }}\` 환경\"}" \
+            ${{ secrets.DISCORD_WEBHOOK_CICD_URL }}
