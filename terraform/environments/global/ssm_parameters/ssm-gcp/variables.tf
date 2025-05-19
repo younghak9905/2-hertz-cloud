@@ -1,3 +1,4 @@
+variable "region"                        { type = string }
 variable "env"                        { type = string }
 variable "prod_gcp_project_id"       { type = string }
 variable "dev_gcp_project_id"        { type = string }
