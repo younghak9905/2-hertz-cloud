@@ -4,7 +4,7 @@ terraform {
     organization = "hertz-tuning"
 
     workspaces {
-      name = "terraform-shared"
+      name = "terraform-global-ssm-gcp"
     }
   }
 }

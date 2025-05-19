@@ -1,3 +1,19 @@
+### Terraform Cloud 관련
+terraform {
+  backend "remote" {
+    organization = "hertz-tuning"
+
+    workspaces {
+      name = "terraform-global-ssm-springboot"
+    }
+  }
+}
+
+provider "aws" {
+  region = "ap-northeast-2"
+}
+
+### SSM
 module "ssm_db_host" {
   source      = "../../../../modules/ssm_parameter"
   name        = "/global/backend/DB_HOST"
