@@ -143,10 +143,10 @@ jobs:
       deploy_status: ${{ steps.set-result.outputs.status }}
       target_branch: ${{ steps.set-result.outputs.branch }}
     steps:
-      # ✅ act 테스트용 필요 패키지 설치 (명령어: act workflow_dispatch -W .github/workflows/cicd-frontend.yml -P ubuntu-latest=ghcr.io/catthehacker/ubuntu:act-latest)
-      - name: Install required tools
-        run: |
-          apt-get update && apt-get install -y awscli curl jq
+      # # ✅ act 테스트용 필요 패키지 설치 (명령어: act workflow_dispatch -W .github/workflows/cicd-frontend.yml -P ubuntu-latest=ghcr.io/catthehacker/ubuntu:act-latest)
+      # - name: Install required tools
+      #   run: |
+      #     apt-get update && apt-get install -y awscli curl jq
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v2
