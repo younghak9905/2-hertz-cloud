@@ -1,3 +1,18 @@
+### Terraform Cloud 관련
+terraform {
+  backend "remote" {
+    organization = "hertz-tuning"
+
+    workspaces {
+      name = "terraform-shared"
+    }
+  }
+}
+
+provider "aws" {
+  region = "ap-northeast-2"
+}
+
 ### VPC 관련
 
 module "vpc" {
