@@ -88,7 +88,7 @@ EOF
 # 8. 클라이언트 구성 파일 생성
 echo -e "\n${GREEN}[8/8] 클라이언트 구성 파일을 생성합니다...${NC}"
 
-cat > /home/ec2-user/$CLIENT_NAME.ovpn << EOF
+cat > /home/openvpnas/$CLIENT_NAME.ovpn << EOF
 client
 dev tun
 proto udp
@@ -116,7 +116,7 @@ key-direction 1
 EOF
 
 # 클라이언트 생성 스크립트 작성
-cat > /home/ec2-user/create-client.sh << 'CLIENTSCRIPT'
+cat > /home/openvpnas/create-client.sh << 'CLIENTSCRIPT'
 #!/bin/bash
 # 새 OpenVPN 클라이언트 생성 스크립트
 
@@ -132,7 +132,7 @@ cd /etc/openvpn/easy-rsa
 sudo ./easyrsa gen-req $CLIENT_NAME nopass
 sudo ./easyrsa sign-req client $CLIENT_NAME
 
-sudo bash -c "cat > /home/ec2-user/$CLIENT_NAME.ovpn << EOF
+sudo bash -c "cat > /home/openvpnas/$CLIENT_NAME.ovpn << EOF
 client
 dev tun
 proto udp
@@ -159,12 +159,12 @@ verb 3
 key-direction 1
 EOF"
 
-echo "클라이언트 구성 파일이 생성되었습니다: /home/ec2-user/$CLIENT_NAME.ovpn"
+echo "클라이언트 구성 파일이 생성되었습니다: /home/openvpnas/$CLIENT_NAME.ovpn"
 CLIENTSCRIPT
 
-chmod +x /home/ec2-user/create-client.sh
-chown ec2-user:ec2-user /home/ec2-user/create-client.sh
-chown ec2-user:ec2-user /home/ec2-user/$CLIENT_NAME.ovpn
+chmod +x /home/openvpnas/create-client.sh
+chown openvpnas:openvpnas /home/openvpnas/create-client.sh
+chown openvpnas:openvpnas /home/openvpnas/$CLIENT_NAME.ovpn
 
 # IP 포워딩 활성화
 echo -e "\n${GREEN}IP 포워딩을 활성화합니다...${NC}"
@@ -185,7 +185,7 @@ systemctl enable openvpn@server
 systemctl restart openvpn@server
 
 # 상태 확인 스크립트 생성
-cat > /home/ec2-user/openvpn-status.sh << 'EOF'
+cat > /home/openvpnas/openvpn-status.sh << 'EOF'
 #!/bin/bash
 echo "=== OpenVPN 서비스 상태 ==="
 sudo systemctl status openvpn@server
@@ -194,15 +194,15 @@ echo -e "\n=== 연결된 클라이언트 ==="
 sudo cat /var/log/openvpn/openvpn-status.log
 EOF
 
-chmod +x /home/ec2-user/openvpn-status.sh
-chown ec2-user:ec2-user /home/ec2-user/openvpn-status.sh
+chmod +x /home/openvpnas/openvpn-status.sh
+chown openvpnas:openvpnas /home/openvpnas/openvpn-status.sh
 
 # 안내 메시지 출력
 echo -e "\n${GREEN}OpenVPN 설치가 완료되었습니다!${NC}"
 echo -e "${YELLOW}상태 확인:${NC} systemctl status openvpn@server"
-echo -e "${YELLOW}클라이언트 구성 파일:${NC} /home/ec2-user/$CLIENT_NAME.ovpn"
-echo -e "${YELLOW}새 클라이언트 생성:${NC} /home/ec2-user/create-client.sh <클라이언트_이름>"
-echo -e "${YELLOW}상태 확인 스크립트:${NC} /home/ec2-user/openvpn-status.sh"
+echo -e "${YELLOW}클라이언트 구성 파일:${NC} /home/openvpnas/$CLIENT_NAME.ovpn"
+echo -e "${YELLOW}새 클라이언트 생성:${NC} /home/openvpnas/create-client.sh <클라이언트_이름>"
+echo -e "${YELLOW}상태 확인 스크립트:${NC} /home/openvpnas/openvpn-status.sh"
 
 echo -e "\n${GREEN}클라이언트 구성 파일을 다운로드하여 OpenVPN Connect 앱에서 사용하세요:${NC}"
-echo -e "로컬 컴퓨터에서: scp -i your-key.pem ec2-user@$SERVER_IP:/home/ec2-user/$CLIENT_NAME.ovpn ."
+echo -e "로컬 컴퓨터에서: scp -i your-key.pem openvpnas@$SERVER_IP:/home/openvpnas/$CLIENT_NAME.ovpn ."

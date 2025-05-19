@@ -9,8 +9,8 @@ cat > /home/openvpnas/openvpn-install.sh << 'OPENVPNEOF'
 ${openvpn_script}
 OPENVPNEOF
 
-chmod +x /home/openvpnas/openvpn-install.sh
-chown openvpnas:openvpnas /home/openvpnas/openvpn-install.sh
+sudo chmod +x /home/openvpnas/openvpn-install.sh
+sudo chown openvpnas:openvpnas /home/openvpnas/openvpn-install.sh
 
 # OpenVPN 자동 설치 (openvpnas 권한으로 실행)
 runuser -l openvpnas -c "/home/openvpnas/openvpn-install.sh" <<EOF
