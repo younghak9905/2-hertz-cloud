@@ -82,7 +82,6 @@ module "ec2-openvpn" {
   source         = "../../modules/ec2-openvpn"
   name           = "openvpn"
   env            = var.env
-
   vpc_id         = module.vpc.vpc_id
   subnet_id      = module.subnet.public_subnet_ids[0]  # public 서브넷 중 하나 선택
   ami_id         = "ami-0ba7b69b8b03f0bf1"             # OpenVPN BYOL AMI ID
