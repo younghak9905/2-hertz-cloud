@@ -52,4 +52,12 @@ resource "aws_instance" "openvpn" {
     Name      = "${var.env}-ec2-${var.name}"
     Component = "ec2-openvpn"
   }
+
+  user_data = var.user_data
+
+   lifecycle {
+    ignore_changes = [ami, user_data]
+  }
+
+  
 }

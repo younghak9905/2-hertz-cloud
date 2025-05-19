@@ -1,3 +1,18 @@
+### Terraform Cloud 관련
+terraform {
+  backend "remote" {
+    organization = "hertz-tuning"
+
+    workspaces {
+      name = "terraform-shared"
+    }
+  }
+}
+
+provider "aws" {
+  region = var.region
+}
+
 ### VPC 관련
 
 module "vpc" {
@@ -82,10 +97,15 @@ module "ec2-openvpn" {
   source         = "../../modules/ec2-openvpn"
   name           = "openvpn"
   env            = var.env
-
   vpc_id         = module.vpc.vpc_id
   subnet_id      = module.subnet.public_subnet_ids[0]  # public 서브넷 중 하나 선택
   ami_id         = "ami-0ba7b69b8b03f0bf1"             # OpenVPN BYOL AMI ID
   instance_type  = "t2.micro"                          # 프리 티어 사용
   key_name       = var.key_name
+
+  #user_data      = templatefile("${path.module}/scripts/user_data.sh.tpl", {
+  #  openvpn_script = file("${path.module}/scripts/openvpn-install.sh")
+  #})
+  
 }
+
