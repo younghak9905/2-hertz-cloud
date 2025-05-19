@@ -62,62 +62,6 @@ chown openvpnas:openvpnas $$CONFIG_DIR/openvpn-info.txt
 cp $$CONFIG_DIR/openvpn-info.txt /root/openvpn-info.txt
 chmod 600 /root/openvpn-info.txt
 
-cat > $$OPENVPN_HOME/get-profiles.sh << "EOF"
-#!/bin/bash
-if [ $$# -lt 1 ]; then
-  echo "사용법: $$0 <사용자명> [출력_디렉토리]"
-  exit 1
-fi
-USERNAME=$$1
-OUTPUT_DIR="${2:-$$HOME/profiles}"
-mkdir -p "$$OUTPUT_DIR"
-if sacli --user "$$USERNAME" AutoGenerateOnBehalfOf; then
-  PROFILE="/usr/local/openvpn_as/profiles/$$USERNAME.ovpn"
-  if [ -f "$$PROFILE" ]; then
-    cp "$$PROFILE" "$$OUTPUT_DIR/"
-    echo "프로필이 $$OUTPUT_DIR/$$USERNAME.ovpn에 저장되었습니다."
-  else
-    echo "오류: 프로필 파일을 찾을 수 없습니다."
-    exit 1
-  fi
-else
-  echo "오류: 프로필 생성에 실패했습니다."
-  exit 1
-fi
-EOF
-
-chmod 755 $$OPENVPN_HOME/get-profiles.sh
-chown openvpnas:openvpnas $$OPENVPN_HOME/get-profiles.sh
-
-cat > $$OPENVPN_HOME/add-user.sh << "EOF"
-#!/bin/bash
-if [ $$# -lt 2 ]; then
-  echo "사용법: $$0 <사용자명> <비밀번호>"
-  exit 1
-fi
-USERNAME=$$1
-PASSWORD=$$2
-if sacli --user "$$USERNAME" --key "prop_superuser" --value "false" UserPropPut > /dev/null; then
-  if sacli --user "$$USERNAME" --new_pass "$$PASSWORD" SetLocalPassword > /dev/null; then
-    echo "사용자 $$USERNAME이(가) 성공적으로 추가되었습니다."
-    if sacli --user "$$USERNAME" AutoGenerateOnBehalfOf > /dev/null; then
-      echo "프로필이 생성되었습니다."
-    else
-      echo "경고: 프로필 생성에 실패했습니다."
-    fi
-  else
-    echo "오류: 비밀번호 설정에 실패했습니다."
-    exit 1
-  fi
-else
-  echo "오류: 사용자 추가에 실패했습니다."
-  exit 1
-fi
-EOF
-
-chmod 755 $$OPENVPN_HOME/add-user.sh
-chown openvpnas:openvpnas $$OPENVPN_HOME/add-user.sh
-
 echo 'net.ipv4.ip_forward = 1' >> /etc/sysctl.conf
 sysctl -p
 
@@ -131,12 +75,6 @@ cat > $$OPENVPN_HOME/README.txt << "EOF"
 
 2. 클라이언트 웹 인터페이스:
    URL: https://SERVER_IP:943/
-
-3. 유용한 스크립트:
-   - add-user.sh: 새 사용자 추가
-     사용법: ./add-user.sh <사용자명> <비밀번호>
-   - get-profiles.sh: 사용자 프로필 파일 다운로드
-     사용법: ./get-profiles.sh <사용자명> [출력_디렉토리]
 
 4. 서비스 관리:
    - 상태 확인: sudo service openvpnas status
