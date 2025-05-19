@@ -31,3 +31,8 @@ variable "key_name" {
   type        = string
   description = "EC2 SSH 접속을 위한 key pair 이름"
 }
+variable "openvpn_admin_password" {
+  type        = string
+  description = "OpenVPN admin password"
+  
+}
