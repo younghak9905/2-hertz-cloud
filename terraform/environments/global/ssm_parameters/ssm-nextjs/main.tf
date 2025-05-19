@@ -1,3 +1,19 @@
+### Terraform Cloud 관련
+terraform {
+  backend "remote" {
+    organization = "hertz-tuning"
+
+    workspaces {
+      name = "terraform-global-ssm-nextjs"
+    }
+  }
+}
+
+provider "aws" {
+  region = "ap-northeast-2"
+}
+
+### SSM
 module "ssm_next_api_base_url_prod" {
   source      = "../../../../modules/ssm_parameter"
   name        = "/global/nextjs/NEXT_PUBLIC_API_BASE_URL_PROD"

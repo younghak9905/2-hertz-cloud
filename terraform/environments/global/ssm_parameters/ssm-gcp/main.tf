@@ -1,3 +1,19 @@
+### Terraform Cloud 관련
+terraform {
+  backend "remote" {
+    organization = "hertz-tuning"
+
+    workspaces {
+      name = "terraform-global-ssm-gcp"
+    }
+  }
+}
+
+provider "aws" {
+  region = "ap-northeast-2"
+}
+
+### SSM
 module "ssm_prod_gcp_project_id" {
   source      = "../../../../modules/ssm_parameter"
   name        = "/global/gcp/PROD_GCP_PROJECT_ID"
