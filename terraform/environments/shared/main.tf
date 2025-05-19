@@ -103,9 +103,9 @@ module "ec2-openvpn" {
   instance_type  = "t2.micro"                          # 프리 티어 사용
   key_name       = var.key_name
 
-  user_data      = templatefile("${path.module}/scripts/user_data.sh.tpl", {
-    openvpn_script = file("${path.module}/scripts/openvpn-install.sh")
-  })
+  #user_data      = templatefile("${path.module}/scripts/user_data.sh.tpl", {
+  #  openvpn_script = file("${path.module}/scripts/openvpn-install.sh")
+  #})
   
 }
 
