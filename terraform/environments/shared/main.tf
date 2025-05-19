@@ -102,7 +102,7 @@ module "ec2-openvpn" {
   ami_id         = "ami-0ba7b69b8b03f0bf1"             # OpenVPN BYOL AMI ID
   instance_type  = "t2.micro"                          # 프리 티어 사용
   key_name       = var.key_name
-  //test
+
   user_data      = templatefile("${path.module}/scripts/user_data.sh.tpl", {
     openvpn_script = file("${path.module}/scripts/openvpn-install.sh")
   })
