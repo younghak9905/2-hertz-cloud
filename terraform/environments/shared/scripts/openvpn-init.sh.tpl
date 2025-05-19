@@ -1,23 +1,16 @@
 #!/bin/bash
-# 로그 설정
 exec > >(tee /var/log/user-data.log) 2>&1
 echo "OpenVPN Access Server 설치 스크립트 시작: $(date)"
 
-# 변수 설정 - 외부에서 받은 인자 사용
 CUSTOM_PASSWORD="${admin_password}"
 
-# AMI 인스턴스는 이미 OpenVPN이 설치되어 있으므로 초기 설정만 진행
-
-# openvpnas 사용자 홈 디렉토리 설정
 OPENVPN_HOME="/home/openvpnas"
-CONFIG_DIR="$${OPENVPN_HOME}/config"
+CONFIG_DIR="$$OPENVPN_HOME/config"
 
-# 설정 디렉토리 생성
-mkdir -p $${CONFIG_DIR}
-chown openvpnas:openvpnas $${CONFIG_DIR}
-chmod 700 $${CONFIG_DIR}
+mkdir -p $$CONFIG_DIR
+chown openvpnas:openvpnas $$CONFIG_DIR
+chmod 700 $$CONFIG_DIR
 
-# 더 포괄적인 자동 응답 파일 생성 (NAT 옵션을 2로 수정)
 cat > /tmp/as-answers << "EOF"
 yes
 yes
@@ -31,79 +24,58 @@ yes
 yes
 EOF
 
-# 초기 설정 자동화 실행
 echo "OpenVPN Access Server 초기 설정 시작..."
 /usr/local/openvpn_as/bin/ovpn-init < /tmp/as-answers
-
-# 설정 완료 후 응답 파일 제거
 rm /tmp/as-answers
 
-# 사용자 지정 관리자 비밀번호 설정
-echo "관리자 비밀번호 설정 중... ($${CUSTOM_PASSWORD})"
-
-# openvpn 관리자 계정의 비밀번호 변경
-if sacli --user openvpn --new_pass "$${CUSTOM_PASSWORD}" SetLocalPassword > /dev/null; then
+echo "관리자 비밀번호 설정 중... ($$CUSTOM_PASSWORD)"
+if sacli --user openvpn --new_pass "$$CUSTOM_PASSWORD" SetLocalPassword > /dev/null; then
     echo "관리자 비밀번호가 성공적으로 변경되었습니다."
-    # 비밀번호 정보 저장
-    echo "OpenVPN Admin 비밀번호: $${CUSTOM_PASSWORD}" > $${CONFIG_DIR}/openvpn-password.txt
-    chmod 600 $${CONFIG_DIR}/openvpn-password.txt
-    chown openvpnas:openvpnas $${CONFIG_DIR}/openvpn-password.txt
-    echo "비밀번호가 $${CONFIG_DIR}/openvpn-password.txt에 저장되었습니다."
-    
-    # 루트 계정에도 복사 (관리 목적)
-    echo "OpenVPN Admin 비밀번호: $${CUSTOM_PASSWORD}" > /root/openvpn-password.txt
+    echo "OpenVPN Admin 비밀번호: $$CUSTOM_PASSWORD" > $$CONFIG_DIR/openvpn-password.txt
+    chmod 600 $$CONFIG_DIR/openvpn-password.txt
+    chown openvpnas:openvpnas $$CONFIG_DIR/openvpn-password.txt
+    echo "비밀번호가 $$CONFIG_DIR/openvpn-password.txt에 저장되었습니다."
+
+    echo "OpenVPN Admin 비밀번호: $$CUSTOM_PASSWORD" > /root/openvpn-password.txt
     chmod 600 /root/openvpn-password.txt
 else
     echo "관리자 비밀번호 변경 실패. sacli 명령어가 실패했습니다."
-    # 기존 방식으로 초기 비밀번호 확인 시도
     if [ -f /usr/local/openvpn_as/init.log ]; then
         PASSWORD=$$(grep -o "password '[^']*'" /usr/local/openvpn_as/init.log | sed "s/password '//;s/'//")
-        if [ -n "$${PASSWORD}" ]; then
-            echo "초기 생성된 비밀번호: $${PASSWORD}" > $${CONFIG_DIR}/openvpn-initial-password.txt
-            chmod 600 $${CONFIG_DIR}/openvpn-initial-password.txt
-            chown openvpnas:openvpnas $${CONFIG_DIR}/openvpn-initial-password.txt
-            echo "초기 비밀번호가 $${CONFIG_DIR}/openvpn-initial-password.txt에 저장되었습니다."
+        if [ -n "$$PASSWORD" ]; then
+            echo "초기 생성된 비밀번호: $$PASSWORD" > $$CONFIG_DIR/openvpn-initial-password.txt
+            chmod 600 $$CONFIG_DIR/openvpn-initial-password.txt
+            chown openvpnas:openvpnas $$CONFIG_DIR/openvpn-initial-password.txt
+            echo "초기 비밀번호가 $$CONFIG_DIR/openvpn-initial-password.txt에 저장되었습니다."
         fi
     fi
 fi
 
-# 서버 IP 확인 및 저장
 SERVER_IP=$$(curl -s http://169.254.169.254/latest/meta-data/public-ipv4)
-echo "OpenVPN Access Server 관리자 UI: https://$${SERVER_IP}:943/admin" > $${CONFIG_DIR}/openvpn-info.txt
-echo "OpenVPN Access Server 클라이언트 UI: https://$${SERVER_IP}:943/" >> $${CONFIG_DIR}/openvpn-info.txt
-echo "사용자 이름: openvpn" >> $${CONFIG_DIR}/openvpn-info.txt
-echo "비밀번호: $${CUSTOM_PASSWORD}" >> $${CONFIG_DIR}/openvpn-info.txt
-chmod 600 $${CONFIG_DIR}/openvpn-info.txt
-chown openvpnas:openvpnas $${CONFIG_DIR}/openvpn-info.txt
+echo "OpenVPN Access Server 관리자 UI: https://$$SERVER_IP:943/admin" > $$CONFIG_DIR/openvpn-info.txt
+echo "OpenVPN Access Server 클라이언트 UI: https://$$SERVER_IP:943/" >> $$CONFIG_DIR/openvpn-info.txt
+echo "사용자 이름: openvpn" >> $$CONFIG_DIR/openvpn-info.txt
+echo "비밀번호: $$CUSTOM_PASSWORD" >> $$CONFIG_DIR/openvpn-info.txt
+chmod 600 $$CONFIG_DIR/openvpn-info.txt
+chown openvpnas:openvpnas $$CONFIG_DIR/openvpn-info.txt
 
-# 루트 계정에도 정보 저장
-cp $${CONFIG_DIR}/openvpn-info.txt /root/openvpn-info.txt
+cp $$CONFIG_DIR/openvpn-info.txt /root/openvpn-info.txt
 chmod 600 /root/openvpn-info.txt
 
-# 유용한 스크립트 생성
-cat > $${OPENVPN_HOME}/get-profiles.sh << "EOF"
+cat > $$OPENVPN_HOME/get-profiles.sh << "EOF"
 #!/bin/bash
-# 사용자 프로필 파일을 가져오는 스크립트
-
-# 사용법 메시지
-if [ $# -lt 1 ]; then
-  echo "사용법: $0 <사용자명> [출력_디렉토리]"
-  echo "예시: $0 client1 ~/profiles"
+if [ $$# -lt 1 ]; then
+  echo "사용법: $$0 <사용자명> [출력_디렉토리]"
   exit 1
 fi
-
-USERNAME=$1
-OUTPUT_DIR="${2:-$HOME/profiles}"
-
-# 출력 디렉토리 생성
-mkdir -p "$OUTPUT_DIR"
-
-# 프로필 파일 복사
-if sacli --user "$USERNAME" AutoGenerateOnBehalfOf; then
-  PROFILE="/usr/local/openvpn_as/profiles/$USERNAME.ovpn"
-  if [ -f "$PROFILE" ]; then
-    cp "$PROFILE" "$OUTPUT_DIR/"
-    echo "프로필이 $OUTPUT_DIR/$USERNAME.ovpn에 저장되었습니다."
+USERNAME=$$1
+OUTPUT_DIR="${2:-$$HOME/profiles}"
+mkdir -p "$$OUTPUT_DIR"
+if sacli --user "$$USERNAME" AutoGenerateOnBehalfOf; then
+  PROFILE="/usr/local/openvpn_as/profiles/$$USERNAME.ovpn"
+  if [ -f "$$PROFILE" ]; then
+    cp "$$PROFILE" "$$OUTPUT_DIR/"
+    echo "프로필이 $$OUTPUT_DIR/$$USERNAME.ovpn에 저장되었습니다."
   else
     echo "오류: 프로필 파일을 찾을 수 없습니다."
     exit 1
@@ -114,33 +86,22 @@ else
 fi
 EOF
 
-chmod 755 $${OPENVPN_HOME}/get-profiles.sh
-chown openvpnas:openvpnas $${OPENVPN_HOME}/get-profiles.sh
+chmod 755 $$OPENVPN_HOME/get-profiles.sh
+chown openvpnas:openvpnas $$OPENVPN_HOME/get-profiles.sh
 
-# 사용자 추가 스크립트 생성
-cat > $${OPENVPN_HOME}/add-user.sh << "EOF"
+cat > $$OPENVPN_HOME/add-user.sh << "EOF"
 #!/bin/bash
-# OpenVPN 사용자 추가 스크립트
-
-# 사용법 메시지
-if [ $# -lt 2 ]; then
-  echo "사용법: $0 <사용자명> <비밀번호>"
-  echo "예시: $0 client1 mysecretpassword"
+if [ $$# -lt 2 ]; then
+  echo "사용법: $$0 <사용자명> <비밀번호>"
   exit 1
 fi
-
-USERNAME=$1
-PASSWORD=$2
-
-# 사용자 추가
-if sacli --user "$USERNAME" --key "prop_superuser" --value "false" UserPropPut > /dev/null; then
-  # 비밀번호 설정
-  if sacli --user "$USERNAME" --new_pass "$PASSWORD" SetLocalPassword > /dev/null; then
-    echo "사용자 $USERNAME이(가) 성공적으로 추가되었습니다."
-    
-    # 프로필 생성
-    if sacli --user "$USERNAME" AutoGenerateOnBehalfOf > /dev/null; then
-      echo "프로필이 생성되었습니다. get-profiles.sh를 사용하여 파일을 얻을 수 있습니다."
+USERNAME=$$1
+PASSWORD=$$2
+if sacli --user "$$USERNAME" --key "prop_superuser" --value "false" UserPropPut > /dev/null; then
+  if sacli --user "$$USERNAME" --new_pass "$$PASSWORD" SetLocalPassword > /dev/null; then
+    echo "사용자 $$USERNAME이(가) 성공적으로 추가되었습니다."
+    if sacli --user "$$USERNAME" AutoGenerateOnBehalfOf > /dev/null; then
+      echo "프로필이 생성되었습니다."
     else
       echo "경고: 프로필 생성에 실패했습니다."
     fi
@@ -154,16 +115,13 @@ else
 fi
 EOF
 
-chmod 755 $${OPENVPN_HOME}/add-user.sh
-chown openvpnas:openvpnas $${OPENVPN_HOME}/add-user.sh
+chmod 755 $$OPENVPN_HOME/add-user.sh
+chown openvpnas:openvpnas $$OPENVPN_HOME/add-user.sh
 
-# 시스템 최적화 설정
-echo "시스템 최적화 설정 적용 중..."
 echo 'net.ipv4.ip_forward = 1' >> /etc/sysctl.conf
 sysctl -p
 
-# README 파일 생성
-cat > $${OPENVPN_HOME}/README.txt << "EOF"
+cat > $$OPENVPN_HOME/README.txt << "EOF"
 === OpenVPN Access Server 사용 안내 ===
 
 1. 관리자 웹 인터페이스:
@@ -177,7 +135,6 @@ cat > $${OPENVPN_HOME}/README.txt << "EOF"
 3. 유용한 스크립트:
    - add-user.sh: 새 사용자 추가
      사용법: ./add-user.sh <사용자명> <비밀번호>
-     
    - get-profiles.sh: 사용자 프로필 파일 다운로드
      사용법: ./get-profiles.sh <사용자명> [출력_디렉토리]
 
@@ -192,22 +149,17 @@ cat > $${OPENVPN_HOME}/README.txt << "EOF"
    - /usr/local/openvpn_as/log/openvpn.log
 EOF
 
-# README 파일에 실제 IP와 비밀번호 채우기
-sed -i "s/SERVER_IP/$${SERVER_IP}/g" $${OPENVPN_HOME}/README.txt
-sed -i "s/ADMIN_PASSWORD/$${CUSTOM_PASSWORD}/g" $${OPENVPN_HOME}/README.txt
+sed -i "s/SERVER_IP/$$SERVER_IP/g" $$OPENVPN_HOME/README.txt
+sed -i "s/ADMIN_PASSWORD/$$CUSTOM_PASSWORD/g" $$OPENVPN_HOME/README.txt
+chmod 644 $$OPENVPN_HOME/README.txt
+chown openvpnas:openvpnas $$OPENVPN_HOME/README.txt
 
-chmod 644 $${OPENVPN_HOME}/README.txt
-chown openvpnas:openvpnas $${OPENVPN_HOME}/README.txt
-
-# openvpnas 사용자에게 sudo 권한 부여 (선택적)
 if ! grep -q "openvpnas" /etc/sudoers; then
   echo "openvpnas ALL=(ALL) NOPASSWD: /usr/local/openvpn_as/scripts/*, /bin/systemctl * openvpnas, /bin/service openvpnas *" >> /etc/sudoers
 fi
 
-# 서비스 재시작 및 상태 확인
-echo "OpenVPN Access Server 서비스 재시작 중..."
 service openvpnas restart
 sleep 5
 service openvpnas status
 
-echo "OpenVPN Access Server 설치 스크립트 완료: $(date)"
+echo "✅ OpenVPN Access Server 설치 완료: $(date)"
