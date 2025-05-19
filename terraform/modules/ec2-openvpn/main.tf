@@ -53,10 +53,7 @@ resource "aws_instance" "openvpn" {
     Component = "ec2-openvpn"
   }
 
-  user_data = templatefile("${path.module}/scripts/user_data.sh.tpl", {
-    openvpn_script=file("${path.module}/scripts/openvpn-install.sh")
-
-  })
+  user_data = var.user_data
 
    lifecycle {
     ignore_changes = [ami, user_data]

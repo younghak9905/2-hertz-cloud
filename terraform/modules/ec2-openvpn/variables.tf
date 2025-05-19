@@ -32,3 +32,10 @@ variable "env" {
   description = "Environment 이름 (dev, prod 등)"
   type        = string
 }
+
+variable "user_data" {
+  description = "User data script for OpenVPN"
+  type        = string
+  default     = null
+  
+}
