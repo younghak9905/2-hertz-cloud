@@ -114,8 +114,8 @@ module "ec2" {
   name           = "ec2"
   env            = var.env
   vpc_id         = module.vpc.vpc_id
-  subnet_id      = module.subnet.private_subnet_ids  # public 서브넷 중 하나 선택
-  vpn_client_cidr_blocks = module.subnet.public_subnet_cidrs
+  subnet_id      = module.subnet.private_subnet_ids  # private 서브넷 중 하나 선택
+  vpn_client_cidr_blocks = module.subnet.public_subnet_ids
   ami_id         = "ami-0fa377108253bf620"             # amazon linux 2
   instance_type  = "t3.medium"                          # 프리 티어 사용
   key_name       = var.key_name
