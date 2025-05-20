@@ -53,10 +53,10 @@ done
 # 사용자 지정 관리자 비밀번호 설정
 echo "관리자 비밀번호 설정 중... ($${CUSTOM_PASSWORD})"
 
-/usr/local/openvpn_as/bin/sacli --user openvpn --new_pass "$${CUSTOM_PASSWORD}" SetLocalPassword
+ /usr/local/openvpn_as/scripts/sacli --user openvpn --new_pass "$${CUSTOM_PASSWORD}" SetLocalPassword
 
 # 서버 IP 확인 및 저장
-SERVER_IP=$$(curl -s http://169.254.169.254/latest/meta-data/public-ipv4)
+SERVER_IP=$(curl -s http://169.254.169.254/latest/meta-data/public-ipv4)
 echo "OpenVPN Access Server 관리자 UI: https://$${SERVER_IP}:943/admin" > $${CONFIG_DIR}/openvpn-info.txt
 echo "OpenVPN Access Server 클라이언트 UI: https://$${SERVER_IP}:943/" >> $${CONFIG_DIR}/openvpn-info.txt
 echo "사용자 이름: openvpn" >> $${CONFIG_DIR}/openvpn-info.txt
