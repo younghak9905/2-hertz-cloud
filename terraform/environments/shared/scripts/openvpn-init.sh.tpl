@@ -17,33 +17,99 @@ mkdir -p $${CONFIG_DIR}
 chown openvpnas:openvpnas $${CONFIG_DIR}
 chmod 700 $${CONFIG_DIR}
 
-# 더 포괄적인 자동 응답 파일 생성 (NAT 옵션을 2로 수정)
-cat > /tmp/as-answers << "EOF"
-yes
-yes
-1
-secp384r1
-943
-443
-yes
-no
-yes
-yes
-$${CUSTOM_PASSWORD}
-$${CUSTOM_PASSWORD}
-EOF
+# 기존 설정 강제 삭제 (안전 장치 제거)
+echo "기존 OpenVPN 설정 강제 초기화 중..."
+rm -rf /usr/local/openvpn_as/etc/db/* 2>/dev/null || true
 
-# 초기 설정 자동화 실행
-echo "OpenVPN Access Server 초기 설정 시작..."
-/usr/local/openvpn_as/bin/ovpn-init < /tmp/as-answers
+# DELETE 문제를 우회하기 위해 expect 스크립트 사용
+echo "expect 패키지 설치 중..."
+apt-get update -y >/dev/null 2>&1
+apt-get install -y expect >/dev/null 2>&1
 
-# 설정 완료 후 응답 파일 제거
-rm /tmp/as-answers
+# expect 스크립트 생성
+cat > /tmp/openvpn-expect.sh << 'EXPECTEOF'
+#!/usr/bin/expect -f
+set timeout 120
+
+# 시작
+spawn /usr/local/openvpn_as/bin/ovpn-init
+
+# 기존 설정 삭제 확인 (나타날 경우)
+expect {
+    "Please enter 'DELETE' to delete existing configuration:" {
+        send "DELETE\r"
+        exp_continue
+    }
+    "Please enter 'yes' to indicate your agreement" {}
+}
+
+# 라이센스 동의
+send "yes\r"
+
+# 기본 노드 확인
+expect "Press ENTER for default \[yes\]:"
+send "\r"
+
+# 네트워크 인터페이스 선택
+expect "Please enter the option number from the list above"
+send "1\r"
+
+# CA 알고리즘
+expect "Press ENTER for default \[secp384r1\]:"
+send "\r"
+
+# 웹 인증서 알고리즘
+expect "Press ENTER for default \[secp384r1\]:"
+send "\r"
+
+# Admin UI 포트
+expect "Press ENTER for default \[943\]:"
+send "\r"
+
+# OpenVPN 데몬 포트
+expect "Press ENTER for default \[443\]:"
+send "\r"
+
+# 클라이언트 트래픽 라우팅
+expect "Press ENTER for default \[yes\]:"
+send "yes\r"
+
+# DNS 트래픽 라우팅
+expect "Press ENTER for default \[yes\]:"
+send "no\r"
+
+# 프라이빗 서브넷 접근
+expect "Press ENTER for default \[yes\]:"
+send "yes\r"
+
+# 관리자 로그인
+expect "Press ENTER for default \[yes\]:"
+send "yes\r"
+
+# 관리자 비밀번호 - 빈칸으로 두고 자동 생성
+expect "Type a password for the 'openvpn' account"
+send "\r"
+
+# 자동 생성된 비밀번호 출력 캡처
+expect "Please, remember this password"
+
+# 라이센스 키
+expect "Please specify your Activation key"
+send "\r"
+
+expect eof
+EXPECTEOF
+
+# expect 스크립트 실행
+chmod +x /tmp/openvpn-expect.sh
+/tmp/openvpn-expect.sh
+rm -f /tmp/openvpn-expect.sh
 
 # 꼭! 서비스 재시작 (설정 반영)
 service openvpnas restart
 
-# 서비스가 완전히 뜰 때까지 대기 (5~10초 권장)
+# 서비스가 완전히 뜰 때까지 대기
+echo "OpenVPN 서비스가 시작될 때까지 대기 중..."
 for i in {1..30}; do
     if netstat -tnlp | grep -q ':943'; then
         echo "OpenVPN admin port opened!"
@@ -54,8 +120,7 @@ done
 
 # 사용자 지정 관리자 비밀번호 설정
 echo "관리자 비밀번호 설정 중... ($${CUSTOM_PASSWORD})"
-
- /usr/local/openvpn_as/scripts/sacli --user openvpn --new_pass "$${CUSTOM_PASSWORD}" SetLocalPassword
+/usr/local/openvpn_as/scripts/sacli --user openvpn --new_pass "$${CUSTOM_PASSWORD}" SetLocalPassword
 
 # 서버 IP 확인 및 저장
 SERVER_IP=$(curl -s http://169.254.169.254/latest/meta-data/public-ipv4)
@@ -76,7 +141,7 @@ echo 'net.ipv4.ip_forward = 1' >> /etc/sysctl.conf
 sysctl -p
 
 # README 파일 생성
-cat > $${OPENVPN_HOME}/README.txt << "EOF"
+cat > $${OPENVPN_HOME}/README.txt << 'EOF'
 === OpenVPN Access Server 사용 안내 ===
 
 1. 관리자 웹 인터페이스:
