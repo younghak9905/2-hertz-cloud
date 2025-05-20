@@ -111,10 +111,10 @@ module "ec2-openvpn" {
 
 module "ec2" {
   source         = "../../modules/ec2"
-  name           = "ec2"
+  name           = "default"
   env            = var.env
   vpc_id         = module.vpc.vpc_id
-  subnet_id      = module.subnet.private_subnet_ids[0]  # private 서브넷 중 하나 선택
+  subnet_id      = module.subnet.nat_subnet_ids[0]  # nat 서브넷 중 하나 선택
   vpn_client_cidr_blocks = [module.subnet.public_subnet_cidrs[0]] 
   ami_id         = "ami-05377cf8cfef186c2"             # amazon linux 2
   instance_type  = "t3.medium"                          # 프리 티어 사용
