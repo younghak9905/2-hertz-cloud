@@ -1,208 +1,129 @@
 #!/bin/bash
-# OpenVPN 인증서 기반 설치 자동화 스크립트
-# 실행 방법: sudo bash openvpn-install.sh
+# 로그 설정
+exec > >(tee /var/log/user-data.log) 2>&1
+echo "OpenVPN Access Server 설치 스크립트 시작: $(date)"
 
-# 색상 정의
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-NC='\033[0m' # No Color
+# 변수 설정 - 외부에서 받은 인자 사용
+CUSTOM_PASSWORD="${admin_password}"
 
-# 루트 권한 확인
-if [[ $EUID -ne 0 ]]; then
-   echo -e "${RED}이 스크립트는 root 권한으로 실행해야 합니다.${NC}"
-   echo "sudo bash $0 실행해주세요."
-   exit 1
-fi
+# AMI 인스턴스는 이미 OpenVPN이 설치되어 있으므로 초기 설정만 진행
 
-# 서버 IP 가져오기
-SERVER_IP=$(curl -s http://169.254.169.254/latest/meta-data/public-ipv4)
-CLIENT_NAME="client1_$(date +%Y%m%d%H%M%S)"
+# openvpnas 사용자 홈 디렉토리 설정
+OPENVPN_HOME="/home/openvpnas"
+CONFIG_DIR="$${OPENVPN_HOME}/config"
 
-echo -e "${GREEN}OpenVPN 인증서 기반 설치 스크립트를 시작합니다...${NC}"
-echo -e "${YELLOW}서버 IP: ${SERVER_IP}${NC}"
+# 설정 디렉토리 생성
+mkdir -p $${CONFIG_DIR}
+chown openvpnas:openvpnas $${CONFIG_DIR}
+chmod 700 $${CONFIG_DIR}
 
-# 1. 필요한 패키지 설치
-echo -e "\n${GREEN}[1/8] 필요한 패키지를 설치합니다...${NC}"
-amazon-linux-extras install epel -y
-yum install -y openvpn easy-rsa
-
-# 2. EasyRSA 설정
-echo -e "\n${GREEN}[2/8] EasyRSA를 설정합니다...${NC}"
-mkdir -p /etc/openvpn/easy-rsa
-cp -r /usr/share/easy-rsa/3/* /etc/openvpn/easy-rsa/
-cd /etc/openvpn/easy-rsa
-
-# 3. PKI 초기화 및 CA 생성
-echo -e "\n${GREEN}[3/8] PKI를 초기화하고 CA를 생성합니다...${NC}"
-./easyrsa init-pki
-echo -e "OpenVPN-CA\n" | ./easyrsa build-ca nopass
-
-# 4. 서버 인증서 및 키 생성
-echo -e "\n${GREEN}[4/8] 서버 인증서 및 키를 생성합니다...${NC}"
-echo -e "\n" | ./easyrsa gen-req server nopass
-echo -e "yes\n" | ./easyrsa sign-req server server
-
-# 5. DH 파라미터 및 TLS 키 생성
-echo -e "\n${GREEN}[5/8] DH 파라미터 및 TLS 키를 생성합니다...${NC}"
-./easyrsa gen-dh
-openvpn --genkey --secret /etc/openvpn/ta.key
-
-# 6. 클라이언트 인증서 및 키 생성
-echo -e "\n${GREEN}[6/8] 클라이언트 인증서 및 키를 생성합니다...${NC}"
-echo -e "\n" | ./easyrsa gen-req $CLIENT_NAME nopass
-echo -e "yes\n" | ./easyrsa sign-req client $CLIENT_NAME
-
-# 7. 서버 구성 파일 생성
-echo -e "\n${GREEN}[7/8] 서버 구성 파일을 생성합니다...${NC}"
-mkdir -p /var/log/openvpn
-chmod 755 /var/log/openvpn
-
-cat > /etc/openvpn/server.conf << EOF
-port 1194
-proto udp
-dev tun
-
-ca /etc/openvpn/easy-rsa/pki/ca.crt
-cert /etc/openvpn/easy-rsa/pki/issued/server.crt
-key /etc/openvpn/easy-rsa/pki/private/server.key
-dh /etc/openvpn/easy-rsa/pki/dh.pem
-tls-auth /etc/openvpn/ta.key 0
-
-server 10.8.0.0 255.255.255.0
-ifconfig-pool-persist /var/log/openvpn/ipp.txt
-push "redirect-gateway def1 bypass-dhcp"
-push "dhcp-option DNS 8.8.8.8"
-push "dhcp-option DNS 8.8.4.4"
-
-keepalive 10 120
-user nobody
-group nobody
-persist-key
-persist-tun
-status /var/log/openvpn/openvpn-status.log
-log /var/log/openvpn/openvpn.log
-verb 3
+# 더 포괄적인 자동 응답 파일 생성 (NAT 옵션을 2로 수정)
+cat > /tmp/as-answers << "EOF"
+yes
+yes
+1
+yes
+2
+943
+443
+1194
+yes
+yes
 EOF
 
-# 8. 클라이언트 구성 파일 생성
-echo -e "\n${GREEN}[8/8] 클라이언트 구성 파일을 생성합니다...${NC}"
+# 초기 설정 자동화 실행
+echo "OpenVPN Access Server 초기 설정 시작..."
+/usr/local/openvpn_as/bin/ovpn-init < /tmp/as-answers
 
-cat > /home/openvpnas/$CLIENT_NAME.ovpn << EOF
-client
-dev tun
-proto udp
-remote $SERVER_IP 1194
-resolv-retry infinite
-nobind
-persist-key
-persist-tun
-remote-cert-tls server
-verb 3
+# 설정 완료 후 응답 파일 제거
+rm /tmp/as-answers
 
-<ca>
-$(cat /etc/openvpn/easy-rsa/pki/ca.crt)
-</ca>
-<cert>
-$(cat /etc/openvpn/easy-rsa/pki/issued/$CLIENT_NAME.crt)
-</cert>
-<key>
-$(cat /etc/openvpn/easy-rsa/pki/private/$CLIENT_NAME.key)
-</key>
-<tls-auth>
-$(cat /etc/openvpn/ta.key)
-</tls-auth>
-key-direction 1
-EOF
+# 사용자 지정 관리자 비밀번호 설정
+echo "관리자 비밀번호 설정 중... ($${CUSTOM_PASSWORD})"
 
-# 클라이언트 생성 스크립트 작성
-cat > /home/openvpnas/create-client.sh << 'CLIENTSCRIPT'
-#!/bin/bash
-# 새 OpenVPN 클라이언트 생성 스크립트
-
-if [ $# -ne 1 ]; then
-    echo "사용법: $0 <클라이언트_이름>"
-    exit 1
+# openvpn 관리자 계정의 비밀번호 변경
+if sacli --user openvpn --new_pass "$${CUSTOM_PASSWORD}" SetLocalPassword > /dev/null; then
+    echo "관리자 비밀번호가 성공적으로 변경되었습니다."
+    # 비밀번호 정보 저장
+    echo "OpenVPN Admin 비밀번호: $${CUSTOM_PASSWORD}" > $${CONFIG_DIR}/openvpn-password.txt
+    chmod 600 $${CONFIG_DIR}/openvpn-password.txt
+    chown openvpnas:openvpnas $${CONFIG_DIR}/openvpn-password.txt
+    echo "비밀번호가 $${CONFIG_DIR}/openvpn-password.txt에 저장되었습니다."
+    
+    # 루트 계정에도 복사 (관리 목적)
+    echo "OpenVPN Admin 비밀번호: $${CUSTOM_PASSWORD}" > /root/openvpn-password.txt
+    chmod 600 /root/openvpn-password.txt
+else
+    echo "관리자 비밀번호 변경 실패. sacli 명령어가 실패했습니다."
+    # 기존 방식으로 초기 비밀번호 확인 시도
+    if [ -f /usr/local/openvpn_as/init.log ]; then
+        PASSWORD=$$(grep -o "password '[^']*'" /usr/local/openvpn_as/init.log | sed "s/password '//;s/'//")
+        if [ -n "$${PASSWORD}" ]; then
+            echo "초기 생성된 비밀번호: $${PASSWORD}" > $${CONFIG_DIR}/openvpn-initial-password.txt
+            chmod 600 $${CONFIG_DIR}/openvpn-initial-password.txt
+            chown openvpnas:openvpnas $${CONFIG_DIR}/openvpn-initial-password.txt
+            echo "초기 비밀번호가 $${CONFIG_DIR}/openvpn-initial-password.txt에 저장되었습니다."
+        fi
+    fi
 fi
 
-CLIENT_NAME=$1
-SERVER_IP=$(curl -s http://169.254.169.254/latest/meta-data/public-ipv4)
+# 서버 IP 확인 및 저장
+SERVER_IP=$$(curl -s http://169.254.169.254/latest/meta-data/public-ipv4)
+echo "OpenVPN Access Server 관리자 UI: https://$${SERVER_IP}:943/admin" > $${CONFIG_DIR}/openvpn-info.txt
+echo "OpenVPN Access Server 클라이언트 UI: https://$${SERVER_IP}:943/" >> $${CONFIG_DIR}/openvpn-info.txt
+echo "사용자 이름: openvpn" >> $${CONFIG_DIR}/openvpn-info.txt
+echo "비밀번호: $${CUSTOM_PASSWORD}" >> $${CONFIG_DIR}/openvpn-info.txt
+chmod 600 $${CONFIG_DIR}/openvpn-info.txt
+chown openvpnas:openvpnas $${CONFIG_DIR}/openvpn-info.txt
 
-cd /etc/openvpn/easy-rsa
-sudo ./easyrsa gen-req $CLIENT_NAME nopass
-sudo ./easyrsa sign-req client $CLIENT_NAME
+# 루트 계정에도 정보 저장
+cp $${CONFIG_DIR}/openvpn-info.txt /root/openvpn-info.txt
+chmod 600 /root/openvpn-info.txt
 
-sudo bash -c "cat > /home/openvpnas/$CLIENT_NAME.ovpn << EOF
-client
-dev tun
-proto udp
-remote $SERVER_IP 1194
-resolv-retry infinite
-nobind
-persist-key
-persist-tun
-remote-cert-tls server
-verb 3
-
-<ca>
-\$(cat /etc/openvpn/easy-rsa/pki/ca.crt)
-</ca>
-<cert>
-\$(cat /etc/openvpn/easy-rsa/pki/issued/$CLIENT_NAME.crt)
-</cert>
-<key>
-\$(cat /etc/openvpn/easy-rsa/pki/private/$CLIENT_NAME.key)
-</key>
-<tls-auth>
-\$(cat /etc/openvpn/ta.key)
-</tls-auth>
-key-direction 1
-EOF"
-
-echo "클라이언트 구성 파일이 생성되었습니다: /home/openvpnas/$CLIENT_NAME.ovpn"
-CLIENTSCRIPT
-
-chmod +x /home/openvpnas/create-client.sh
-chown openvpnas:openvpnas /home/openvpnas/create-client.sh
-chown openvpnas:openvpnas /home/openvpnas/$CLIENT_NAME.ovpn
-
-# IP 포워딩 활성화
-echo -e "\n${GREEN}IP 포워딩을 활성화합니다...${NC}"
+# 시스템 최적화 설정
+echo "시스템 최적화 설정 적용 중..."
 echo 'net.ipv4.ip_forward = 1' >> /etc/sysctl.conf
 sysctl -p
 
-# iptables 규칙 추가
-iptables -t nat -A POSTROUTING -s 10.8.0.0/24 -o eth0 -j MASQUERADE
-iptables -A FORWARD -i tun0 -o eth0 -j ACCEPT
-iptables -A FORWARD -i eth0 -o tun0 -j ACCEPT
-yum install -y iptables-services
-service iptables save
-systemctl enable iptables
+# README 파일 생성
+cat > $${OPENVPN_HOME}/README.txt << "EOF"
+=== OpenVPN Access Server 사용 안내 ===
 
-# OpenVPN 서비스 시작 및 활성화
-echo -e "\n${GREEN}OpenVPN 서비스를 시작합니다...${NC}"
-systemctl enable openvpn@server
-systemctl restart openvpn@server
+1. 관리자 웹 인터페이스:
+   URL: https://SERVER_IP:943/admin
+   사용자 이름: openvpn
+   비밀번호: ADMIN_PASSWORD
 
-# 상태 확인 스크립트 생성
-cat > /home/openvpnas/openvpn-status.sh << 'EOF'
-#!/bin/bash
-echo "=== OpenVPN 서비스 상태 ==="
-sudo systemctl status openvpn@server
+2. 클라이언트 웹 인터페이스:
+   URL: https://SERVER_IP:943/
 
-echo -e "\n=== 연결된 클라이언트 ==="
-sudo cat /var/log/openvpn/openvpn-status.log
+3. 서비스 관리:
+   - 상태 확인: sudo service openvpnas status
+   - 재시작: sudo service openvpnas restart
+   - 중지: sudo service openvpnas stop
+   - 시작: sudo service openvpnas start
+
+4. 주요 로그 파일:
+   - /var/log/openvpnas.log
+   - /usr/local/openvpn_as/log/openvpn.log
 EOF
 
-chmod +x /home/openvpnas/openvpn-status.sh
-chown openvpnas:openvpnas /home/openvpnas/openvpn-status.sh
+# README 파일에 실제 IP와 비밀번호 채우기
+sed -i "s/SERVER_IP/$${SERVER_IP}/g" $${OPENVPN_HOME}/README.txt
+sed -i "s/ADMIN_PASSWORD/$${CUSTOM_PASSWORD}/g" $${OPENVPN_HOME}/README.txt
 
-# 안내 메시지 출력
-echo -e "\n${GREEN}OpenVPN 설치가 완료되었습니다!${NC}"
-echo -e "${YELLOW}상태 확인:${NC} systemctl status openvpn@server"
-echo -e "${YELLOW}클라이언트 구성 파일:${NC} /home/openvpnas/$CLIENT_NAME.ovpn"
-echo -e "${YELLOW}새 클라이언트 생성:${NC} /home/openvpnas/create-client.sh <클라이언트_이름>"
-echo -e "${YELLOW}상태 확인 스크립트:${NC} /home/openvpnas/openvpn-status.sh"
+chmod 644 $${OPENVPN_HOME}/README.txt
+chown openvpnas:openvpnas $${OPENVPN_HOME}/README.txt
 
-echo -e "\n${GREEN}클라이언트 구성 파일을 다운로드하여 OpenVPN Connect 앱에서 사용하세요:${NC}"
-echo -e "로컬 컴퓨터에서: scp -i your-key.pem openvpnas@$SERVER_IP:/home/openvpnas/$CLIENT_NAME.ovpn ."
+# openvpnas 사용자에게 sudo 권한 부여 (선택적)
+if ! grep -q "openvpnas" /etc/sudoers; then
+  echo "openvpnas ALL=(ALL) NOPASSWD: /usr/local/openvpn_as/scripts/*, /bin/systemctl * openvpnas, /bin/service openvpnas *" >> /etc/sudoers
+fi
+
+# 서비스 재시작 및 상태 확인
+echo "OpenVPN Access Server 서비스 재시작 중..."
+service openvpnas restart
+sleep 5
+service openvpnas status
+
+echo "OpenVPN Access Server 설치 스크립트 완료: $(date)"
