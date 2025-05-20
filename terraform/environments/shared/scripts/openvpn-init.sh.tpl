@@ -22,13 +22,15 @@ cat > /tmp/as-answers << "EOF"
 yes
 yes
 1
-yes
-2
+secp384r1
 943
 443
-1194
+yes
+no
 yes
 yes
+$${CUSTOM_PASSWORD}
+$${CUSTOM_PASSWORD}
 EOF
 
 # 초기 설정 자동화 실행
