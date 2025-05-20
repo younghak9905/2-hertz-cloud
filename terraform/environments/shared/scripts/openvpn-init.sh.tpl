@@ -1,113 +1,54 @@
 #!/bin/bash
 # 로그 설정
 exec > >(tee /var/log/user-data.log) 2>&1
+echo "======================================================"
 echo "OpenVPN Access Server 설치 스크립트 시작: $(date)"
+echo "======================================================"
 
 # 변수 설정 - 외부에서 받은 인자 사용
 CUSTOM_PASSWORD="${admin_password}"
+echo "사용할 비밀번호: $${CUSTOM_PASSWORD}"
 
-# AMI 인스턴스는 이미 OpenVPN이 설치되어 있으므로 초기 설정만 진행
-
-# openvpnas 사용자 홈 디렉토리 설정
+# 디렉토리 설정
 OPENVPN_HOME="/home/openvpnas"
 CONFIG_DIR="$${OPENVPN_HOME}/config"
-
-# 설정 디렉토리 생성
 mkdir -p $${CONFIG_DIR}
 chown openvpnas:openvpnas $${CONFIG_DIR}
 chmod 700 $${CONFIG_DIR}
 
-# 기존 설정 강제 삭제 (안전 장치 제거)
-echo "기존 OpenVPN 설정 강제 초기화 중..."
-rm -rf /usr/local/openvpn_as/etc/db/* 2>/dev/null || true
+# 서버 IP 확인
+SERVER_IP=$(curl -s http://169.254.169.254/latest/meta-data/public-ipv4)
+PRIVATE_IP=$(curl -s http://169.254.169.254/latest/meta-data/local-ipv4)
+HOSTNAME=$(hostname -f)
+echo "서버 Public IP: $${SERVER_IP}, Private IP: $${PRIVATE_IP}, 호스트명: $${HOSTNAME}"
 
-# DELETE 문제를 우회하기 위해 expect 스크립트 사용
-echo "expect 패키지 설치 중..."
-apt-get update -y >/dev/null 2>&1
-apt-get install -y expect >/dev/null 2>&1
+# 배치 모드로 OpenVPN 초기화 (모든 설정을 한번에 적용)
+echo "OpenVPN Access Server 배치 모드 초기화 시작..."
+/usr/local/openvpn_as/bin/ovpn-init --batch \
+--force \
+--ec2 \
+--local_auth=1 \
+--no_start \
+--host=$${SERVER_IP} \
+--iface=eth0 \
+--admin_user=openvpn \
+--admin_pw="$${CUSTOM_PASSWORD}" \
+--license_agreement=yes \
+--verb=3 \
+--ca_key_type=secp384r1 \
+--web_key_type=secp384r1 \
+--reroute_gw=1 \
+--reroute_dns=0 \
+--private_subnets=1 \
+--vpn_tcp_port=443 \
+--cs_priv_port=943 \
+--cs_pub_port=943
 
-# expect 스크립트 생성
-cat > /tmp/openvpn-expect.sh << 'EXPECTEOF'
-#!/usr/bin/expect -f
-set timeout 120
+echo "OpenVPN Access Server 배치 모드 초기화 완료"
 
-# 시작
-spawn /usr/local/openvpn_as/bin/ovpn-init
-
-# 기존 설정 삭제 확인 (나타날 경우)
-expect {
-    "Please enter 'DELETE' to delete existing configuration:" {
-        send "DELETE\r"
-        exp_continue
-    }
-    "Please enter 'yes' to indicate your agreement" {}
-}
-
-# 라이센스 동의
-send "yes\r"
-
-# 기본 노드 확인
-expect "Press ENTER for default \[yes\]:"
-send "\r"
-
-# 네트워크 인터페이스 선택
-expect "Please enter the option number from the list above"
-send "1\r"
-
-# CA 알고리즘
-expect "Press ENTER for default \[secp384r1\]:"
-send "\r"
-
-# 웹 인증서 알고리즘
-expect "Press ENTER for default \[secp384r1\]:"
-send "\r"
-
-# Admin UI 포트
-expect "Press ENTER for default \[943\]:"
-send "\r"
-
-# OpenVPN 데몬 포트
-expect "Press ENTER for default \[443\]:"
-send "\r"
-
-# 클라이언트 트래픽 라우팅
-expect "Press ENTER for default \[yes\]:"
-send "yes\r"
-
-# DNS 트래픽 라우팅
-expect "Press ENTER for default \[yes\]:"
-send "no\r"
-
-# 프라이빗 서브넷 접근
-expect "Press ENTER for default \[yes\]:"
-send "yes\r"
-
-# 관리자 로그인
-expect "Press ENTER for default \[yes\]:"
-send "yes\r"
-
-# 관리자 비밀번호 - 빈칸으로 두고 자동 생성
-expect "Type a password for the 'openvpn' account"
-send "\r"
-
-# 자동 생성된 비밀번호 출력 캡처
-expect "Please, remember this password"
-
-# 라이센스 키
-expect "Please specify your Activation key"
-send "\r"
-
-expect eof
-EXPECTEOF
-
-# expect 스크립트 실행
-chmod +x /tmp/openvpn-expect.sh
-/tmp/openvpn-expect.sh
-rm -f /tmp/openvpn-expect.sh
-
-# 꼭! 서비스 재시작 (설정 반영)
-service openvpnas restart
-
+# 서비스 시작
+echo "OpenVPN 서비스 시작 중..."
+service openvpnas start
 # 서비스가 완전히 뜰 때까지 대기
 echo "OpenVPN 서비스가 시작될 때까지 대기 중..."
 for i in {1..30}; do
