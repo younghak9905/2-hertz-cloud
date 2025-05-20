@@ -108,3 +108,38 @@ module "ec2-openvpn" {
   })
   
 }
+
+module "ec2" {
+  source         = "../../modules/ec2"
+  name           = "ec2"
+  env            = var.env
+  vpc_id         = module.vpc.vpc_id
+  subnet_id      = module.subnet.private_subnet_ids  # public 서브넷 중 하나 선택
+  vpn_client_cidr_blocks = module.subnet.public_subnet_cidrs
+  ami_id         = "ami-0fa377108253bf620"             # amazon linux 2
+  instance_type  = "t3.medium"                          # 프리 티어 사용
+  key_name       = var.key_name
+  user_data       = templatefile("${path.module}/scripts/ec2-init.sh.tpl", {
+    admin_password = var.openvpn_admin_password
+  })
+
+  # 필요하다면 인그레스 규칙을 추가적으로 지정
+  /*ingress_rules = [
+    {
+      from_port   = 8080
+      to_port     = 8080
+      protocol    = "tcp"
+      cidr_blocks = ["0.0.0.0/0"]
+      description = "Test app port"
+    },
+    {
+      from_port   = 3306
+      to_port     = 3306
+      protocol    = "tcp"
+      cidr_blocks = ["10.0.1.0/24"]
+      description = "MySQL from VPN"
+    }
+    # 필요 시 추가 가능
+  ]*/
+  
+}
