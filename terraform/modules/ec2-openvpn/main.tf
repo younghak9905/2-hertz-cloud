@@ -26,6 +26,14 @@ resource "aws_security_group" "sg-openvpn" {
     cidr_blocks = ["0.0.0.0/0"]
     description = "VPN tunnel"
   }
+# 임시
+  ingress {
+    from_port   = 22
+    to_port     = 22
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+    description = "SSH from VPN subnet"
+  }
 
   egress {
     from_port   = 0
