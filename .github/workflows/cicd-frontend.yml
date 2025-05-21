@@ -276,6 +276,7 @@ jobs:
       - name: Send failure notification
         if: failure() || steps.set-result.outputs.status == 'failure'
         run: |
+          echo "status=failure" >> $GITHUB_OUTPUT
           echo "branch=${{ github.ref_name }}" >> $GITHUB_OUTPUT
           WORKFLOW_URL="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
           curl -H "Content-Type: application/json" \
