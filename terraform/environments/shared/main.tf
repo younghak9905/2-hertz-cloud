@@ -121,7 +121,7 @@ module "ec2" {
   key_name       = var.key_name
  
  user_data = templatefile("${path.module}/scripts/dynamic-combine-init.sh.tpl", {
-  base_script = templatefile("${path.module}/scripts/base-init.sh.tpl", {
+  base_script = templatefile("${path.module}/scripts/ec2-init.sh.tpl", {
     # 기본 스크립트 변수들...
 
   }),
