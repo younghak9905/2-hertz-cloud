@@ -119,10 +119,20 @@ module "ec2" {
   ami_id         = "ami-05377cf8cfef186c2"             # amazon linux 2
   instance_type  = "t3.medium"                          # 프리 티어 사용
   key_name       = var.key_name
-  
-  user_data       = templatefile("${path.module}/scripts/ec2-init.sh.tpl", {
-    admin_password = var.openvpn_admin_password
-  })
+ 
+ user_data = templatefile("${path.module}/scripts/dynamic-combine-init.sh.tpl", {
+  base_script = templatefile("${path.module}/scripts/base-init.sh.tpl", {
+    # 기본 스크립트 변수들...
+
+  }),
+  scripts = {
+     /* 추가 스크립트들...
+    "nextjs" = templatefile("${path.module}/scripts/nextjs-init.sh.tpl", {
+      ecr_repo_url = module.ecr_nextjs.repository_url
+      ecr_repo_name = module.ecr_nextjs.repository_name
+      */
+  }
+})
 
   # 필요하다면 인그레스 규칙을 추가적으로 지정
   /*ingress_rules = [
@@ -144,3 +154,4 @@ module "ec2" {
   ]*/
   
 }
+
