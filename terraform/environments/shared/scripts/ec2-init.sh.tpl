@@ -10,6 +10,14 @@ if ! id deploy &>/dev/null; then
   useradd -m deploy
 fi
 
+mkdir -p /home/deploy/.ssh
+chmod 700 /home/deploy/.ssh
+
+# 기본 사용자의 authorized_keys 파일을 복사 (Amazon Linux 2는 ec2-user)
+cp /home/ec2-user/.ssh/authorized_keys /home/deploy/.ssh/
+chmod 600 /home/deploy/.ssh/authorized_keys
+chown -R deploy:deploy /home/deploy/.ssh
+
 # 3. deploy 유저를 docker 그룹에만 추가 (sudo 권한 부여하지 않음)
 usermod -aG docker deploy || true
 
