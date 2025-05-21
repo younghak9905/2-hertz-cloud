@@ -121,9 +121,9 @@ module "ec2" {
   key_name       = var.key_name
  
  user_data = templatefile("${path.module}/scripts/dynamic-combine-init.sh.tpl", {
-  base_script = templatefile("${path.module}/scripts/ec2-init.sh.tpl", {
-    # 기본 스크립트 변수들...
-
+ base_script = templatefile("${path.module}/scripts/ec2-init.sh.tpl", {
+    REGION = var.region
+    # 비어있는 맵이라도 제공
   }),
   scripts = {
      /* 추가 스크립트들...
