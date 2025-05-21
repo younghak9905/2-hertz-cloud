@@ -122,7 +122,8 @@ module "ec2" {
  
  user_data = templatefile("${path.module}/scripts/dynamic-combine-init.sh.tpl", {
  base_script = templatefile("${path.module}/scripts/ec2-init.sh.tpl", {
-    REGION = var.region
+    REGION = var.region,
+    DOCKER_COMPOSE_VERSION = "2.29.2"
     # 비어있는 맵이라도 제공
   }),
   scripts = {
