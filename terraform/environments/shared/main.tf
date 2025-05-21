@@ -35,7 +35,7 @@ module "subnet" {
 module "nat_gateway" {
   source    = "../../modules/nat_gateway"
   env       = var.env
-  subnet_id = module.subnet.nat_subnet_ids[0]
+  subnet_id = module.subnet.public_subnet_ids[0]
 }
 
 module "public_route_table" {
