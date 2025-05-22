@@ -204,7 +204,7 @@ jobs:
   
   rollback:
     needs: ai-cd
-    if: always() && needs.ai-cd.result != 'success'
+    if: needs.ai-cd.result == 'failure'
     runs-on: ubuntu-latest
     steps:
       - name: Set environment variables
