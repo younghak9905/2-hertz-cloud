@@ -1,4 +1,3 @@
-
 # 속도 최우선: full python 이미지 사용
 FROM python:3.10
 
@@ -21,18 +20,18 @@ RUN apt-get update && apt-get install -y \
 
 # requirements 복사 및 설치 (PIP 캐시 사용 → 속도 빠름)
 # requirements 복사 및 설치
-COPY requirements.txt .
+COPY ./app-tuning/requirements.txt .
 RUN pip install --upgrade pip setuptools wheel && \
 pip install -r requirements.txt
    
 
 # 앱 복사 (마지막에)
-COPY . .
+COPY ./app-tuning /app
 
 ENV PYTHONPATH=/app
 ENV ENVIRONMENT=prod
 ENV CHROMA_MODE=server
-ENV CHROMA_HOST=chromadb
+ENV CHROMA_HOST=host.docker.internal 
 ENV CHROMA_PORT=8001
 ENV ALLOW_RESET=false
 

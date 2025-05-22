@@ -204,7 +204,7 @@ jobs:
   
   rollback:
     needs: ai-cd
-    if: ${{ needs.ai-cd.result == 'failure' && (github.ref_name == 'main' || github.ref_name == 'develop') }}
+    if: always() && needs.ai-cd.result != 'success'
     runs-on: ubuntu-latest
     steps:
       - name: Set environment variables
