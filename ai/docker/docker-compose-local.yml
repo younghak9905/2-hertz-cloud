@@ -19,6 +19,7 @@ services:
       - TOKENIZERS_PARALLELISM=false
     volumes:
       - tuning_logs:/app/logs
+      - ./app-tuning:/app/app
     depends_on:
       - chromadb
     deploy:
@@ -33,42 +34,30 @@ services:
       retries: 5
       start_period: 60s
     networks:
-      - app_network
+      - app-network
 
   chromadb:
     container_name: chromadb
     build:
       context: .
       dockerfile: Dockerfile.DB
-    restart: always
-    expose:
-      - "8001"
-    cap_add:
-      - SYS_PTRACE
     volumes:
-      - chroma_data:/chroma/chroma
+      - chroma-data:/chroma/db
+    ports:
+      - "8001:8001"
     environment:
-      - ALLOW_RESET=true
+      - ALLOW_RESET=${ALLOW_RESET:-false}
       - ANONYMIZED_TELEMETRY=false
-      - CHROMA_SERVER_HOST=0.0.0.0
-      - CHROMA_SERVER_HTTP_PORT=8001
-    deploy:
-      resources:
-        limits:
-          cpus: "0.8"
-          memory: "4.5G"
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8001/api/v2/heartbeat"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
+      - PERSIST_DIRECTORY=/chroma/db
+    restart: unless-stopped
     networks:
-      - app_network
-
-volumes:
-  tuning_logs:
-  chroma_data:
+      - app-network
 
 networks:
-  app_network:
+  app-network:
     driver: bridge
+
+volumes:
+  chroma-data:
+    driver: local
+  tuning_logs:
