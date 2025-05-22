@@ -1,3 +1,15 @@
 FROM ghcr.io/chroma-core/chroma:0.4.13
 
+# 데이터 디렉토리 생성 및 권한 설정
+RUN mkdir -p /chroma/db && chmod -R 777 /chroma/db
+
+# 환경 변수 설정
+ENV PERSIST_DIRECTORY=/chroma/db
+ENV CHROMA_SERVER_HTTP_PORT=8001
+ENV ALLOW_RESET=false
+
+# 포트 노출
+EXPOSE 8001
+
+# 앱 실행
 CMD ["uvicorn", "chromadb.app:app", "--host", "0.0.0.0", "--port", "8001"]
