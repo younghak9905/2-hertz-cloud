@@ -20,19 +20,21 @@ jobs:
       - name: Set environment
         run: |
           BRANCH="${{ github.ref_name }}"
-          echo "BRANCH=$BRANCH" >> $GITHUB_ENV
-          echo "ZONE=${{ secrets.GCP_ZONE }}" >> $GITHUB_ENV
+          echo "BRANCH=$BRANCH" >> $GITHUB_ENVecho "ZONE=${{ secrets.GCP_ZONE }}" >> $GITHUB_ENV
 
           if [[ "$BRANCH" == "main" ]]; then
             echo "ENV=production" >> $GITHUB_ENV
             echo "HOST=${{ secrets.PROD_GCP_HOST_AI }}" >> $GITHUB_ENV
             echo "INSTANCE=${{ secrets.PROD_GCP_INSTANCE_AI }}" >> $GITHUB_ENV
             echo "PROJECT_ID=${{ secrets.PROD_GCP_PROJECT_ID }}" >> $GITHUB_ENV
+            echo "ZONE=${{ secrets.PROD_GCP_ZONE_AI }}" >> $GITHUB_ENV
+
           else
             echo "ENV=stage" >> $GITHUB_ENV
             echo "HOST=${{ secrets.DEV_GCP_HOST_AI }}" >> $GITHUB_ENV
             echo "INSTANCE=${{ secrets.DEV_GCP_INSTANCE_AI }}" >> $GITHUB_ENV
             echo "PROJECT_ID=${{ secrets.DEV_GCP_PROJECT_ID }}" >> $GITHUB_ENV
+            echo "ZONE=${{ secrets.DEV_GCP_ZONE_AI }}" >> $GITHUB_ENV
           fi
 
           echo "ROLLBACK=${{ github.event.inputs.rollback }}" >> $GITHUB_ENV
