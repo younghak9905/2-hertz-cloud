@@ -20,7 +20,8 @@ jobs:
       - name: Set environment
         run: |
           BRANCH="${{ github.ref_name }}"
-          echo "BRANCH=$BRANCH" >> $GITHUB_ENVecho "ZONE=${{ secrets.GCP_ZONE }}" >> $GITHUB_ENV
+          echo "BRANCH=$BRANCH" >> $GITHUB_ENV
+        
 
           if [[ "$BRANCH" == "main" ]]; then
             echo "ENV=production" >> $GITHUB_ENV
