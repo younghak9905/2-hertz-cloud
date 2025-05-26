@@ -1,24 +1,25 @@
-version: '3.8'
+version: "3.8"
 
 services:
   tuning-api:
+    container_name: tuning
     image: ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/tuning-api:${IMAGE_TAG:-latest}
-    container_name: fastapi-ai-server
+
     restart: always
     ports:
       - "8000:8000"
     cap_add:
       - SYS_PTRACE
     environment:
-      - UVICORN_WORKERS=2
-      - CHROMA_HOST=chromadb
+      - UVICORN_WORKERS=1
+      - CHROMA_HOST=host.docker.internal  # ⬅️ 로컬 PM2 서버로 접속
       - CHROMA_PORT=8001
       - CHROMA_MODE=server
       - TOKENIZERS_PARALLELISM=false
     volumes:
       - tuning_logs:/app/logs
-    depends_on:
-      - chromadb
+      - ./app-tuning:/app/app
+    depends_on: []
     deploy:
       resources:
         limits:
@@ -26,45 +27,39 @@ services:
           memory: "11G"
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/health/chromadb"]
-      interval: 15s
+      interval: 30s
       timeout: 10s
       retries: 5
       start_period: 60s
-    networks:
-      - app_network
+    extra_hosts:
+      - "host.docker.internal:172.17.0.1"  # ⬅️ Linux 호스트 연결을 위한 강제 호스트 설정
 
-  chromadb:
-    image: ghcr.io/chroma-core/chroma:0.4.13  # 또는 :latest
-    container_name: chromadb
-    restart: always
-    expose:
-      - "8001"
-    cap_add:
-      - SYS_PTRACE
-    volumes:
-      - chroma_data:/chroma/chroma
-    environment:
-      - ALLOW_RESET=true
-      - ANONYMIZED_TELEMETRY=false
-      - CHROMA_SERVER_HOST=0.0.0.0
-      - CHROMA_SERVER_HTTP_PORT=8001
-    deploy:
-      resources:
-        limits:
-          cpus: "0.8"
-          memory: "4.5G"
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8001/api/v2/heartbeat"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    networks:
-      - app_network
 
 volumes:
   tuning_logs:
-  chroma_data:
 
-networks:
-  app_network:
-    driver: bridge
+#  chromadb:
+#    container_name: chromadb
+#    build:
+#      context: .
+#     dockerfile: Dockerfile.DB
+#    volumes:
+#      - chroma-data:/chroma/db
+#    ports:
+#      - "8001:8001"
+#    environment:
+#      - ALLOW_RESET=${ALLOW_RESET:-false}
+#      - ANONYMIZED_TELEMETRY=false
+#      - PERSIST_DIRECTORY=/chroma/db
+#    restart: unless-stopped
+#    networks:
+#      - app-network
+#
+#networks:
+#  app-network:
+#    driver: bridge
+#
+#volumes:
+#  chroma-data:
+#    driver: local
+#  tuning_logs:

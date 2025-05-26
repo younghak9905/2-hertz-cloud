@@ -1,8 +1,5 @@
 FROM ghcr.io/chroma-core/chroma:0.4.13
 
-# 데이터 디렉토리 생성 및 권한 설정
-RUN mkdir -p /chroma/db && chmod -R 777 /chroma/db
-
 # 환경 변수 설정
 ENV PERSIST_DIRECTORY=/chroma/db
 ENV CHROMA_SERVER_HTTP_PORT=8001
