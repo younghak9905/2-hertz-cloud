@@ -104,8 +104,8 @@ jobs:
               echo "🚀 Docker 배포 시작..."
               cd /home/deploy
               pm2 stop fastapi-ai
-
-              docker compose -f docker-compose-tuning.yml --env-file=.env up -d --build
+              sleep 5
+              docker compose --env-file .env -f docker-compose-tuning.yml up -d tuning
             else
               echo "🚀 PM2 배포 시작..."
               cd /home/deploy
