@@ -32,12 +32,12 @@ variable "desired" {
 
 variable "min" {
   type    = number
-  default = 2
+  default = 1
 }
 
 variable "max" {
   type    = number
-  default = 10
+  default = 2
 }
 
 variable "cpu_target" {
@@ -66,4 +66,17 @@ variable "aws_access_key_id" {
 variable "aws_secret_access_key" {
   type    = string
   default = ""
+}
+
+
+variable "tags" {
+  type    = list(string)
+  default = []
+  
+}
+
+variable "port_http" {
+  type    = number
+  default = 80
+  
 }
