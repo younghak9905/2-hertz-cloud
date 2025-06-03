@@ -90,7 +90,7 @@ locals {
 
 # 1) Backend VM 생성
 resource "google_compute_instance" "backend_vm" {
-  name         = "${var.env}-backend-vm"
+  name         = "${var.env}-backend-vm-a"
   machine_type = "e2-medium"
   zone         = "${var.region}-a"
   tags         = ["backend", "backend-hc", "allow-vpn-ssh"]
@@ -145,7 +145,7 @@ resource "google_compute_instance_group" "backend_ig" {
 
 # 1) Frontend VM 생성
 resource "google_compute_instance" "frontend_vm" {
-  name         = "${var.env}-frontend-vm"
+  name         = "${var.env}-frontend-vm-a"
   machine_type = "e2-small"
   zone         = "${var.region}-a"
   tags         = ["frontend", "allow-ssh-http", "allow-vpn-ssh"]
