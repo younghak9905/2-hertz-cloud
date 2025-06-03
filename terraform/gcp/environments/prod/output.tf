@@ -32,12 +32,6 @@ output "green_deployment_status" {
   sensitive = true
 }
 
-output "frontend_lb_ip" {
-  description = "프론트엔드 외부 HTTPS(443) LB IP"
-  value       = module.frontend_lb.forwarding_rule_ip
-}
-
-
 # 인스턴스 그룹 정보
 output "instance_groups" {
   description = "Instance group information"
