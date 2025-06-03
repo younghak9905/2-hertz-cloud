@@ -79,15 +79,3 @@ else
   echo "[startup] ECR 사용 안 함 → 로그인 스킵"
 fi
 
-# ───────────────────────────────────────────────
-# 3. 기존 컨테이너 정리 & 새 이미지 배포
-# ───────────────────────────────────────────────
-docker rm -f app 2>/dev/null || true
-
-echo "[startup] Pulling image $IMAGE"
-docker pull "$IMAGE"
-
-echo "[startup] Running container"
-docker run -d --name app --restart always -p 8080:8080 "$IMAGE"
-
-echo "[startup] $(date) — Completed"

@@ -67,12 +67,16 @@ locals {
   firewall_rules = data.terraform_remote_state.shared.outputs.firewall_rules
 
   region           = var.region
-  subnet_self_link = data.terraform_remote_state.shared.outputs.nat_b_subnet_self_link
+  subnet_self_link = data.terraform_remote_state.shared.outputs.nat_a_subnet_self_link
   vpc_self_link    = data.terraform_remote_state.shared.outputs.vpc_self_link
 
    # Blue/Green 배포 상태 계산
   blue_is_active  = var.active_deployment == "blue"
   green_is_active = var.active_deployment == "green"
+
+  #헬스체크
+  hc_backend = data.terraform_remote_state.shared.outputs.hc_backend_self_link
+  hc_frontend = data.terraform_remote_state.shared.outputs.hc_frontend_self_link
   
   # 트래픽 가중치 검증
   total_weight = var.traffic_weight_blue + var.traffic_weight_green
@@ -80,23 +84,7 @@ locals {
   normalized_green_weight = local.total_weight > 0 ? (var.traffic_weight_green * 100 / local.total_weight) : 0
 }
 
-############################################################
-# 헬스 체크 모듈 (Backend/Frontend 분리)
-############################################################
 
-module "hc_backend" {
-  source        = "../../modules/health-check"
-  name          = "backend-http-hc"
-  port          = 8080
-  request_path  = "/health"
-}
-
-module "hc_frontend" {
-  source        = "../../modules/health-check"
-  name          = "frontend-http-hc"
-  port          = 80
-  request_path  = "/health"
-}
 
 ############################################################
 # 백엔드(Backend) ASG - Blue/Green
@@ -105,165 +93,85 @@ module "hc_frontend" {
 # Blue
 # 1) Internal 전용 MIGs (Internal LB용)
 # Blue
-module "backend_internal_asg_blue" {
+module "backend_ig" {
   source           = "../../modules/mig-asg"
-  name             = "backend-internal-blue"
+  name             = var.env+"-be_ig-a"
   region           = var.region
   subnet_self_link = local.subnet_self_link
-  disk_size_gb     = 20
+  disk_size_gb     = 30
   machine_type     = "e2-medium"
   
   # 동적 인스턴스 수 설정
-  desired    = var.blue_instance_count.desired
-  min        = var.blue_instance_count.min
-  max        = var.blue_instance_count.max
+  desired    = 1
+  min        = 1
+  max        = 1
   cpu_target = 0.8
 
-  startup_tpl = templatefile("${path.module}/scripts/vm-install.sh.tpl", {
-    deploy_ssh_public_key = var.ssh_private_key
-    docker_image          = var.docker_image_backend_blue
-    use_ecr               = var.use_ecr
-    aws_region            = var.aws_region
-    aws_access_key_id     = var.aws_access_key_id
-    aws_secret_access_key = var.aws_secret_access_key
-  })
-  
-  health_check = module.hc_backend.self_link
-  tags         = ["backend", "backend-hc", "allow-vpn-ssh"]
-  port_http    = 8080
-}
-# Green
-module "backend_internal_asg_green" {
-  source           = "../../modules/mig-asg"
-  name             = "backend-internal-green"
-  region           = var.region
-  subnet_self_link = local.subnet_self_link
-  disk_size_gb     = 20
-  machine_type     = "e2-medium"
-  
-  # 동적 인스턴스 수 설정
-  desired    = var.green_instance_count.desired
-  min        = var.green_instance_count.min
-  max        = var.green_instance_count.max
-  cpu_target = 0.8
+  startup_tpl = join("\n", [
+    # 1) 기존 템플릿 파일 (base-init.sh.tpl) 호출
+    templatefile("${path.module}/scripts/vm-install.sh.tpl", {
+      deploy_ssh_public_key = var.ssh_private_key
+      docker_image          = var.docker_image_backend_blue
+      use_ecr               = var.use_ecr
+      aws_region            = var.aws_region
+      aws_access_key_id     = var.aws_access_key_id
+      aws_secret_access_key = var.aws_secret_access_key
+    }),
 
-  startup_tpl = templatefile("${path.module}/scripts/vm-install.sh.tpl", {
-    deploy_ssh_public_key = var.ssh_private_key
-    docker_image          = var.docker_image_backend_green
-    use_ecr               = var.use_ecr
-    aws_region            = var.aws_region
-    aws_access_key_id     = var.aws_access_key_id
-    aws_secret_access_key = var.aws_secret_access_key
-  })
+    # 2) 직접 here-doc으로 붙일 Docker 관련 명령
+    <<-EOF
+      docker rm -f app 2>/dev/null || true
+      docker pull "\$IMAGE"
+      docker run -d --name app --restart always -p 8080:8080 "\$IMAGE"
+    EOF
+  ])
   
-  health_check = module.hc_backend.self_link
+  health_check = local.hc_backend
   tags         = ["backend", "backend-hc", "allow-vpn-ssh"]
   port_http    = 8080
 }
 
-############################################################
-# 백엔드 Internal Load Balancer (8080)
-############################################################
 
-resource "google_compute_subnetwork" "ilb_proxy_subnet" {
-  name          = "${var.vpc_name}-ilb-proxy-subnet"
-  ip_cidr_range = var.proxy_subnet_cidr 
-  region        = var.region                 # 예: asia-east1
-  network       = local.vpc_self_link          # VPC self_link
-
-  # ────────────────────────────────────────────────────
-  # 서브넷 용도를 "Internal HTTPS Load Balancer" 용도로 지정
-  # 이 옵션이 있어야 프록시 전용 모드(subnet role)가 활성화됨
-  purpose                         = "INTERNAL_HTTPS_LOAD_BALANCER"
-  role    = "ACTIVE"
-}
-
-
-module "backend_internal_lb" {
-  source                = "../../modules/internal-http-lb"
-  region                = var.region
-  subnet_self_link      = local.subnet_self_link
-  vpc_self_link         = data.terraform_remote_state.shared.outputs.vpc_self_link
-  proxy_subnet_self_link = google_compute_subnetwork.ilb_proxy_subnet.self_link
-
-  backend_name_prefix   = "backend-internal-lb"
-  backends = [
-    {
-      instance_group  = module.backend_internal_asg_blue.instance_group
-      balancing_mode  = "UTILIZATION"
-      capacity_scaler = 1.0
-    },
-    {
-      instance_group  = module.backend_internal_asg_green.instance_group
-      balancing_mode  = "UTILIZATION"
-      capacity_scaler = 1.0
-    }
-  ]
-  backend_hc_port     = 8080
-  backend_timeout_sec = 30
-  health_check_path   = "/health"
-  port                = "8080"
-  ip_prefix_length    = 28
-}
 
 ############################################################
 # 프론트엔드(Frontend) ASG - Blue/Green
 ############################################################
 # Blue
-module "frontend_asg_blue" {
+module "frontend_ig" {
   source           = "../../modules/mig-asg"
-  name             = "frontend-blue"
+  name             = var.env+"-fe-ig-a"
   region           = var.region
   subnet_self_link = local.subnet_self_link
-  disk_size_gb     = 20
+  disk_size_gb     = 30
   machine_type     = "e2-small"
   
   # 동적 인스턴스 수 설정
-  desired    = var.blue_instance_count.desired
-  min        = var.blue_instance_count.min
-  max        = var.blue_instance_count.max
+  desired    = 1
+  min        = 1
+  max        = 1
   cpu_target = 0.8
 
-  startup_tpl = templatefile("${path.module}/scripts/vm-install.sh.tpl", {
-    deploy_ssh_public_key = var.ssh_private_key
-    docker_image          = var.docker_image_front_blue
-    use_ecr               = false
-    aws_region            = var.aws_region
-    aws_access_key_id     = var.aws_access_key_id
-    aws_secret_access_key = var.aws_secret_access_key
-  })
+    startup_tpl = join("\n", [
+    # 1) 기존 템플릿 파일 (base-init.sh.tpl) 호출
+    templatefile("${path.module}/scripts/vm-install.sh.tpl", {
+      deploy_ssh_public_key = var.ssh_private_key
+      docker_image          = var.docker_image_backend_blue
+      use_ecr               = var.use_ecr
+      aws_region            = var.aws_region
+      aws_access_key_id     = var.aws_access_key_id
+      aws_secret_access_key = var.aws_secret_access_key
+    }),
+
+    # 2) 직접 here-doc으로 붙일 Docker 관련 명령
+    <<-EOF
+      docker rm -f app 2>/dev/null || true
+      docker pull "\$IMAGE"
+      docker run -d --name app --restart always -p 3000:3000 "\$IMAGE"
+    EOF
+  ])
   
   port_http    = 80
-  health_check = module.hc_frontend.self_link
-  tags         = ["allow-ssh-http", "allow-vpn-ssh"]
-}
-
-# Green
-module "frontend_asg_green" {
-  source           = "../../modules/mig-asg"
-  name             = "frontend-green"
-  region           = var.region
-  subnet_self_link = local.subnet_self_link
-  disk_size_gb     = 20
-  machine_type     = "e2-small"
-  
-  # 동적 인스턴스 수 설정
-  desired    = var.green_instance_count.desired
-  min        = var.green_instance_count.min
-  max        = var.green_instance_count.max
-  cpu_target = 0.8
-
-  startup_tpl = templatefile("${path.module}/scripts/vm-install.sh.tpl", {
-    deploy_ssh_public_key = var.ssh_private_key
-    docker_image          = var.docker_image_front_green
-    use_ecr               = false
-    aws_region            = var.aws_region
-    aws_access_key_id     = var.aws_access_key_id
-    aws_secret_access_key = var.aws_secret_access_key
-  })
-  
-  port_http    = 80
-  health_check = module.hc_frontend.self_link
+  health_check = local.hc_frontend
   tags         = ["allow-ssh-http", "allow-vpn-ssh"]
 }
 
@@ -272,18 +180,12 @@ module "frontend_asg_green" {
 ############################################################
 module "backend_tg" {
   source       = "../../modules/target-group"
-  name         = "backend-backend-group"
-  health_check = module.hc_backend.self_link
+  name         = var.env+"-be_tg"
+  health_check = local.hc_backend
   backends = [
     {
-      instance_group  = module.backend_internal_asg_blue.instance_group
+      instance_group  = module.backend_ig.instance_group
       weight          = local.normalized_blue_weight  # 동적 가중치
-      balancing_mode  = "UTILIZATION"
-      capacity_scaler = 1.0
-    },
-    {
-      instance_group  = module.backend_internal_asg_green.instance_group
-      weight          = local.normalized_green_weight  # 동적 가중치
       balancing_mode  = "UTILIZATION"
       capacity_scaler = 1.0
     }
@@ -292,18 +194,12 @@ module "backend_tg" {
 
 module "frontend_tg" {
   source       = "../../modules/target-group"
-  name         = "frontend-backend-group"
-  health_check = module.hc_frontend.self_link
+  name         = var.env+"-fe_tg"
+  health_check = local.hc_frontend
   backends = [
     {
-      instance_group  = module.frontend_asg_blue.instance_group
-      weight          = local.normalized_blue_weight  # 동적 가중치
-      balancing_mode  = "UTILIZATION"
-      capacity_scaler = 1.0
-    },
-    {
-      instance_group  = module.frontend_asg_green.instance_group
-      weight          = local.normalized_green_weight  # 동적 가중치
+      instance_group  = module.frontend_ig.instance_group
+      weight          = 100
       balancing_mode  = "UTILIZATION"
       capacity_scaler = 1.0
     }
@@ -315,55 +211,105 @@ module "frontend_tg" {
 # 외부 HTTPS LB + URL Map (프론트엔드 기본, /api/* 백엔드)
 ############################################################
 
-module "frontend_lb" {
+module "external_lb" {
   source           = "../../modules/external-https-lb"
-  name             = "frontend-lb"
+  name             = var.env+"lb-external"
   domains          = [var.domain_frontend]
   backend_service  = module.backend_tg.backend_service_self_link      # /api/* 경로용
   frontend_service = module.frontend_tg.backend_service_self_link     # 그 외 기본 경로용
 }
 
+/*
+
+module "mysql" {
+    source                = "../../modules/compute"
+    name                  = var.env+"-mysql"
+    machine_type          = "e2-small"
+    zone                  = "asia-east1-a"
+    image                 = "ubuntu-os-cloud/ubuntu-2204-lts"
+    disk_size_gb          = 30
+    tags                  = ["mysql","allow-vpn-ssh",]
+    
+    subnetwork            = data.terraform_remote_state.shared.outputs.nat_a_subnet_self_link
+    
+    # ✅ deploy 계정의 SSH 키는 base-init.sh.tpl에서 사용됨
+    deploy_ssh_public_key = var.ssh_private_key
+    
+    service_account_email  = var.default_sa_email
+    service_account_scopes = ["https://www.googleapis.com/auth/cloud-platform"]
+    extra_startup_script = join("\n", [
+    # 1) 기존에 분리해둔 base-init 스크립트
+    templatefile("${path.module}/scripts/vm-install.sh.tpl", {
+      deploy_ssh_public_key = var.ssh_private_key
+      docker_image          = var.docker_image_backend_green
+      use_ecr               = no
+      aws_region            = var.aws_region
+      aws_access_key_id     = var.aws_access_key_id
+      aws_secret_access_key = var.aws_secret_access_key
+    }),
+    <<-EOF
+      # 기존에 실행 중인 "app" 컨테이너 있으면 삭제
+      docker rm -f app 2>/dev/null || true
+      docker pull "\$IMAGE"
+      docker run -d --name mysql --restart always -p 3306:3306 "\$IMAGE"
+    EOF
+    ]
+    )
+}*/
 
 
-resource "google_compute_firewall" "allow_internal_hc" {
-  name    = "${var.vpc_name}-allow-internal-hc"
-  network = data.terraform_remote_state.shared.outputs.vpc_self_link
+resource "google_compute_firewall" "dev_firewalls" {
+  for_each = { for rule in local.firewall_rules : rule.name => rule }
 
-  direction = "INGRESS"
-  priority  = 1000
+  name    = "${var.vpc_name}-${each.key}"
+  network = local.vpc_self_link
 
-  # GCP 헬스체크 IP 범위 (HTTP/HTTPS 헬스체크용)
-  source_ranges = [
-    "130.211.0.0/22",
-    "35.191.0.0/16",
+  direction     = each.value.direction
+  priority      = each.value.priority
+  description   = each.value.description
+  source_ranges = each.value.source_ranges
+  target_tags   = lookup(each.value, "target_tags", [])
+  source_tags   = lookup(each.value, "source_tags", [])
+  allow {
+    protocol = each.value.protocol
+    ports    = lookup(each.value, "ports", [])
+  }
+}
+
+locals {
+  firewall_rules = [
+    {
+      name          = "${var.vpc_name}-fw-frontend-to-backend"
+      direction     = "INGRESS"
+      priority      = 1000
+      description   = "Allow SSH access"
+      source_tags = ["frontend"]
+      target_tags  = ["backend"]
+      protocol      = "tcp"
+      ports         = ["8080"]
+    },
+    {
+      name         = "${var.vpc_name}-fw-backend-to-mysql"
+      direction    = "INGRESS"
+      priority     = 1000
+      description  = "Allow backend to access MySQL"
+      source_tags = ["backend"]
+      target_tags  = ["mysql"]
+      protocol     = "tcp"
+      ports        = ["3306"]
+    },
+    {
+      name         = "${var.vpc_name}-fw-backend-to-redis"
+      direction    = "INGRESS"
+      priority     = 1000
+      source_tags  = ["backend", "websocket"]
+      target_tags  = ["redis"]
+      description  = "Allow backend to access Redis"
+      protocol     = "tcp"
+      ports        = ["6379"]
+
+    }
+
   ]
-
-  allow {
-    protocol = "tcp"
-    ports    = ["8080"]      # 헬스체크 포트(Backend VM의 헬스 엔드포인트)
-  }
-
-  # 헬스체크 트래픽을 수신할 Backend VM에 붙은 태그
-  target_tags = ["backend-hc"]
-  description = "Allow GCP Internal LB health checks (TCP:8080) to backend VMs"
 }
 
-resource "google_compute_firewall" "allow_ilb_proxy_to_backend" {
-  name    = "${var.vpc_name}-allow-ilb-proxy-to-backend"
-  network = data.terraform_remote_state.shared.outputs.vpc_self_link
-
-  direction = "INGRESS"
-  priority  = 1000
-
-  # ILB Proxy-Only Subnet CIDR
-  # 예: var.proxy_subnet_cidr = "10.10.31.0/28"
-  source_ranges = [ var.proxy_subnet_cidr ]
-
-  allow {
-    protocol = "tcp"
-    ports    = ["8080"]      # 내부 LB(Proxy)에서 백엔드 VM으로 보내는 HTTP 포트
-  }
-
-  target_tags = ["backend"]  # 백엔드 VM에 붙어 있어야 함
-  description = "Allow Internal LB proxy (subnet ${var.proxy_subnet_cidr}) to reach backend VMs on TCP/8080"
-}
