@@ -64,22 +64,21 @@ resource "google_compute_router_nat" "nat" {
 
 locals {
   nat_subnet_info = data.terraform_remote_state.shared.outputs.nat_subnet_info
-  firewall_rules = data.terraform_remote_state.shared.outputs.firewall_rules
+  firewall_rules  = data.terraform_remote_state.shared.outputs.firewall_rules
 
   region           = var.region
   subnet_self_link = data.terraform_remote_state.shared.outputs.nat_b_subnet_self_link
   vpc_self_link    = data.terraform_remote_state.shared.outputs.vpc_self_link
 
-  hc_backend = data.terraform_remote_state.shared.outputs.hc_backend_self_link
+  hc_backend  = data.terraform_remote_state.shared.outputs.hc_backend_self_link
   hc_frontend = data.terraform_remote_state.shared.outputs.hc_frontend_self_link
-  
 
-   # Blue/Green 배포 상태 계산
+  # Blue/Green 배포 상태 계산
   blue_is_active  = var.active_deployment == "blue"
   green_is_active = var.active_deployment == "green"
   
   # 트래픽 가중치 검증
-  total_weight = var.traffic_weight_blue + var.traffic_weight_green
+  total_weight            = var.traffic_weight_blue + var.traffic_weight_green
   normalized_blue_weight  = local.total_weight > 0 ? (var.traffic_weight_blue * 100 / local.total_weight) : 0
   normalized_green_weight = local.total_weight > 0 ? (var.traffic_weight_green * 100 / local.total_weight) : 0
 }
@@ -90,14 +89,12 @@ locals {
 ############################################################
 
 # Blue
-# 1) Internal 전용 MIGs (Internal LB용)
-# Blue
 module "backend_internal_asg_blue" {
   source           = "../../modules/mig-asg"
-  name             = var.env+"-backend-blue-b"
+  name             = "${var.env}-backend-blue-b"
   region           = var.region
   subnet_self_link = local.subnet_self_link
-  disk_size_gb     = 20
+  disk_size_gb     = 30
   machine_type     = "e2-medium"
   
   # 동적 인스턴스 수 설정
@@ -107,7 +104,7 @@ module "backend_internal_asg_blue" {
   cpu_target = 0.8
 
   startup_tpl = join("\n", [
-    # 1) 기존 템플릿 파일 (base-init.sh.tpl) 호출
+    # 기존 템플릿 파일 호출
     templatefile("${path.module}/scripts/vm-install.sh.tpl", {
       deploy_ssh_public_key = var.ssh_private_key
       docker_image          = var.docker_image_backend_blue
@@ -117,7 +114,7 @@ module "backend_internal_asg_blue" {
       aws_secret_access_key = var.aws_secret_access_key
     }),
 
-    # 2) 직접 here-doc으로 붙일 Docker 관련 명령
+    # Docker 정리 및 실행 스크립트
     <<-EOF
       docker rm -f app 2>/dev/null || true
       docker pull "\$IMAGE"
@@ -129,13 +126,14 @@ module "backend_internal_asg_blue" {
   tags         = ["backend", "backend-hc", "allow-vpn-ssh"]
   port_http    = 8080
 }
+
 # Green
 module "backend_internal_asg_green" {
   source           = "../../modules/mig-asg"
-  name             = var.env+"-backend-green-b"
+  name             = "${var.env}-backend-green-b"
   region           = var.region
   subnet_self_link = local.subnet_self_link
-  disk_size_gb     = 20
+  disk_size_gb     = 30
   machine_type     = "e2-medium"
   
   # 동적 인스턴스 수 설정
@@ -145,7 +143,6 @@ module "backend_internal_asg_green" {
   cpu_target = 0.8
 
   startup_tpl = join("\n", [
-    # 1) 기존 템플릿 파일 (base-init.sh.tpl) 호출
     templatefile("${path.module}/scripts/vm-install.sh.tpl", {
       deploy_ssh_public_key = var.ssh_private_key
       docker_image          = var.docker_image_backend_blue
@@ -155,7 +152,6 @@ module "backend_internal_asg_green" {
       aws_secret_access_key = var.aws_secret_access_key
     }),
 
-    # 2) 직접 here-doc으로 붙일 Docker 관련 명령
     <<-EOF
       docker rm -f app 2>/dev/null || true
       docker pull "\$IMAGE"
@@ -168,6 +164,7 @@ module "backend_internal_asg_green" {
   port_http    = 8080
 }
 
+
 ############################################################
 # 백엔드 Internal Load Balancer (8080)
 ############################################################
@@ -175,22 +172,18 @@ module "backend_internal_asg_green" {
 resource "google_compute_subnetwork" "ilb_proxy_subnet" {
   name          = "${var.vpc_name}-ilb-proxy-subnet"
   ip_cidr_range = var.proxy_subnet_cidr 
-  region        = var.region                 # 예: asia-east1
-  network       = local.vpc_self_link          # VPC self_link
+  region        = var.region
+  network       = local.vpc_self_link
 
-  # ────────────────────────────────────────────────────
-  # 서브넷 용도를 "Internal HTTPS Load Balancer" 용도로 지정
-  # 이 옵션이 있어야 프록시 전용 모드(subnet role)가 활성화됨
-  purpose                         = "INTERNAL_HTTPS_LOAD_BALANCER"
+  purpose = "INTERNAL_HTTPS_LOAD_BALANCER"
   role    = "ACTIVE"
 }
 
-
 module "internal_lb" {
-  source                = "../../modules/internal-http-lb"
-  region                = var.region
-  subnet_self_link      = local.subnet_self_link
-  vpc_self_link         = data.terraform_remote_state.shared.outputs.vpc_self_link
+  source                 = "../../modules/internal-http-lb"
+  region                 = var.region
+  subnet_self_link       = local.subnet_self_link
+  vpc_self_link          = data.terraform_remote_state.shared.outputs.vpc_self_link
   proxy_subnet_self_link = google_compute_subnetwork.ilb_proxy_subnet.self_link
 
   backend_name_prefix   = "backend-internal-lb"
@@ -213,13 +206,15 @@ module "internal_lb" {
   ip_prefix_length    = 28
 }
 
+
 ############################################################
 # 프론트엔드(Frontend) ASG - Blue/Green
 ############################################################
+
 # Blue
 module "frontend_asg_blue" {
   source           = "../../modules/mig-asg"
-  name             = var.env+"-frontend-blue-b"
+  name             = "${var.env}-frontend-blue-b"
   region           = var.region
   subnet_self_link = local.subnet_self_link
   disk_size_gb     = 20
@@ -231,8 +226,7 @@ module "frontend_asg_blue" {
   max        = var.blue_instance_count.max
   cpu_target = 0.8
 
- startup_tpl = join("\n", [
-    # 1) 기존 템플릿 파일 (base-init.sh.tpl) 호출
+  startup_tpl = join("\n", [
     templatefile("${path.module}/scripts/vm-install.sh.tpl", {
       deploy_ssh_public_key = var.ssh_private_key
       docker_image          = var.docker_image_backend_blue
@@ -242,7 +236,6 @@ module "frontend_asg_blue" {
       aws_secret_access_key = var.aws_secret_access_key
     }),
 
-    # 2) 직접 here-doc으로 붙일 Docker 관련 명령
     <<-EOF
       docker rm -f app 2>/dev/null || true
       docker pull "\$IMAGE"
@@ -252,13 +245,13 @@ module "frontend_asg_blue" {
   
   port_http    = 80
   health_check = local.hc_frontend
- tags         = ["frontend","allow-ssh-http", "allow-vpn-ssh"]
+  tags         = ["frontend", "allow-ssh-http", "allow-vpn-ssh"]
 }
 
 # Green
 module "frontend_asg_green" {
   source           = "../../modules/mig-asg"
-  name             = var.env+"-frontend-green-b"
+  name             = "${var.env}-frontend-green-b"
   region           = var.region
   subnet_self_link = local.subnet_self_link
   disk_size_gb     = 20
@@ -271,7 +264,6 @@ module "frontend_asg_green" {
   cpu_target = 0.8
 
   startup_tpl = join("\n", [
-    # 1) 기존 템플릿 파일 (base-init.sh.tpl) 호출
     templatefile("${path.module}/scripts/vm-install.sh.tpl", {
       deploy_ssh_public_key = var.ssh_private_key
       docker_image          = var.docker_image_backend_blue
@@ -281,7 +273,6 @@ module "frontend_asg_green" {
       aws_secret_access_key = var.aws_secret_access_key
     }),
 
-    # 2) 직접 here-doc으로 붙일 Docker 관련 명령
     <<-EOF
       docker rm -f app 2>/dev/null || true
       docker pull "\$IMAGE"
@@ -290,27 +281,28 @@ module "frontend_asg_green" {
   ])
   
   port_http    = 80
-   health_check = local.hc_frontend
-  tags         = ["frontend","allow-ssh-http", "allow-vpn-ssh"]
+  health_check = local.hc_frontend
+  tags         = ["frontend", "allow-ssh-http", "allow-vpn-ssh"]
 }
+
 
 ############################################################
 # External Backend/Frontend Target Group 생성 (HTTP LB 용)
 ############################################################
 module "backend_tg" {
   source       = "../../modules/target-group"
-  name         = var.env+"-backend-tg"
+  name         = "${var.env}-backend-tg"
   health_check = local.hc_backend
   backends = [
     {
       instance_group  = module.backend_internal_asg_blue.instance_group
-      weight          = local.normalized_blue_weight  # 동적 가중치
+      weight          = local.normalized_blue_weight
       balancing_mode  = "UTILIZATION"
       capacity_scaler = 1.0
     },
     {
       instance_group  = module.backend_internal_asg_green.instance_group
-      weight          = local.normalized_green_weight  # 동적 가중치
+      weight          = local.normalized_green_weight
       balancing_mode  = "UTILIZATION"
       capacity_scaler = 1.0
     }
@@ -319,18 +311,18 @@ module "backend_tg" {
 
 module "frontend_tg" {
   source       = "../../modules/target-group"
-  name         = var.env+"-fronted-tg"
+  name         = "${var.env}-frontend-tg"
   health_check = local.hc_frontend
   backends = [
     {
       instance_group  = module.frontend_asg_blue.instance_group
-      weight          = local.normalized_blue_weight  # 동적 가중치
+      weight          = local.normalized_blue_weight
       balancing_mode  = "UTILIZATION"
       capacity_scaler = 1.0
     },
     {
       instance_group  = module.frontend_asg_green.instance_group
-      weight          = local.normalized_green_weight  # 동적 가중치
+      weight          = local.normalized_green_weight
       balancing_mode  = "UTILIZATION"
       capacity_scaler = 1.0
     }
@@ -341,15 +333,13 @@ module "frontend_tg" {
 ############################################################
 # 외부 HTTPS LB + URL Map (프론트엔드 기본, /api/* 백엔드)
 ############################################################
-
 module "external_lb" {
   source           = "../../modules/external-https-lb"
-  name             = var.env+"-external-lb-a"
+  name             = "${var.env}-external-lb-b"
   domains          = [var.domain_frontend]
-  backend_service  = module.backend_tg.backend_service_self_link      # /api/* 경로용
-  frontend_service = module.frontend_tg.backend_service_self_link     # 그 외 기본 경로용
+  backend_service  = module.backend_tg.backend_service_self_link
+  frontend_service = module.frontend_tg.backend_service_self_link
 }
-
 
 
 resource "google_compute_firewall" "allow_internal_hc" {
@@ -359,7 +349,6 @@ resource "google_compute_firewall" "allow_internal_hc" {
   direction = "INGRESS"
   priority  = 1000
 
-  # GCP 헬스체크 IP 범위 (HTTP/HTTPS 헬스체크용)
   source_ranges = [
     "130.211.0.0/22",
     "35.191.0.0/16",
@@ -367,12 +356,11 @@ resource "google_compute_firewall" "allow_internal_hc" {
 
   allow {
     protocol = "tcp"
-    ports    = ["8080"]      # 헬스체크 포트(Backend VM의 헬스 엔드포인트)
+    ports    = ["8080"]
   }
 
-  # 헬스체크 트래픽을 수신할 Backend VM에 붙은 태그
-  target_tags = ["backend-hc"]
-  description = "Allow GCP Internal LB health checks (TCP:8080) to backend VMs"
+  target_tags  = ["backend-hc"]
+  description  = "Allow GCP Internal LB health checks (TCP:8080) to backend VMs"
 }
 
 resource "google_compute_firewall" "allow_ilb_proxy_to_backend" {
@@ -382,16 +370,13 @@ resource "google_compute_firewall" "allow_ilb_proxy_to_backend" {
   direction = "INGRESS"
   priority  = 1000
 
-  # ILB Proxy-Only Subnet CIDR
-  # 예: var.proxy_subnet_cidr = "10.10.31.0/28"
   source_ranges = [ var.proxy_subnet_cidr ]
 
   allow {
     protocol = "tcp"
-    ports    = ["8080"]      # 내부 LB(Proxy)에서 백엔드 VM으로 보내는 HTTP 포트
+    ports    = ["8080"]
   }
 
-  target_tags = ["backend"]  # 백엔드 VM에 붙어 있어야 함
-  description = "Allow Internal LB proxy (subnet ${var.proxy_subnet_cidr}) to reach backend VMs on TCP/8080"
+  target_tags  = ["backend"]
+  description  = "Allow Internal LB proxy (subnet ${var.proxy_subnet_cidr}) to reach backend VMs on TCP/8080"
 }
-
