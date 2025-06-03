@@ -367,4 +367,3 @@ resource "google_compute_firewall" "allow_ilb_proxy_to_backend" {
   target_tags = ["backend"]  # 백엔드 VM에 붙어 있어야 함
   description = "Allow Internal LB proxy (subnet ${var.proxy_subnet_cidr}) to reach backend VMs on TCP/8080"
 }
-

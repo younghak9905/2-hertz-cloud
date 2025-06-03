@@ -219,8 +219,8 @@ resource "google_compute_firewall" "shared_firewalls" {
     protocol = each.value.protocol
     ports    = lookup(each.value, "ports", [])
   }
-}
 
+}
 
 module "hc_backend" {
   source        = "../../modules/health-check"
