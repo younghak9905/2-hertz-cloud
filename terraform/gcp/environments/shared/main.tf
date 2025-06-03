@@ -219,4 +219,19 @@ resource "google_compute_firewall" "shared_firewalls" {
     protocol = each.value.protocol
     ports    = lookup(each.value, "ports", [])
   }
+
+}
+
+module "hc_backend" {
+  source        = "../../modules/health-check"
+  name          = "backend-http-hc"
+  port          = 8080
+  request_path  = "/health"
+}
+
+module "hc_frontend" {
+  source        = "../../modules/health-check"
+  name          = "frontend-http-hc"
+  port          = 80
+  request_path  = "/health"
 }
