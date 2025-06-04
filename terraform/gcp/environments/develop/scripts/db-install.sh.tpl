@@ -1,7 +1,5 @@
-
 #!/bin/bash
 set -e
-
 
 # 로그 기록
 exec > >(tee -a /var/log/base-init.log) 2>&1
@@ -42,53 +40,49 @@ rm -f get-docker.sh
 usermod -aG docker deploy
 
 # ──────────────────────────────────────────────────────────────────
-    # 1) 디스크 포맷 및 마운트
-    #    - 디스크가 이미 포맷되어 있지 않다면 포맷
-    #    - 마운트 지점: /mnt/mysql-data (필요 시 /var/lib/mysql 로 변경)
-    # ──────────────────────────────────────────────────────────────────
+# 1) 디스크 포맷 및 마운트
+#    - 디스크가 이미 포맷되어 있지 않다면 포맷
+#    - 마운트 지점: /mnt/mysql-data (필요 시 /var/lib/mysql 로 변경)
+# ──────────────────────────────────────────────────────────────────
 
-    DEVICE="/dev/disk/by-id/google-mysql-data"
-    MOUNT_POINT="/mnt/mysql-data"
+DEVICE="/dev/disk/by-id/google-mysql-data"
+MOUNT_POINT="/mnt/mysql-data"
 
-    # 디스크가 ext4로 포맷되지 않았다면 포맷
-    if ! blkid $DEVICE | grep -q ext4; then
-      mkfs.ext4 -F $DEVICE
-    fi
+# 디스크가 ext4로 포맷되지 않았다면 포맷
+if ! blkid $${DEVICE} | grep -q ext4; then
+  mkfs.ext4 -F $${DEVICE}
+fi
 
-    # 마운트 디렉토리 생성
-    mkdir -p $MOUNT_POINT
+# 마운트 디렉토리 생성
+mkdir -p $${MOUNT_POINT}
 
-    # /etc/fstab에 등록하여 재부팅 시 자동 마운트
-    if ! grep -q "${DEVICE}" /etc/fstab; then
-      echo "${DEVICE} ${MOUNT_POINT} ext4 defaults 0 2" >> /etc/fstab
-    fi
+# /etc/fstab에 등록하여 재부팅 시 자동 마운트
+if ! grep -q "$${DEVICE}" /etc/fstab; then
+  echo "$${DEVICE} $${MOUNT_POINT} ext4 defaults 0 2" >> /etc/fstab
+fi
 
-    # 즉시 마운트
-    mount $MOUNT_POINT
+# 즉시 마운트
+mount $${MOUNT_POINT}
 
-    # ──────────────────────────────────────────────────────────────────
-    # 2) MySQL 설치 및 데이터 디렉토리 변경
-    #    - Docker로 MySQL 컨테이너 실행 시, 데이터 볼륨을 /mnt/mysql-data에 연결
-    #    (컨테이너 내부의 /var/lib/mysql ↔ 호스트의 /mnt/mysql-data)
-    # ──────────────────────────────────────────────────────────────────
-    # MySQL 컨테이너 실행
-    # - --volume /mnt/mysql-data:/var/lib/mysql
-    #   로 호스트 디렉토리를 마운트하여 데이터 유지
-    docker rm -f mysql 2>/dev/null || true
+# ──────────────────────────────────────────────────────────────────
+# 2) MySQL 설치 및 데이터 디렉토리 변경
+#    - Docker로 MySQL 컨테이너 실행 시, 데이터 볼륨을 /mnt/mysql-data에 연결
+#    (컨테이너 내부의 /var/lib/mysql ↔ 호스트의 /mnt/mysql-data)
+# ──────────────────────────────────────────────────────────────────
 
-    docker pull "mysql:8.0"
+docker rm -f mysql 2>/dev/null || true
 
-    docker run -d \
-      --name mysql \
-      --restart always \
-      -e MYSQL_ROOT_PASSWORD="${rootpasswd}" \
-      -e MYSQL_DATABASE="${db_name}" \
-      -e MYSQL_USER="${user_name}" \
-      -e MYSQL_PASSWORD="${rootpasswd}" \
-      -v /mnt/mysql-data:/var/lib/mysql \
-      -p 3306:3306 \
-      mysql:8.0
+docker pull "mysql:8.0"
 
-    echo "[startup] MySQL container launched with data on ${MOUNT_POINT}"
+docker run -d \
+  --name mysql \
+  --restart always \
+  -e MYSQL_ROOT_PASSWORD="${rootpasswd}" \
+  -e MYSQL_DATABASE="${db_name}" \
+  -e MYSQL_USER="${user_name}" \
+  -e MYSQL_PASSWORD="${rootpasswd}" \
+  -v $${MOUNT_POINT}:/var/lib/mysql \
+  -p 3306:3306 \
+  mysql:8.0
 
-
+echo "[startup] MySQL container launched with data on $${MOUNT_POINT}"
