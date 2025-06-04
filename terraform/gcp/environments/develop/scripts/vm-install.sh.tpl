@@ -60,9 +60,8 @@ echo "[INFO] 기본 초기화 완료"
 # ───────────────────────────────────────────────
 USE_ECR="${use_ecr}"
 IMAGE="${docker_image}"
-AWS_REGION="${aws_region}"
 
-if [[ "${USE_ECR}" == "true" ]]; then
+if [[ "$USE_ECR" == "true" ]]; then
   echo "[startup] ECR 사용 설정 → 자격 증명 파일 작성 및 로그인"
 
   # 2-1) 자격 증명 파일 생성
@@ -75,7 +74,7 @@ EOF
 
 cat > ~/.aws/config <<EOF
 [default]
-region=${AWS_REGION}
+region=${aws_region}
 output=json
 EOF
 
