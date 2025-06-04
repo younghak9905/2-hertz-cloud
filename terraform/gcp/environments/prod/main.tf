@@ -84,6 +84,8 @@ locals {
   total_weight            = var.traffic_weight_blue + var.traffic_weight_green
   normalized_blue_weight  = local.total_weight > 0 ? (var.traffic_weight_blue * 100 / local.total_weight) : 0
   normalized_green_weight = local.total_weight > 0 ? (var.traffic_weight_green * 100 / local.total_weight) : 0
+
+  ilb_proxy_subnet_self_link = data.terraform_remote_state.shared.outputs.ilb_proxy_subnet_self_link
 }
 
 
@@ -172,22 +174,14 @@ module "backend_internal_asg_green" {
 # 백엔드 Internal Load Balancer (8080)
 ############################################################
 
-resource "google_compute_subnetwork" "ilb_proxy_subnet" {
-  name          = "${var.vpc_name}-ilb-proxy-subnet"
-  ip_cidr_range = var.proxy_subnet_cidr 
-  region        = var.region
-  network       = local.vpc_self_link
 
-  purpose = "INTERNAL_HTTPS_LOAD_BALANCER"
-  role    = "ACTIVE"
-}
 
 module "internal_lb" {
   source                 = "../../modules/internal-http-lb"
   region                 = var.region
   subnet_self_link       = local.subnet_self_link
   vpc_self_link          = data.terraform_remote_state.shared.outputs.vpc_self_link
-  proxy_subnet_self_link = google_compute_subnetwork.ilb_proxy_subnet.self_link
+  proxy_subnet_self_link = local.ilb_proxy_subnet_self_link
 
   backend_name_prefix   = "backend-internal-lb"
   backends = [

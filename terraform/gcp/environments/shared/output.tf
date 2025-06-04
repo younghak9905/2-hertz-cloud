@@ -81,3 +81,9 @@ output "prod_external_lb_ip_self_link" {
   description = "Prod 환경 External LB IP의 Self Link"
   value       = google_compute_global_address.prod_external_lb_ip.self_link
 }
+
+output "ilb_proxy_subnet_self_link" {
+  description = "Internal Load Balancer용 Proxy Subnet의 Self Link"
+  value       = google_compute_subnetwork.ilb_proxy_subnet.self_link
+  
+}

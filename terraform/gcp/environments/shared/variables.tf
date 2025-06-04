@@ -58,3 +58,10 @@ variable "vpn_private_networks" {
   type        = list(string)
   default     = []
 }
+
+variable "proxy_subnet_cidr" {
+  
+  type = string
+  description = "프록시 서브넷 CIDR (예:"
+  default     = "10.10.31.0/26"
+}

@@ -87,6 +87,15 @@ resource "google_compute_subnetwork" "shared_subnets" {
   private_ip_google_access = each.value.private_ip_google_access
 }
 
+resource "google_compute_subnetwork" "ilb_proxy_subnet" {
+  name          = "${var.vpc_name}-ilb-proxy-subnet"
+  ip_cidr_range = var.proxy_subnet_cidr 
+  region        = var.region
+  network       = google_compute_network.shared_vpc.id
+
+  purpose = "INTERNAL_HTTPS_LOAD_BALANCER"
+  role    = "ACTIVE"
+}
 
 
 
