@@ -231,7 +231,7 @@ module "hc_backend" {
   source        = "../../modules/health-check"
   name          = "backend-http-hc"
   port          = 8080
-  request_path  = "/api/health"
+  request_path  = "/api/ping"
 }
 
 module "hc_frontend" {
