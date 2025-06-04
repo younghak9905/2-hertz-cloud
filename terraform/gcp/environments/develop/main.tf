@@ -270,7 +270,7 @@ resource "google_compute_instance" "mysql_vm" {
   #  이 부분을 추가: Persistent Disk(mysql_data) 연결
   # ──────────────────────────────────────────────────────────────────
   attached_disk {
-    source      = google_compute_disk.local.mysql_data_disk_self_link
+    source      = local.mysql_data_disk_self_link
     device_name = "mysql-data"    # 내부적으로 /dev/disk/by-id/google-mysql-data 로 참조됨
     mode        = "READ_WRITE"
           # 인스턴스 삭제 시에도 디스크는 남아 있게 설정
