@@ -199,7 +199,7 @@ resource "google_compute_instance_group" "frontend_ig" {
   network = local.vpc_self_link
    named_port {
     name = "http"
-    port = 8080
+    port = 80
   }
 
   instances = [
