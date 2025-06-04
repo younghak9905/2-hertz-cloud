@@ -113,18 +113,16 @@ module "backend_internal_asg_blue" {
     templatefile("${path.module}/scripts/vm-install.sh.tpl", {
       deploy_ssh_public_key = var.ssh_private_key
       docker_image          = var.docker_image_backend_blue
-      use_ecr               = var.use_ecr
+      use_ecr               = "true"
       aws_region            = var.aws_region
       aws_access_key_id     = var.aws_access_key_id
       aws_secret_access_key = var.aws_secret_access_key
-    }),
+      container_name        = "tuning-backend"
+      container_port        = "8080"
+      host_port            = "8080"
+    })
 
-    # Docker 정리 및 실행 스크립트
-    <<-EOF
-      docker rm -f app 2>/dev/null || true
-      docker pull "\$IMAGE"
-      docker run -d --name app --restart always -p 8080:8080 "\$IMAGE"
-    EOF
+
   ])
   
   health_check = local.hc_backend
@@ -149,19 +147,18 @@ module "backend_internal_asg_green" {
 
   startup_tpl = join("\n", [
     templatefile("${path.module}/scripts/vm-install.sh.tpl", {
-      deploy_ssh_public_key = var.ssh_private_key
+     deploy_ssh_public_key = var.ssh_private_key
       docker_image          = var.docker_image_backend_blue
-      use_ecr               = var.use_ecr
+      use_ecr               = "true"
       aws_region            = var.aws_region
       aws_access_key_id     = var.aws_access_key_id
       aws_secret_access_key = var.aws_secret_access_key
-    }),
+      container_name        = "tuning-backend"
+      container_port        = "8080"
+      host_port            = "8080"
+    })
 
-    <<-EOF
-      docker rm -f app 2>/dev/null || true
-      docker pull "\$IMAGE"
-      docker run -d --name app --restart always -p 8080:8080 "\$IMAGE"
-    EOF
+   
   ])
   
   health_check = local.hc_backend
@@ -225,19 +222,16 @@ module "frontend_asg_blue" {
 
   startup_tpl = join("\n", [
     templatefile("${path.module}/scripts/vm-install.sh.tpl", {
-      deploy_ssh_public_key = var.ssh_private_key
-      docker_image          = var.docker_image_backend_blue
-      use_ecr               = var.use_ecr
+       deploy_ssh_public_key = var.ssh_private_key
+      docker_image          = var.docker_image_front_blue
+      use_ecr               = "true"
       aws_region            = var.aws_region
       aws_access_key_id     = var.aws_access_key_id
       aws_secret_access_key = var.aws_secret_access_key
-    }),
-
-    <<-EOF
-      docker rm -f app 2>/dev/null || true
-      docker pull "\$IMAGE"
-      docker run -d --name app --restart always -p 3000:3000 "\$IMAGE"
-    EOF
+      container_name        = "tuning-frontend"
+      container_port        = "3000"
+      host_port            = "80"
+    })
   ])
   
   port_http    = 80
@@ -263,18 +257,17 @@ module "frontend_asg_green" {
   startup_tpl = join("\n", [
     templatefile("${path.module}/scripts/vm-install.sh.tpl", {
       deploy_ssh_public_key = var.ssh_private_key
-      docker_image          = var.docker_image_backend_blue
-      use_ecr               = var.use_ecr
+      docker_image          = var.docker_image_front_blue
+      use_ecr               = "true"
       aws_region            = var.aws_region
       aws_access_key_id     = var.aws_access_key_id
       aws_secret_access_key = var.aws_secret_access_key
-    }),
+      container_name        = "tuning-frontend"
+      container_port        = "3000"
+      host_port            = "80"
+    })
 
-    <<-EOF
-      docker rm -f app 2>/dev/null || true
-      docker pull "\$IMAGE"
-      docker run -d --name app --restart always -p 3000:3000 "\$IMAGE"
-    EOF
+   
   ])
   
   port_http    = 80

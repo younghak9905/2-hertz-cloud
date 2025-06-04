@@ -114,14 +114,10 @@ resource "google_compute_instance" "backend_vm" {
       aws_region            = var.aws_region
       aws_access_key_id     = var.aws_access_key_id
       aws_secret_access_key = var.aws_secret_access_key
-    }),
-
-    # 2) Docker 정리 및 실행 스크립트
-    <<-EOF
-      docker rm -f app 2>/dev/null || true
-      docker pull "\$IMAGE"
-      docker run -d --name app --restart always -p 8080:8080 "\$IMAGE"
-    EOF
+      container_name        = "tuning-backend"
+      container_port        = "8080"
+      host_port            = "8080"
+    })
   ])
 }
 
@@ -173,12 +169,10 @@ resource "google_compute_instance" "frontend_vm" {
       aws_region            = var.aws_region
       aws_access_key_id     = var.aws_access_key_id
       aws_secret_access_key = var.aws_secret_access_key
-    }),
-    <<-EOF
-      docker rm -f app 2>/dev/null || true
-      docker pull "\$IMAGE"
-      docker run -d --name app --restart always -p 3000:3000 "\$IMAGE"
-    EOF
+      container_name        = "tuning-frontend"
+      container_port        = "3000"
+      host_port            = "80"
+    })
   ])
 }
 
