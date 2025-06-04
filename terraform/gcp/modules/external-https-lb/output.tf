@@ -8,5 +8,5 @@ output "https_proxy_self_link" {
 
 output "forwarding_rule_ip" {
   description = "외부 HTTPS LB 공인 IP"
-  value       = google_compute_global_address.lb_ip.address
+  value       = google_compute_global_forwarding_rule.https_fr.ip_address
 }
