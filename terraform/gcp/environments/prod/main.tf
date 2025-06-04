@@ -76,6 +76,9 @@ locals {
   # Blue/Green 배포 상태 계산
   blue_is_active  = var.active_deployment == "blue"
   green_is_active = var.active_deployment == "green"
+
+  external_lb_ip = data.terraform_remote_state.shared.outputs.prod_external_lb_ip_address
+  external_lb_ip_self_link = data.terraform_remote_state.shared.outputs.prod_external_lb_ip_self_link
   
   # 트래픽 가중치 검증
   total_weight            = var.traffic_weight_blue + var.traffic_weight_green
@@ -339,6 +342,10 @@ module "external_lb" {
   domains          = [var.domain_frontend]
   backend_service  = module.backend_tg.backend_service_self_link
   frontend_service = module.frontend_tg.backend_service_self_link
+   lb_ip = {
+    address     = local.external_lb_ip
+    self_link   = local.external_lb_ip_self_link
+  }
 }
 
 
