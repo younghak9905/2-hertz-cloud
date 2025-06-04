@@ -110,7 +110,7 @@ resource "google_compute_instance" "backend_vm" {
     templatefile("${path.module}/scripts/vm-install.sh.tpl", {
       deploy_ssh_public_key = var.ssh_private_key
       docker_image          = var.docker_image_backend_blue
-      use_ecr               = var.use_ecr
+      use_ecr               = "true"
       aws_region            = var.aws_region
       aws_access_key_id     = var.aws_access_key_id
       aws_secret_access_key = var.aws_secret_access_key
@@ -169,7 +169,7 @@ resource "google_compute_instance" "frontend_vm" {
     templatefile("${path.module}/scripts/vm-install.sh.tpl", {
       deploy_ssh_public_key = var.ssh_private_key
       docker_image          = var.docker_image_front_blue
-      use_ecr               = var.use_ecr
+      use_ecr               = "true"
       aws_region            = var.aws_region
       aws_access_key_id     = var.aws_access_key_id
       aws_secret_access_key = var.aws_secret_access_key
