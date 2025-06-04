@@ -231,14 +231,14 @@ module "hc_backend" {
   source        = "../../modules/health-check"
   name          = "backend-http-hc"
   port          = 8080
-  request_path  = "/health"
+  request_path  = "/api/health"
 }
 
 module "hc_frontend" {
   source        = "../../modules/health-check"
   name          = "frontend-http-hc"
   port          = 80
-  request_path  = "/health"
+  request_path  = "/"
 }
 
 resource "google_compute_disk" "mysql_data" {

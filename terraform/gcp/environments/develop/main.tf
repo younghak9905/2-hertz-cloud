@@ -69,6 +69,12 @@ locals {
   region           = var.region
   subnet_self_link = data.terraform_remote_state.shared.outputs.nat_a_subnet_self_link
   vpc_self_link    = data.terraform_remote_state.shared.outputs.vpc_self_link
+  private_subnet_self_link = data.terraform_remote_state.shared.outputs.private_subnet_self_link
+
+
+
+  external_lb_ip = data.terraform_remote_state.shared.outputs.dev_external_lb_ip_address
+  external_lb_ip_self_link = data.terraform_remote_state.shared.outputs.dev_external_lb_ip_self_link
 
   # 헬스체크
   hc_backend  = data.terraform_remote_state.shared.outputs.hc_backend_self_link
@@ -82,6 +88,8 @@ locals {
   total_weight            = var.traffic_weight_blue + var.traffic_weight_green
   normalized_blue_weight  = local.total_weight > 0 ? (var.traffic_weight_blue * 100 / local.total_weight) : 0
   normalized_green_weight = local.total_weight > 0 ? (var.traffic_weight_green * 100 / local.total_weight) : 0
+
+  mysql_data_disk_self_link = data.terraform_remote_state.shared.outputs.mysql_data_disk_self_link
 }
 
 ############################################################
@@ -97,7 +105,7 @@ resource "google_compute_instance" "backend_vm" {
 
   boot_disk {
     initialize_params {
-      image = "debian-cloud/debian-11"
+      image = "ubuntu-os-cloud/ubuntu-2204-lts"
       size  = 30
       type  = "pd-balanced"
     }
@@ -152,7 +160,7 @@ resource "google_compute_instance" "frontend_vm" {
 
   boot_disk {
     initialize_params {
-      image = "debian-cloud/debian-11"
+      image = "ubuntu-os-cloud/ubuntu-2204-lts"
       size  = 30
       type  = "pd-balanced"
     }
@@ -173,7 +181,6 @@ resource "google_compute_instance" "frontend_vm" {
       aws_access_key_id     = var.aws_access_key_id
       aws_secret_access_key = var.aws_secret_access_key
     }),
-
     <<-EOF
       docker rm -f app 2>/dev/null || true
       docker pull "\$IMAGE"
@@ -235,7 +242,59 @@ module "external_lb" {
   domains          = [var.domain_frontend]
   backend_service  = module.backend_tg.backend_service_self_link
   frontend_service = module.frontend_tg.backend_service_self_link
+  lb_ip = {
+    address     = local.external_lb_ip
+    self_link   = local.external_lb_ip_self_link
+  }
 }
+
+############################################################
+# mysql 인스턴스 생성
+############################################################
+
+resource "google_compute_instance" "mysql_vm" {
+  name         = "${var.env}-mysql-vm"
+  machine_type = "e2-small"
+  zone         = "${var.region}-a"
+  tags         = ["mysql", "allow-vpn-ssh"]
+
+  boot_disk {
+
+    initialize_params {
+      image = "ubuntu-os-cloud/ubuntu-2204-lts"
+      size  = 30
+      type  = "pd-balanced"
+    }
+  }
+
+  # ──────────────────────────────────────────────────────────────────
+  #  이 부분을 추가: Persistent Disk(mysql_data) 연결
+  # ──────────────────────────────────────────────────────────────────
+  attached_disk {
+    source      = google_compute_disk.local.mysql_data_disk_self_link
+    device_name = "mysql-data"    # 내부적으로 /dev/disk/by-id/google-mysql-data 로 참조됨
+    mode        = "READ_WRITE"
+          # 인스턴스 삭제 시에도 디스크는 남아 있게 설정
+  }
+
+  network_interface {
+    network    = local.vpc_self_link
+    subnetwork = local.private_subnet_self_link
+    # 외부 접근 필요 없으면 access_config 생략
+  }
+
+  metadata_startup_script =join("\n", [
+    templatefile("${path.module}/scripts/db-install.sh.tpl", {
+      deploy_ssh_public_key = var.ssh_private_key
+      rootpasswd            = var.mysql_root_password,
+      db_name               = var.mysql_database_name,
+      user_name             = var.mysql_user_name
+    })
+    
+  ])
+}
+
+
 
 ############################################################
 # 공통 방화벽(Firewall) 규칙
