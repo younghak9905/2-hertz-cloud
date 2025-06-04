@@ -70,8 +70,6 @@ locals {
   vpc_self_link    = data.terraform_remote_state.shared.outputs.vpc_self_link
   private_subnet_self_link = data.terraform_remote_state.shared.outputs.private_subnet_self_link
 
-
-
   external_lb_ip = data.terraform_remote_state.shared.outputs.dev_external_lb_ip_address
   external_lb_ip_self_link = data.terraform_remote_state.shared.outputs.dev_external_lb_ip_self_link
 
@@ -79,14 +77,6 @@ locals {
   hc_backend  = data.terraform_remote_state.shared.outputs.hc_backend_self_link
   hc_frontend = data.terraform_remote_state.shared.outputs.hc_frontend_self_link
 
-  # Blue/Green 배포 상태 계산
-  blue_is_active  = var.active_deployment == "blue"
-  green_is_active = var.active_deployment == "green"
-
-  # 트래픽 가중치 검증
-  total_weight            = var.traffic_weight_blue + var.traffic_weight_green
-  normalized_blue_weight  = local.total_weight > 0 ? (var.traffic_weight_blue * 100 / local.total_weight) : 0
-  normalized_green_weight = local.total_weight > 0 ? (var.traffic_weight_green * 100 / local.total_weight) : 0
 
   mysql_data_disk_self_link = data.terraform_remote_state.shared.outputs.mysql_data_disk_self_link
 }
@@ -100,7 +90,7 @@ resource "google_compute_instance" "backend_vm" {
   name         = "${var.env}-backend-vm-a"
   machine_type = "e2-medium"
   zone         = "${var.region}-a"
-  tags         = ["backend", "backend-hc", "allow-vpn-ssh"]
+  tags         = ["backend", "backend-hc", "allow-vpn-ssh", "allow-ssh-http"]
 
   boot_disk {
     initialize_params {
@@ -218,7 +208,7 @@ module "backend_tg" {
   backends = [
     {
       instance_group  = google_compute_instance_group.backend_ig.self_link
-      weight          = local.normalized_blue_weight
+      weight          = 100
       balancing_mode  = "UTILIZATION"
       capacity_scaler = 1.0
     }
@@ -326,10 +316,9 @@ resource "google_compute_firewall" "dev_firewalls" {
 }
 
 locals {
- shared_firewall_rules = data.terraform_remote_state.shared.outputs.firewall_rules
-
+ 
   # 2) 직접 정의한 추가 방화벽 규칙
-  custom_firewall_rules = [
+  firewall_rules = [
     {
       name          = "${var.vpc_name}-fw-frontend-to-backend"
       direction     = "INGRESS"
@@ -363,8 +352,5 @@ locals {
   ]
 
   # 3) 두 리스트를 합쳐서 최종 firewall_rules 로 사용
-  firewall_rules = concat(
-    local.shared_firewall_rules,
-    local.custom_firewall_rules
-  )
+ 
 }
