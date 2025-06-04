@@ -119,6 +119,51 @@ export IMAGE="${docker_image}"
 echo "[INFO] Docker Hub 이미지 사용: $IMAGE"
 %{ endif }
 
+# 기존 컨테이너 정리
+echo "[INFO] 기존 '${container_name}' 컨테이너 정리 중..."
+docker rm -f ${container_name} 2>/dev/null || true
+
+# Docker 이미지 pull
+echo "[INFO] Docker 이미지 pull 시작..."
+docker pull "$IMAGE"
+
+if [ $? -eq 0 ]; then
+    echo "[SUCCESS] 이미지 pull 성공"
+    
+    # 새 컨테이너 실행
+    echo "[INFO] 새 컨테이너 실행 중..."
+    docker run -d \
+        --name ${container_name} \
+        --restart always \
+        -p ${host_port}:${container_port} \
+        "$IMAGE"
+    
+    if [ $? -eq 0 ]; then
+        echo "[SUCCESS] 컨테이너 실행 성공"
+        echo "[INFO] 컨테이너 상태:"
+        docker ps | grep ${container_name}
+        
+        echo "[INFO] 컨테이너 로그 (최근 10줄):"
+        docker logs --tail 10 ${container_name}
+        
+        # deploy 사용자도 Docker 명령을 사용할 수 있도록 권한 설정
+        echo "[INFO] deploy 사용자 Docker 권한 설정..."
+        usermod -aG docker deploy
+        
+        # docker.sock 권한 설정
+        chmod 666 /var/run/docker.sock
+        
+    else
+        echo "[ERROR] 컨테이너 실행 실패"
+        docker logs ${container_name} 2>/dev/null || echo "[ERROR] 컨테이너 로그를 가져올 수 없음"
+        exit 1
+    fi
+else
+    echo "[ERROR] 이미지 pull 실패"
+    echo "[DEBUG] Docker 데몬 상태:"
+    systemctl status docker --no-pager -l
+    exit 1
+fi
 
 echo "======================================================"
 echo "[SUCCESS] 모든 초기화 작업 완료"
