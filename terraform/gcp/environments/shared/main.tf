@@ -25,10 +25,14 @@ locals {
 resource "google_compute_address" "openvpn_static_ip" {
   name = "openvpn-static-ip"
   region = var.region
-  
-
 }
 
+resource "google_compute_global_address" "dev_external_lb_ip" {
+  name = "dev-external-lb-ip"
+}
+resource "google_compute_global_address" "prod_external_lb_ip" {
+  name = "prod-external-lb-ip"
+}
 
 resource "google_compute_instance" "openvpn" {
   name                  = "openvpn"
@@ -82,6 +86,7 @@ resource "google_compute_subnetwork" "shared_subnets" {
   network       = google_compute_network.shared_vpc.id
   private_ip_google_access = each.value.private_ip_google_access
 }
+
 
 
 
@@ -226,12 +231,19 @@ module "hc_backend" {
   source        = "../../modules/health-check"
   name          = "backend-http-hc"
   port          = 8080
-  request_path  = "/health"
+  request_path  = "/api/ping"
 }
 
 module "hc_frontend" {
   source        = "../../modules/health-check"
   name          = "frontend-http-hc"
   port          = 80
-  request_path  = "/health"
+  request_path  = "/"
+}
+
+resource "google_compute_disk" "mysql_data" {
+  name  = "${var.env}-mysql-data-disk"
+  type  = "pd-ssd"          # 성능을 위해 SSD(‘pd-ssd’)를 사용합니다. 필요에 따라 'pd-standard'로 변경 가능.
+  zone  = "${var.region}-a" # MySQL 인스턴스가 위치한 zone과 동일해야 합니다.
+  size  = 30               # GB 단위. 원하는 크기로 조정하세요.
 }

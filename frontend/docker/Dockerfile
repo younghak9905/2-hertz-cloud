@@ -1,42 +1,24 @@
-# ==================== 베이스 스테이지 ====================
-FROM node:20-alpine AS base
+# 1단계: Build 단계
+FROM node:20-alpine AS builder
+RUN npm install -g pnpm
 WORKDIR /app
 
-# pnpm 설치 (공식 방법)
-RUN corepack enable && corepack prepare pnpm@8.15.5 --activate
+# 종속성 설치용 사전 복사
+COPY pnpm-lock.yaml ./
+COPY package.json ./
+RUN pnpm install
 
-# ==================== 의존성 스테이지 ====================
-FROM base AS deps
-COPY pnpm-lock.yaml package.json ./
-RUN pnpm install --frozen-lockfile
-
-# ==================== 빌드 스테이지 ====================
-FROM base AS builder
-COPY --from=deps /app/node_modules ./node_modules
+# 전체 코드 복사 및 빌드
 COPY . .
+RUN pnpm build
 
-# 빌드 시점 환경변수
-ARG NEXT_PUBLIC_API_BASE_URL
-ARG NEXT_PUBLIC_WS_URL
+# 2단계: 실행용 이미지
+FROM node:20-alpine
+RUN npm install -g pnpm
+WORKDIR /app
 
-# 빌드 및 프로덕션 의존성만 유지
-RUN pnpm run build && pnpm prune --prod
-
-# ==================== 프로덕션 스테이지 ====================
-FROM base AS production
-
-# pnpm 재설치 (base에서만 깔렸으므로)
-RUN corepack enable && corepack prepare pnpm@8.15.5 --activate
-
-COPY --from=builder /app/package.json ./
-COPY --from=builder /app/pnpm-lock.yaml ./
-COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/.next ./.next
-COPY --from=builder /app/public ./public
-COPY --from=builder /app/next.config.mjs ./
-
-ENV NODE_ENV=production
+# 빌드된 결과 복사
+COPY --from=builder /app ./
 
 EXPOSE 3000
-
 CMD ["pnpm", "start"]

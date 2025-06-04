@@ -24,7 +24,7 @@ variable "dev_gcp_sa_key" {
 variable "env" {
   description = "환경 이름 (예: dev, prod)"
   type        = string
-  default     = "dev"
+  default     = "prod"
   
 }
 variable "default_sa_email" {
@@ -46,7 +46,6 @@ variable "extra_startup_script" {
 variable "docker_image" {
   description = "Docker 이미지 이름 (예: OpenVPN)"
   type        = string
-  default = ""
 
 }
 
@@ -176,27 +175,4 @@ variable "green_instance_count" {
     min     = 0
     max     = 2
   }
-}
-
-
-variable "mysql_root_password" {
-  description = "MySQL root 사용자 비밀번호"
-  type        = string
-  default = ""
-  sensitive = true
-}
-
-variable "mysql_database_name" {
-  description = "MySQL에 생성할 데이터베이스 이름"
-  type        = string
-  sensitive = true
-  default = ""
-
-}
-
-variable "mysql_user_name" {
-  description = "MySQL에 생성할 일반 사용자 이름"
-  type        = string
-  sensitive = true
-  default = ""
 }

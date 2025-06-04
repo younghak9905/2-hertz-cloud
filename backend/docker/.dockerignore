@@ -1,16 +1,19 @@
-# 빌드 산출물 및 캐시
+# Gradle
+.gradle
 build/
-.gradle/
-out/
+**/build/
+!hertz-be/build/libs/*.jar
 
-# IDE 및 환경 설정 파일
+# IDE
+.idea
 *.iml
-*.idea/
-*.vscode/
-*.log
 
-# 기타 불필요 항목
-.git/
+# Git
+.git
 .gitignore
-Dockerfile
-README.md
+
+# OS
+.DS_Store
+
+# 기타
+.env
