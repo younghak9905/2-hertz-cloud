@@ -74,12 +74,15 @@ EOF
     AWS_ACCOUNT_ID=$(echo "$AWS_REGISTRY" | cut -d'.' -f1)
     
     # 리전이 레지스트리 URL에 포함되어 있는지 확인
-    if [[ "$AWS_REGISTRY" =~ \.ecr\.([^.]+)\.amazonaws\.com ]]; then
-      REGISTRY_REGION="${BASH_REMATCH[1]}"
-      echo "[INFO] 레지스트리 리전: $REGISTRY_REGION"
-    else
+    # ECR URL 패턴: {account}.dkr.ecr.{region}.amazonaws.com
+    REGISTRY_REGION=$(echo "$AWS_REGISTRY" | grep -oP '\.ecr\.\K[^.]+(?=\.amazonaws\.com)' || echo "")
+    
+    if [[ -z "$REGISTRY_REGION" ]]; then
+      # URL에서 리전을 찾을 수 없으면 제공된 리전 사용
       REGISTRY_REGION=$AWS_REGION
       echo "[INFO] 기본 리전 사용: $REGISTRY_REGION"
+    else
+      echo "[INFO] 레지스트리 리전: $REGISTRY_REGION"
     fi
     
     echo "[INFO] ECR 레지스트리: $AWS_REGISTRY"
