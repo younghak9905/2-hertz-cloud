@@ -64,7 +64,6 @@ resource "google_compute_router_nat" "nat" {
 
 locals {
   nat_subnet_info = data.terraform_remote_state.shared.outputs.nat_subnet_info
-  firewall_rules  = data.terraform_remote_state.shared.outputs.firewall_rules
 
   region           = var.region
   subnet_self_link = data.terraform_remote_state.shared.outputs.nat_a_subnet_self_link
@@ -271,7 +270,7 @@ resource "google_compute_instance" "mysql_vm" {
   #  이 부분을 추가: Persistent Disk(mysql_data) 연결
   # ──────────────────────────────────────────────────────────────────
   attached_disk {
-    source      = google_compute_disk.local.mysql_data_disk_self_link
+    source      = local.mysql_data_disk_self_link
     device_name = "mysql-data"    # 내부적으로 /dev/disk/by-id/google-mysql-data 로 참조됨
     mode        = "READ_WRITE"
           # 인스턴스 삭제 시에도 디스크는 남아 있게 설정
@@ -319,7 +318,10 @@ resource "google_compute_firewall" "dev_firewalls" {
 }
 
 locals {
-  firewall_rules = [
+ shared_firewall_rules = data.terraform_remote_state.shared.outputs.firewall_rules
+
+  # 2) 직접 정의한 추가 방화벽 규칙
+  custom_firewall_rules = [
     {
       name          = "${var.vpc_name}-fw-frontend-to-backend"
       direction     = "INGRESS"
@@ -351,4 +353,10 @@ locals {
       ports        = ["6379"]
     }
   ]
+
+  # 3) 두 리스트를 합쳐서 최종 firewall_rules 로 사용
+  firewall_rules = concat(
+    local.shared_firewall_rules,
+    local.custom_firewall_rules
+  )
 }
