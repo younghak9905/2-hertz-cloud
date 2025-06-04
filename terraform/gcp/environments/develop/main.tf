@@ -141,6 +141,10 @@ resource "google_compute_instance_group" "backend_ig" {
   zone    = "${var.region}-a"
   network = local.vpc_self_link
 
+   named_port {
+    name = "http"
+    port = 8080
+  }
   instances = [
     google_compute_instance.backend_vm.self_link
   ]
@@ -193,6 +197,10 @@ resource "google_compute_instance_group" "frontend_ig" {
   name    = "${var.env}-fe-ig-a"
   zone    = "${var.region}-a"
   network = local.vpc_self_link
+   named_port {
+    name = "http"
+    port = 8080
+  }
 
   instances = [
     google_compute_instance.frontend_vm.self_link
