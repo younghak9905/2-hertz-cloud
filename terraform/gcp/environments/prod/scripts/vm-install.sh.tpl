@@ -45,6 +45,13 @@ echo "[INFO] 기본 초기화 완료"
 # ───────────────────────────────────────────────
 # 2. ECR 로그인 (필요 시만)
 # ───────────────────────────────────────────────
+
+USE_ECR="${use_ecr}
+DOCKER_IMAGE="${docker_image}"
+AWS_REGION="${aws_region}"
+AWS_ACCESS_KEY_ID="{aws_access_key_id}"
+AWS_SECRET_ACCESS_KEY="{aws_secret_access_key}"
+
 if [[ "$USE_ECR" == "true" ]] && [[ -n "$AWS_REGION" ]] && [[ -n "$AWS_ACCESS_KEY_ID" ]]; then
   echo "[INFO] ECR 로그인 시작"
   
@@ -61,11 +68,6 @@ EOF
 region=$AWS_REGION
 output=json
 EOF
-
-  # 2-2) 환경변수 설정
-  export AWS_DEFAULT_REGION=$AWS_REGION
-  export AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID
-  export AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY
 
   # 2-3) ECR 레지스트리 추출 및 로그인
   if [[ -n "$DOCKER_IMAGE" ]]; then
