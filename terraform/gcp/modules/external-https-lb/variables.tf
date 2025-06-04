@@ -18,3 +18,11 @@ variable "frontend_service" {
   description = "URL Map의 기본(프론트엔드) BackendService self_link"
   type        = string
 }
+
+variable "lb_ip" {
+  description = "External Load Balancer의 Global IP 주소 self_link"
+  type        = object({
+    address = string
+    self_link = string
+  })
+}
