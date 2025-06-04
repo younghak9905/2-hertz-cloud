@@ -1,41 +1,44 @@
 #!/bin/bash
-set -euo pipefail
+set -e
 
-# ───────────────────────────────────────────────
-# Terraform 템플릿 변수
-# ───────────────────────────────────────────────
-DEPLOY_SSH_PUBLIC_KEY="${deploy_ssh_public_key}"
-DOCKER_IMAGE="${docker_image}"
-USE_ECR="${use_ecr}"
-AWS_REGION="${aws_region}"
-AWS_ACCESS_KEY_ID="${aws_access_key_id}"
-AWS_SECRET_ACCESS_KEY="${aws_secret_access_key}"
+# 로그 기록
+exec > >(tee -a /var/log/base-init.log) 2>&1
 
-# ───────────────────────────────────────────────
-# 1. 기본 시스템 설정
-# ───────────────────────────────────────────────
-echo "[INFO] 시작: VM 초기화 스크립트"
+echo "========== 기본 초기화 시작 =========="
 
-# 1-1) SSH 키 설정
-if [[ -n "$DEPLOY_SSH_PUBLIC_KEY" ]]; then
-  echo "[INFO] SSH 공개키 설정"
-  mkdir -p /home/ubuntu/.ssh
-  echo "$DEPLOY_SSH_PUBLIC_KEY" >> /home/ubuntu/.ssh/authorized_keys
-  chmod 600 /home/ubuntu/.ssh/authorized_keys
-  chown -R ubuntu:ubuntu /home/ubuntu/.ssh
+# deploy 사용자 생성 및 SSH 키 등록
+if id "deploy" &>/dev/null; then
+  echo "[INFO] deploy 사용자 이미 존재함"
+else
+  echo "[INFO] deploy 사용자 생성 및 SSH 키 등록"
+  useradd -m -s /bin/bash deploy
+  mkdir -p /home/deploy/.ssh
+  echo "${deploy_ssh_public_key}" > /home/deploy/.ssh/authorized_keys
+  chmod 700 /home/deploy/.ssh
+  chmod 600 /home/deploy/.ssh/authorized_keys
+  chown -R deploy:deploy /home/deploy/.ssh
 fi
 
-# 1-2) 패키지 업데이트 및 Docker 설치
-echo "[INFO] 패키지 업데이트 및 Docker 설치"
-apt-get update -qq
-apt-get install -y docker.io awscli jq
+# deploy 사용자에 제한 sudo 권한 부여 (docker / openvpnas 제어용)
+if ! grep -q "deploy" /etc/sudoers; then
+  echo "deploy ALL=(ALL) NOPASSWD: /bin/systemctl * docker, /bin/systemctl * openvpnas, /bin/service openvpnas *" >> /etc/sudoers
+fi
 
-# Docker 서비스 시작
-systemctl enable docker
-systemctl start docker
 
-# ubuntu 사용자를 docker 그룹에 추가
-usermod -aG docker ubuntu
+echo "[INFO] 기본 초기화 완료"
+
+# 로그 설정
+exec > >(tee /var/log/user-data.log) 2>&1
+echo "======================================================"
+# Docker 설치 (공식 스크립트 사용)
+echo "[INFO] Docker 설치 중..."
+curl -fsSL https://get.docker.com -o get-docker.sh
+chmod +x get-docker.sh
+sh get-docker.sh
+rm -f get-docker.sh
+
+# deploy 사용자에 docker 그룹 권한 부여
+usermod -aG docker deploy
 
 echo "[INFO] 기본 초기화 완료"
 
