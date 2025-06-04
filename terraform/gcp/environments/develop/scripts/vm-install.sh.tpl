@@ -49,7 +49,7 @@ echo "[INFO] AWS CLI 설치 중..."
 curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
 apt-get install -y unzip
 unzip awscliv2.zip
-./aws/install
+./aws/install --update
 rm -rf aws awscliv2.zip
 
 echo "[INFO] 기본 초기화 완료"
@@ -58,20 +58,28 @@ echo "[INFO] 기본 초기화 완료"
 # ───────────────────────────────────────────────
 # 2. ECR 로그인 (필요 시만)
 # ───────────────────────────────────────────────
-IMAGE = ${docker_image}
+USE_ECR="${use_ecr}"
+IMAGE="${docker_image}"
+AWS_REGION="${aws_region}"
 
-if [[ "${use_ecr}" == "true" ]]; then
+if [[ "${USE_ECR}" == "true" ]]; then
   echo "[startup] ECR 사용 설정 → 자격 증명 파일 작성 및 로그인"
 
   # 2-1) 자격 증명 파일 생성
-  mkdir -p /root/.aws
-  cat >/root/.aws/credentials <<EOF
+  mkdir -p ~/.aws
+cat > ~/.aws/credentials <<EOF
 [default]
 AWS_ACCESS_KEY_ID=${aws_access_key_id}
 AWS_SECRET_ACCESS_KEY=${aws_secret_access_key}
 EOF
 
-  # 2-2) 레지스트리 도메인 추출 → 로그인
+cat > ~/.aws/config <<EOF
+[default]
+region=${AWS_REGION}
+output=json
+EOF
+
+# 2-2) 레지스트리 도메인 추출 → 로그인
   AWS_REGISTRY="$(echo "$IMAGE" | cut -d'/' -f1)"
   aws ecr get-login-password --region "$AWS_REGION" \
     | docker login --username AWS --password-stdin "$AWS_REGISTRY"
