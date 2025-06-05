@@ -270,7 +270,7 @@ resource "google_compute_instance" "mysql_vm" {
 
   network_interface {
     network    = local.vpc_self_link
-    subnetwork = local.private_subnet_self_link
+    subnetwork = local.subnet_self_link
     # 외부 접근 필요 없으면 access_config 생략
   }
 
