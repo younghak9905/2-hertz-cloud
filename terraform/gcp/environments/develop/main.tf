@@ -33,14 +33,14 @@ provider "google" {
 
 # Cloud Router 생성
 resource "google_compute_router" "router" {
-  name    = "${var.vpc_name}-router"
+  name    = "${var.vpc_name}-router-${var.env}"
   region  = var.region
   network = data.terraform_remote_state.shared.outputs.vpc_self_link
 }
 
 # Cloud NAT용 외부 고정 IP
 resource "google_compute_address" "nat_ip" {
-  name   = "${var.vpc_name}-nat-ip"
+  name   = "${var.vpc_name}-nat-ip-${var.env}"
   region = var.region
 }
 
