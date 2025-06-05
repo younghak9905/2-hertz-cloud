@@ -26,19 +26,6 @@ fi
 
 echo "[INFO] 기본 초기화 완료"
 
-# 로그 설정
-exec > >(tee /var/log/user-data.log) 2>&1
-echo "======================================================"
-# Docker 설치 (공식 스크립트 사용)
-echo "[INFO] Docker 설치 중..."
-curl -fsSL https://get.docker.com -o get-docker.sh
-chmod +x get-docker.sh
-sh get-docker.sh
-rm -f get-docker.sh
-
-# deploy 사용자에 docker 그룹 권한 부여
-usermod -aG docker deploy
-
 # ──────────────────────────────────────────────────────────────────
 # 1) 디스크 포맷 및 마운트
 #    - 디스크가 이미 포맷되어 있지 않다면 포맷
@@ -70,9 +57,17 @@ mount $${MOUNT_POINT}
 #    (컨테이너 내부의 /var/lib/mysql ↔ 호스트의 /mnt/mysql-data)
 # ──────────────────────────────────────────────────────────────────
 
-docker rm -f mysql 2>/dev/null || true
 
-docker pull "mysql:8.0"
+# 로그 설정
+exec > >(tee /var/log/user-data.log) 2>&1
+echo "======================================================"
+# Docker 설치 (공식 스크립트 사용)
+dpkg -i $${MOUNT_POINT}/containerd.io_*.deb $${MOUNT_POINT}/docker-ce-cli_*.deb $${MOUNT_POINT}/docker-ce_*.deb || apt-get install -f -y
+
+# deploy 사용자에 docker 그룹 권한 부여
+usermod -aG docker deploy
+
+docker load -i $${MOUNT_POINT}/mysql-8.0.tar
 
 docker run -d \
   --name mysql \
