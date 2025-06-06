@@ -117,7 +117,7 @@ if [ ! -d "$DIR_PATH" ]; then
 fi
 
 > "$ENV_FILE"
-echo "# Spring Boot 환경변수 (SSM→.env, DB_HOST는 로컬 IP로 덮어쓰기)" >> "$ENV_FILE"
+echo "# nextjs 환경변수" >> "$ENV_FILE"
 
 
 # SSM 파라미터 prefix

@@ -161,7 +161,9 @@ resource "google_compute_instance" "frontend_vm" {
   network_interface {
     network    = local.vpc_self_link
     subnetwork = local.subnet_self_link
-    access_config {}  # 외부 IP 필요 시 연결
+
+
+
   }
 
   metadata_startup_script = join("\n", [
