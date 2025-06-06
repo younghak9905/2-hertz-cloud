@@ -69,7 +69,7 @@ locals {
   region           = var.region
   subnet_self_link = data.terraform_remote_state.shared.outputs.nat_b_subnet_self_link
   vpc_self_link    = data.terraform_remote_state.shared.outputs.vpc_self_link
-
+  private_subnet_self_link = data.terraform_remote_state.shared.outputs.prod_private_subnet_self_link
   hc_backend  = data.terraform_remote_state.shared.outputs.hc_backend_self_link
   hc_frontend = data.terraform_remote_state.shared.outputs.hc_frontend_self_link
 
@@ -86,6 +86,8 @@ locals {
   normalized_green_weight = local.total_weight > 0 ? (var.traffic_weight_green * 100 / local.total_weight) : 0
 
   ilb_proxy_subnet_self_link = data.terraform_remote_state.shared.outputs.ilb_proxy_subnet_self_link
+  mysql_data_disk_self_link = data.terraform_remote_state.shared.outputs.prod_mysql_data_disk_self_link
+  
 }
 
 
@@ -109,7 +111,7 @@ module "backend_internal_asg_blue" {
 
   startup_tpl = join("\n", [
     # 기존 템플릿 파일 호출
-    templatefile("${path.module}/scripts/vm-install.sh.tpl", {
+      templatefile("${path.module}/scripts/backend-install.sh.tpl", {
       deploy_ssh_public_key = var.ssh_private_key
       docker_image          = var.docker_image_backend_blue
       use_ecr               = "true"
@@ -119,6 +121,8 @@ module "backend_internal_asg_blue" {
       container_name        = "tuning-backend"
       container_port        = "8080"
       host_port            = "8080"
+      db_host              = google_compute_address.mysql_internal_ip.address
+      ssm_path            = "/global/springboot/"
     })
 
 
@@ -222,8 +226,8 @@ module "frontend_asg_blue" {
   cpu_target = 0.8
 
   startup_tpl = join("\n", [
-    templatefile("${path.module}/scripts/vm-install.sh.tpl", {
-       deploy_ssh_public_key = var.ssh_private_key
+       templatefile("${path.module}/scripts/frontend-install.sh.tpl", {
+      deploy_ssh_public_key = var.ssh_private_key
       docker_image          = var.docker_image_front_blue
       use_ecr               = "true"
       aws_region            = var.aws_region
@@ -232,6 +236,7 @@ module "frontend_asg_blue" {
       container_name        = "tuning-frontend"
       container_port        = "3000"
       host_port            = "80"
+      ssm_path            = "/global/nextjs/"
     })
   ])
   
@@ -256,7 +261,7 @@ module "frontend_asg_green" {
   cpu_target = 0.8
 
   startup_tpl = join("\n", [
-    templatefile("${path.module}/scripts/vm-install.sh.tpl", {
+       templatefile("${path.module}/scripts/frontend-install.sh.tpl", {
       deploy_ssh_public_key = var.ssh_private_key
       docker_image          = var.docker_image_front_blue
       use_ecr               = "true"
@@ -266,6 +271,7 @@ module "frontend_asg_green" {
       container_name        = "tuning-frontend"
       container_port        = "3000"
       host_port            = "80"
+      ssm_path            = "/global/nextjs/"
     })
 
    
@@ -375,4 +381,57 @@ resource "google_compute_firewall" "allow_ilb_proxy_to_backend" {
 
   target_tags  = ["backend"]
   description  = "Allow Internal LB proxy (subnet ${var.proxy_subnet_cidr}) to reach backend VMs on TCP/8080"
+}
+
+
+resource "google_compute_address" "mysql_internal_ip" {
+  name         = "${var.env}-mysql-internal-ip"
+  address_type = "INTERNAL"
+  subnetwork   = local.private_subnet_self_link  # 원하는 서브넷
+  region       = var.region
+  address      = var.mysql_internal_ip 
+}
+
+
+resource "google_compute_instance" "mysql_vm" {
+  name         = "${var.env}-mysql-vm"
+  machine_type = "e2-small"
+  zone         = "${var.region}-a"
+  tags         = ["mysql", "allow-vpn-ssh"]
+
+  boot_disk {
+
+    initialize_params {
+      image = "ubuntu-os-cloud/ubuntu-2204-lts"
+      size  = 30
+      type  = "pd-balanced"
+    }
+  }
+
+  # ──────────────────────────────────────────────────────────────────
+  #  이 부분을 추가: Persistent Disk(mysql_data) 연결
+  # ──────────────────────────────────────────────────────────────────
+  attached_disk {
+    source      = local.mysql_data_disk_self_link
+    device_name = "mysql-data"    # 내부적으로 /dev/disk/by-id/google-mysql-data 로 참조됨
+    mode        = "READ_WRITE"
+          # 인스턴스 삭제 시에도 디스크는 남아 있게 설정
+  }
+
+  network_interface {
+    network    = local.vpc_self_link
+    subnetwork = local.private_subnet_self_link
+    network_ip = google_compute_address.mysql_internal_ip.address
+    # 외부 접근 필요 없으면 access_config 생략
+  }
+
+  metadata_startup_script =join("\n", [
+    templatefile("${path.module}/scripts/db-install.sh.tpl", {
+      deploy_ssh_public_key = var.ssh_private_key
+      rootpasswd            = var.mysql_root_password,
+      db_name               = var.mysql_database_name,
+      user_name             = var.mysql_user_name
+    })
+    
+  ])
 }
