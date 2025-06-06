@@ -155,7 +155,7 @@ for PARAM in "$${PARAMS[@]}"; do
   echo "$PARAM=$VALUE" >> "$ENV_FILE"
 done
 
-echo "✅ SSM 파라미터를 ${ENV_FILE} 파일로 저장 완료"
+echo "✅ SSM 파라미터를 $ENV_FILE 파일로 저장 완료"
 LOCAL_DB_HOST="${db_host}"
 echo "DB_HOST=${LOCAL_DB_HOST}" >> "$ENV_FILE"
 
