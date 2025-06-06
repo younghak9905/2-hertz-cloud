@@ -138,7 +138,7 @@ PARAMS=(
 echo "# Spring Boot 환경변수 (SSM에서 자동생성)" > "$ENV_FILE"
 
 
-for PARAM in "${PARAMS[@]}"; do
+for PARAM in "$${PARAMS[@]}"; do
   # SSM에서 값 읽기 (SecureString 포함)
   VALUE=$(aws ssm get-parameter \
       --name "$${PREFIX}$${PARAM}" \
