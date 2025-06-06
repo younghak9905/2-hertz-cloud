@@ -68,3 +68,9 @@ variable "proxy_subnet_self_link" {
   description = "Internal HTTP LB 프록시 전용 서브넷(Proxy-Only Subnet) self_link"
   type        = string
 }
+
+variable "env" {
+  description = "환경 이름 (예: \"dev\", \"prod\")"
+  type        = string
+  
+}

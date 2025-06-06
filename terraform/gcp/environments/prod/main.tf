@@ -101,7 +101,6 @@ module "backend_internal_asg_blue" {
   subnet_self_link = local.subnet_self_link
   disk_size_gb     = 30
   machine_type     = "e2-medium"
-  
   # 동적 인스턴스 수 설정
   desired    = var.blue_instance_count.desired
   min        = var.blue_instance_count.min
@@ -146,8 +145,8 @@ module "backend_internal_asg_green" {
   cpu_target = 0.8
 
   startup_tpl = join("\n", [
-    templatefile("${path.module}/scripts/vm-install.sh.tpl", {
-     deploy_ssh_public_key = var.ssh_private_key
+    templatefile("${path.module}/scripts/backend-install.sh.tpl", {
+      deploy_ssh_public_key = var.ssh_private_key
       docker_image          = var.docker_image_backend_blue
       use_ecr               = "true"
       aws_region            = var.aws_region
@@ -156,6 +155,8 @@ module "backend_internal_asg_green" {
       container_name        = "tuning-backend"
       container_port        = "8080"
       host_port            = "8080"
+      db_host              = google_compute_address.mysql_internal_ip.address
+      ssm_path            = "/global/springboot/"
     })
 
    
@@ -179,7 +180,7 @@ module "internal_lb" {
   subnet_self_link       = local.subnet_self_link
   vpc_self_link          = data.terraform_remote_state.shared.outputs.vpc_self_link
   proxy_subnet_self_link = local.ilb_proxy_subnet_self_link
-
+  env              = "prod"
   backend_name_prefix   = "backend-internal-lb"
   backends = [
     {
@@ -326,6 +327,7 @@ module "frontend_tg" {
 module "external_lb" {
   source           = "../../modules/external-https-lb"
   name             = "${var.env}-external-lb-b"
+  env              = "prod"
   domains          = [var.domain_frontend]
   backend_service  = module.backend_tg.backend_service_self_link
   frontend_service = module.frontend_tg.backend_service_self_link

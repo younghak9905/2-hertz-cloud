@@ -3,7 +3,7 @@
 ############################################################
 
 resource "google_compute_health_check" "this" {
-  name = "${var.backend_name_prefix}-hc"
+  name = "${var.backend_name_prefix}-hc-${var.env}"
   http_health_check {
     port         = var.backend_hc_port     # 8080
     request_path = var.health_check_path   # "/health"
@@ -11,7 +11,7 @@ resource "google_compute_health_check" "this" {
 }
 
 resource "google_compute_region_backend_service" "this" {
-  name                  = "${var.backend_name_prefix}-bs"
+  name                  = "${var.backend_name_prefix}-bs-${var.env}"
   protocol              = "HTTP"
   port_name             = "http"                            # << 추가
   health_checks         = [google_compute_health_check.this.self_link]
@@ -32,13 +32,13 @@ resource "google_compute_region_backend_service" "this" {
 
 
 resource "google_compute_region_url_map" "this" {
-  name            = "${var.backend_name_prefix}-url-map"
+  name            = "${var.backend_name_prefix}-url-map-${var.env}"
   default_service = google_compute_region_backend_service.this.self_link
   region = var.region
 }
 
 resource "google_compute_region_target_http_proxy" "this" {
-  name    = "${var.backend_name_prefix}-http-proxy"
+  name    = "${var.backend_name_prefix}-http-proxy-${var.env}"
   url_map = google_compute_region_url_map.this.self_link
   region = var.region
 }
@@ -52,7 +52,7 @@ resource "google_compute_address" "internal_ip" {
 }*/
 
 resource "google_compute_forwarding_rule" "this" {
-  name                  = "${var.backend_name_prefix}-fr"
+  name                  = "${var.backend_name_prefix}-fr-${var.env}"
   load_balancing_scheme = "INTERNAL_MANAGED"
   network               = var.vpc_self_link
   // 수정: 로드 밸런서의 VIP가 할당될 일반 서브넷의 self_link를 사용
