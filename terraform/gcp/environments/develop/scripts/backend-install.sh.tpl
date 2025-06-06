@@ -141,18 +141,18 @@ echo "# Spring Boot 환경변수 (SSM에서 자동생성)" > "$ENV_FILE"
 for PARAM in "${PARAMS[@]}"; do
   # SSM에서 값 읽기 (SecureString 포함)
   VALUE=$(aws ssm get-parameter \
-      --name "${PREFIX}${PARAM}" \
+      --name "$${PREFIX}$${PARAM}" \
       --region "$AWS_REGION" \
       --with-decryption \
       --query "Parameter.Value" \
       --output text 2>/dev/null)
 
   if [ -z "$VALUE" ]; then
-    echo "경고: ${PARAM} 값이 비어 있습니다. (SSM에서 불러오기 실패)"
+    echo "경고: $PARAM 값이 비어 있습니다. (SSM에서 불러오기 실패)"
   fi
 
   # .env 파일에 추가 (따옴표 없음, 필요시 따옴표 추가)
-  echo "${PARAM}=${VALUE}" >> "$ENV_FILE"
+  echo "$PARAM=$VALUE" >> "$ENV_FILE"
 done
 
 echo "✅ SSM 파라미터를 ${ENV_FILE} 파일로 저장 완료"
