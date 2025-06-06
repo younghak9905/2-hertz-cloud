@@ -1,5 +1,5 @@
 resource "google_compute_instance_template" "this" {
-  name_prefix  = "${var.name}-tmpl-"
+  name_prefix  = "${var.name}-tmpl"
   machine_type = var.machine_type
    disk {
     auto_delete  = true

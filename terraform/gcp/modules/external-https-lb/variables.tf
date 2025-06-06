@@ -26,3 +26,8 @@ variable "lb_ip" {
     self_link = string
   })
 }
+variable "env" {
+  description = "환경 이름 (예: \"dev\", \"prod\")"
+  type        = string
+  
+}

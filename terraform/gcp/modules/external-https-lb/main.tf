@@ -57,14 +57,14 @@ resource "google_compute_url_map" "this" {
 }
 
 resource "google_compute_target_https_proxy" "this" {
-  name             = "${var.name}-https-proxy"
+  name             = "${var.name}-https-proxy-${var.env}"
   url_map          = google_compute_url_map.this.self_link
   ssl_certificates = [google_compute_managed_ssl_certificate.this.self_link]
 }
 
 
 resource "google_compute_global_forwarding_rule" "https_fr" {
-  name                  = "${var.name}-https-fr"
+  name                  = "${var.name}-https-fr-${var.env}"
   load_balancing_scheme = "EXTERNAL"
   port_range            = "443"
   target                = google_compute_target_https_proxy.this.self_link
