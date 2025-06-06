@@ -151,7 +151,7 @@ module "backend_internal_asg_green" {
   startup_tpl = join("\n", [
     templatefile("${path.module}/scripts/backend-install.sh.tpl", {
       deploy_ssh_public_key = var.ssh_private_key
-      docker_image          = var.docker_image_backend_blue
+      docker_image          = var.docker_image_backend_green
       use_ecr               = "true"
       aws_region            = var.aws_region
       aws_access_key_id     = var.aws_access_key_id
@@ -200,7 +200,7 @@ module "internal_lb" {
   ]
   backend_hc_port     = 8080
   backend_timeout_sec = 30
-  health_check_path   = "/health"
+  health_check_path   = "/api/ping"
   port                = "8080"
   ip_prefix_length    = 28
 }
@@ -263,7 +263,7 @@ module "frontend_asg_green" {
   startup_tpl = join("\n", [
        templatefile("${path.module}/scripts/frontend-install.sh.tpl", {
       deploy_ssh_public_key = var.ssh_private_key
-      docker_image          = var.docker_image_front_blue
+      docker_image          = var.docker_image_front_green
       use_ecr               = "true"
       aws_region            = var.aws_region
       aws_access_key_id     = var.aws_access_key_id
@@ -312,7 +312,7 @@ module "frontend_tg" {
   health_check = local.hc_frontend
   backends = [
     {
-      instance_group  = module.frontend_asg_blue.instance_group
+    instance_group  = module.frontend_asg_blue.instance_group
       weight          = local.normalized_blue_weight
       balancing_mode  = "UTILIZATION"
       capacity_scaler = 1.0
