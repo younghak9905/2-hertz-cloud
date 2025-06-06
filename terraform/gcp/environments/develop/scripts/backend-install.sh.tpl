@@ -162,7 +162,7 @@ if [ $? -eq 0 ]; then
     docker run -d \
         --name ${container_name} \
         --restart always \
-        --env-file $ENV_FILE \ 
+        --env-file $ENV_FILE \
         -p ${host_port}:${container_port} \
         "$IMAGE"
     
