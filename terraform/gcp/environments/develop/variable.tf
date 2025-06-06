@@ -200,3 +200,9 @@ variable "mysql_user_name" {
   sensitive = true
   default = ""
 }
+
+variable "mysql_internal_ip" {
+  description = "MySQL 인스턴스의 내부 IP 주소"
+  type        = string
+  default     = ""
+}
