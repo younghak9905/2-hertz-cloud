@@ -202,6 +202,60 @@ locals {
     source_ranges = var.vpn_client_cidr_blocks 
     target_tags   = ["allow-vpn-ssh"]
     description   = "Allow SSH from VPN clients"
+    },
+     {
+      name          = "${var.vpc_name}-fw-lb-to-frontend"
+      direction     = "INGRESS"
+      priority      = 1000
+      description   = "Allow External HTTPS LB proxy (130.211.0.0/22, 35.191.0.0/16) to reach Frontend on TCP:80"
+      source_ranges = [
+        "130.211.0.0/22",
+        "35.191.0.0/16",
+      ]
+      target_tags   = ["frontend"]
+      protocol      = "tcp"
+      ports         = ["80"]
+    },
+
+    # (4) GCP 헬스체크 → Frontend VM(포트 80) 허용
+    {
+      name          = "${var.vpc_name}-fw-healthcheck-to-frontend"
+      direction     = "INGRESS"
+      priority      = 1000
+      description   = "Allow GCP Health Checks (130.211.0.0/22, 35.191.0.0/16) to Frontend on TCP:80"
+      source_ranges = [
+        "130.211.0.0/22",
+        "35.191.0.0/16",
+      ]
+      target_tags   = ["frontend"]
+      protocol      = "tcp"
+      ports         = ["80"]
+    },
+     {
+      name          = "${var.vpc_name}-fw-lb-to-backend"
+      direction     = "INGRESS"
+      priority      = 1000
+      description   = "Allow External HTTPS LB proxy (130.211.0.0/22, 35.191.0.0/16) to reach Backend on TCP:8080"
+      source_ranges = [
+        "130.211.0.0/22",
+        "35.191.0.0/16",
+      ]
+      target_tags   = ["backend"]
+      protocol      = "tcp"
+      ports         = ["8080"]
+    },
+    {
+      name          = "${var.vpc_name}-fw-healthcheck-to-backend"
+      direction     = "INGRESS"
+      priority      = 1000
+      description   = "Allow GCP Health Checks (130.211.0.0/22, 35.191.0.0/16) to Backend on TCP:8080"
+      source_ranges = [
+        "130.211.0.0/22",
+        "35.191.0.0/16",
+      ]
+      target_tags   = ["backend"]
+      protocol      = "tcp"
+      ports         = ["8080"]
     }
   ]
 }
