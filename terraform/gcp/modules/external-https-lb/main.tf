@@ -3,7 +3,7 @@
 ############################################################
 
 resource "google_compute_managed_ssl_certificate" "this" {
-  name = "${var.name}-cert"
+  name = "${var.name}-cert-${var.env}"
   managed {
     domains = var.domains
   }
@@ -12,7 +12,7 @@ resource "google_compute_managed_ssl_certificate" "this" {
 # URL Map 생성 (프론트엔드 및 백엔드 경로별 분기)
 
 resource "google_compute_url_map" "this" {
-  name = "${var.name}-url-map"
+  name = "${var.name}-url-map-${var.env}"
 
   # 1) host_rule: 모든 호스트(와일드카드)에서 이 URL Map을 사용
   host_rule {
