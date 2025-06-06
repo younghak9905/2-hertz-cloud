@@ -141,14 +141,6 @@ resource "google_compute_instance_group" "backend_ig" {
 # 프론트엔드(Frontend) ASG - 단일 인스턴스용 Unmanaged IG
 ############################################################
 
-resource "google_compute_address" "mysql_internal_ip" {
-  name         = "${var.env}-mysql-internal-ip"
-  address_type = "INTERNAL"
-  subnetwork   = google_compute_subnetwork.private.self_link  # 원하는 서브넷
-  region       = var.region
-  address      = var.mysql_internal_ip 
-}
-
 
 # 1) Frontend VM 생성
 resource "google_compute_instance" "frontend_vm" {
@@ -252,6 +244,15 @@ module "external_lb" {
 ############################################################
 # mysql 인스턴스 생성
 ############################################################
+
+resource "google_compute_address" "mysql_internal_ip" {
+  name         = "${var.env}-mysql-internal-ip"
+  address_type = "INTERNAL"
+  subnetwork   = local.private_subnet_self_link  # 원하는 서브넷
+  region       = var.region
+  address      = var.mysql_internal_ip 
+}
+
 
 resource "google_compute_instance" "mysql_vm" {
   name         = "${var.env}-mysql-vm"
