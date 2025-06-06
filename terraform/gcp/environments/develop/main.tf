@@ -165,7 +165,7 @@ resource "google_compute_instance" "frontend_vm" {
   }
 
   metadata_startup_script = join("\n", [
-    templatefile("${path.module}/scripts/vm-install.sh.tpl", {
+    templatefile("${path.module}/scripts/frontend-install.sh.tpl", {
       deploy_ssh_public_key = var.ssh_private_key
       docker_image          = var.docker_image_front_blue
       use_ecr               = "true"
@@ -175,6 +175,7 @@ resource "google_compute_instance" "frontend_vm" {
       container_name        = "tuning-frontend"
       container_port        = "3000"
       host_port            = "80"
+      ssm_path            = "/global/nextjs/"
     })
   ])
 }
