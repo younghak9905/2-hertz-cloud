@@ -90,7 +90,7 @@ resource "google_compute_instance" "backend_vm" {
   name         = "${var.env}-backend-vm-a"
   machine_type = "e2-medium"
   zone         = "${var.region}-a"
-  tags         = ["backend", "backend-hc", "allow-vpn-ssh", "allow-ssh-http"]
+  tags         = ["backend", "backend-hc", "allow-vpn-ssh"]
 
   boot_disk {
     initialize_params {
@@ -118,6 +118,7 @@ resource "google_compute_instance" "backend_vm" {
       container_port        = "8080"
       host_port            = "8080"
       db_host              = google_compute_address.mysql_internal_ip.address
+      ssm_path            = "/global/springboot/"
     })
   ])
 }
