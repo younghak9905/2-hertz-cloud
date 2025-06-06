@@ -107,7 +107,7 @@ resource "google_compute_instance" "backend_vm" {
 
   metadata_startup_script = join("\n", [
     # 1) 기존 템플릿 파일 호출
-    templatefile("${path.module}/scripts/vm-install.sh.tpl", {
+    templatefile("${path.module}/scripts/backend-install.sh.tpl", {
       deploy_ssh_public_key = var.ssh_private_key
       docker_image          = var.docker_image_backend_blue
       use_ecr               = "true"
@@ -117,6 +117,7 @@ resource "google_compute_instance" "backend_vm" {
       container_name        = "tuning-backend"
       container_port        = "8080"
       host_port            = "8080"
+      db_host              = google_compute_address.mysql_internal_ip.address
     })
   ])
 }
@@ -139,6 +140,15 @@ resource "google_compute_instance_group" "backend_ig" {
 ############################################################
 # 프론트엔드(Frontend) ASG - 단일 인스턴스용 Unmanaged IG
 ############################################################
+
+resource "google_compute_address" "mysql_internal_ip" {
+  name         = "${var.env}-mysql-internal-ip"
+  address_type = "INTERNAL"
+  subnetwork   = google_compute_subnetwork.private.self_link  # 원하는 서브넷
+  region       = var.region
+  address      = var.mysql_internal_ip 
+}
+
 
 # 1) Frontend VM 생성
 resource "google_compute_instance" "frontend_vm" {
@@ -271,6 +281,7 @@ resource "google_compute_instance" "mysql_vm" {
   network_interface {
     network    = local.vpc_self_link
     subnetwork = local.private_subnet_self_link
+    network_ip = google_compute_address.mysql_internal_ip.address
     # 외부 접근 필요 없으면 access_config 생략
   }
 
