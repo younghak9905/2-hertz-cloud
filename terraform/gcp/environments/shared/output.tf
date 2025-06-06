@@ -26,6 +26,9 @@ output "nat_a_subnet_self_link" {
 output "private_subnet_self_link" {
    value = google_compute_subnetwork.shared_subnets["${var.vpc_name}-private-a"].self_link
 }
+output "prod_private_subnet_self_link" {
+   value = google_compute_subnetwork.shared_subnets["${var.vpc_name}-private-b"].self_link
+}
 
 output "nat_subnet_info" {
   value = {
@@ -61,6 +64,17 @@ output "mysql_data_disk_id" {
   description = "MySQL 데이터 저장용 Persistent Disk (id)"
   value       = google_compute_disk.mysql_data.id
 }
+
+output "prod_mysql_data_disk_self_link" {
+  description = "MySQL 데이터 저장용 Persistent Disk (self_link)"
+  value       = google_compute_disk.mysql_data_prod.self_link
+}
+
+output "prod_mysql_data_disk_id" {
+  description = "MySQL 데이터 저장용 Persistent Disk (id)"
+  value       = google_compute_disk.mysql_data_prod.id
+}
+
 
 output "dev_external_lb_ip_address" {
   description = "Dev 환경 External LB에 할당된 Global IP"
