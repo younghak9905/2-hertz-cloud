@@ -236,6 +236,7 @@ module "frontend_tg" {
 module "external_lb" {
   source           = "../../modules/external-https-lb"
   name             = "${var.env}-lb-external"
+  env = var.env
   domains          = [var.domain_frontend]
   backend_service  = module.backend_tg.backend_service_self_link
   frontend_service = module.frontend_tg.backend_service_self_link

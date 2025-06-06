@@ -17,13 +17,16 @@ resource "google_compute_instance_template" "this" {
 
   
   service_account { scopes = ["https://www.googleapis.com/auth/cloud-platform"] }
+  lifecycle {
+    create_before_destroy = true
+  }
 }
 
 resource "google_compute_region_instance_group_manager" "this" {
   name               = var.name
   region             = var.region
   base_instance_name = var.name
-  target_size        = var.desired
+  //target_size        = var.desired
 
   named_port {
     name = "http"

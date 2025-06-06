@@ -396,7 +396,7 @@ resource "google_compute_address" "mysql_internal_ip" {
 resource "google_compute_instance" "mysql_vm" {
   name         = "${var.env}-mysql-vm"
   machine_type = "e2-small"
-  zone         = "${var.region}-a"
+  zone         = "${var.region}-b"
   tags         = ["mysql", "allow-vpn-ssh"]
 
   boot_disk {
