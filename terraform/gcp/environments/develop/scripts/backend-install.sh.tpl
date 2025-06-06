@@ -109,51 +109,28 @@ else
     exit 1
 fi
 
-
-
-
 ENV_FILE="/home/deploy/app.env"
+DIR_PATH=$(dirname "$ENV_FILE")
+if [ ! -d "$DIR_PATH" ]; then
+  mkdir -p "$DIR_PATH"
+  chown $(whoami) "$DIR_PATH"
+fi
+
+> "$ENV_FILE"
+echo "# Spring Boot 환경변수 (SSM→.env, DB_HOST는 로컬 IP로 덮어쓰기)" >> "$ENV_FILE"
+
+
 # SSM 파라미터 prefix
-PREFIX="/global/springboot/"
+SSM_PATH="${ssm_path}"
 
-# SSM에서 읽을 파라미터 목록
-PARAMS=(
+PARAM_JSON=$(aws ssm get-parameters-by-path \
+  --path "$SSM_PATH" \
+  --recursive \
+  --with-decryption \
+  --region "$AWS_REGION" \
+  --output json)
+echo "$PARAM_JSON" | jq -r '.Parameters[] | "\(.Name | ltrimstr("'"$SSM_PATH"'"))=\(.Value)"' >> "$ENV_FILE"
 
-  DB_PORT
-  DB_NAME
-  DB_USERNAME
-  DB_PASSWORD
-  SWAGGER_ENABLED
-  REDIS_HOST
-  REDIS_PORT
-  REDIS_PASSWORD
-  KAKAO_CLIENT_ID
-  REDIRECT_URL_PROD
-  REDIRECT_URL_DEV
-  JWT_SECRET
-  AI_SERVER_IP_DEV
-  AI_SERVER_IP_PROD
-)
-
-echo "# Spring Boot 환경변수 (SSM에서 자동생성)" > "$ENV_FILE"
-
-
-for PARAM in "$${PARAMS[@]}"; do
-  # SSM에서 값 읽기 (SecureString 포함)
-  VALUE=$(aws ssm get-parameter \
-      --name "$${PREFIX}$${PARAM}" \
-      --region "$AWS_REGION" \
-      --with-decryption \
-      --query "Parameter.Value" \
-      --output text 2>/dev/null)
-
-  if [ -z "$VALUE" ]; then
-    echo "경고: $PARAM 값이 비어 있습니다. (SSM에서 불러오기 실패)"
-  fi
-
-  # .env 파일에 추가 (따옴표 없음, 필요시 따옴표 추가)
-  echo "$PARAM=$VALUE" >> "$ENV_FILE"
-done
 
 echo "✅ SSM 파라미터를 $ENV_FILE 파일로 저장 완료"
 LOCAL_DB_HOST="${db_host}"

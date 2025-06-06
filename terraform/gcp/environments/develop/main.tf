@@ -118,6 +118,7 @@ resource "google_compute_instance" "backend_vm" {
       container_port        = "8080"
       host_port            = "8080"
       db_host              = google_compute_address.mysql_internal_ip.address
+      ssm_path            = "/global/springboot/"
     })
   ])
 }
