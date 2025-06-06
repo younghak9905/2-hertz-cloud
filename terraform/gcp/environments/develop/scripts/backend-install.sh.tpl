@@ -88,7 +88,7 @@ systemctl is-active docker || {
 # AWS 자격 증명 설정
 export AWS_ACCESS_KEY_ID="${aws_access_key_id}"
 export AWS_SECRET_ACCESS_KEY="${aws_secret_access_key}"
-export AWS_DEFAULT_REGION="${aws_region}"
+export AWS_REGION="${aws_region}"
 
 # ECR 레지스트리 URL 추출
 ECR_REGISTRY=$(echo "${docker_image}" | cut -d'/' -f1)
