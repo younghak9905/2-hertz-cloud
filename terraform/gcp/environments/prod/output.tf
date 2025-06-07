@@ -7,8 +7,8 @@ output "active_deployment" {
 output "blue_deployment_status" {
   description = "Blue deployment status"
   value = {
-    backend_instances  = var.blue_instance_count.desired
-    frontend_instances = var.blue_instance_count.desired
+    # backend_instances  = var.blue_instance_count.desired
+    # frontend_instances = var.blue_instance_count.desired
     traffic_weight     = local.normalized_blue_weight
     docker_images = {
       backend  = var.docker_image_backend_blue
@@ -21,8 +21,8 @@ output "blue_deployment_status" {
 output "green_deployment_status" {
   description = "Green deployment status"
   value = {
-    backend_instances  = var.green_instance_count.desired
-    frontend_instances = var.green_instance_count.desired
+    # backend_instances  = var.green_instance_count.desired
+    # frontend_instances = var.green_instance_count.desired
     traffic_weight     = local.normalized_green_weight
     docker_images = {
       backend  = var.docker_image_backend_green

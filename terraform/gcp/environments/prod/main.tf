@@ -104,7 +104,7 @@ module "backend_internal_asg_blue" {
   disk_size_gb     = 30
   machine_type     = "e2-medium"
   # 동적 인스턴스 수 설정
-  desired    = var.blue_instance_count.desired
+  # desired    = var.blue_instance_count.desired
   min        = var.blue_instance_count.min
   max        = var.blue_instance_count.max
   cpu_target = 0.8
@@ -220,7 +220,7 @@ module "frontend_asg_blue" {
   machine_type     = "e2-small"
   
   # 동적 인스턴스 수 설정
-  desired    = var.blue_instance_count.desired
+  # desired    = var.blue_instance_count.desired
   min        = var.blue_instance_count.min
   max        = var.blue_instance_count.max
   cpu_target = 0.8
