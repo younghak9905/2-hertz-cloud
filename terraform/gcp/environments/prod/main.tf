@@ -143,7 +143,7 @@ module "backend_internal_asg_green" {
   machine_type     = "e2-medium"
   
   # 동적 인스턴스 수 설정
-  desired    = var.green_instance_count.desired
+  # desired    = var.green_instance_count.desired
   min        = var.green_instance_count.min
   max        = var.green_instance_count.max
   cpu_target = 0.8
