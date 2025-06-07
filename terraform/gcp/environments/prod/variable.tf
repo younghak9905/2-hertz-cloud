@@ -158,8 +158,8 @@ variable "blue_instance_count" {
   })
   default = {
     # desired = 1
-    min     = 1
-    max     = 2
+    min     = 0
+    max     = 0
   }
 }
 
