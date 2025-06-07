@@ -152,12 +152,12 @@ variable "traffic_weight_green" {
 variable "blue_instance_count" {
   description = "Number of instances for blue deployment"
   type = object({
-    desired = number
+    # desired = number
     min     = number
     max     = number
   })
   default = {
-    desired = 1
+    # desired = 1
     min     = 1
     max     = 2
   }
@@ -166,14 +166,14 @@ variable "blue_instance_count" {
 variable "green_instance_count" {
   description = "Number of instances for green deployment"
   type = object({
-    desired = number
+    # desired = number
     min     = number
     max     = number
   })
   default = {
-    desired = 0
+    # desired = 0
     min     = 0
-    max     = 2
+    max     = 0
   }
 }
 
