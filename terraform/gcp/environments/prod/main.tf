@@ -192,12 +192,14 @@ module "internal_lb" {
     {
       instance_group  = module.backend_internal_asg_blue.instance_group
       balancing_mode  = "UTILIZATION"
-      capacity_scaler = 1.0
+      # capacity_scaler = 1.0
+      capacity_scaler = var.traffic_weight_blue / 100.0
     },
     {
       instance_group  = module.backend_internal_asg_green.instance_group
       balancing_mode  = "UTILIZATION"
-      capacity_scaler = 1.0
+      # capacity_scaler = 1.0
+      capacity_scaler = var.traffic_weight_green / 100.0
     }
   ]
   backend_hc_port     = 8080
