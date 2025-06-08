@@ -286,8 +286,8 @@ resource "google_compute_instance" "mysql_vm" {
 
   network_interface {
     network    = local.vpc_self_link
-    subnetwork = local.private_subnet_self_link
-    network_ip = google_compute_address.mysql_internal_ip.address
+    subnetwork = local.subnet_self_link//local.private_subnet_self_link
+   // network_ip = google_compute_address.mysql_internal_ip.address
     # 외부 접근 필요 없으면 access_config 생략
   }
 
