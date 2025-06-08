@@ -26,19 +26,9 @@ fi
 
 echo "[INFO] 기본 초기화 완료"
 
-# ──────────────────────────────────────────────────────────────────
-# 1) 디스크 포맷 및 마운트
-#    - 디스크가 이미 포맷되어 있지 않다면 포맷
-#    - 마운트 지점: /mnt/mysql-data (필요 시 /var/lib/mysql 로 변경)
-# ──────────────────────────────────────────────────────────────────
 
 DEVICE="/dev/disk/by-id/google-mysql-data"
-MOUNT_POINT="/mnt/mysql-data"
-
-# 디스크가 ext4로 포맷되지 않았다면 포맷
-if ! blkid $${DEVICE} | grep -q ext4; then
-  mkfs.ext4 -F $${DEVICE}
-fi
+MOUNT_POINT="/mnt/tmp"
 
 # 마운트 디렉토리 생성
 mkdir -p $${MOUNT_POINT}
@@ -51,11 +41,8 @@ fi
 # 즉시 마운트
 mount $${MOUNT_POINT}
 
-# ──────────────────────────────────────────────────────────────────
-# 2) MySQL 설치 및 데이터 디렉토리 변경
-#    - Docker로 MySQL 컨테이너 실행 시, 데이터 볼륨을 /mnt/mysql-data에 연결
-#    (컨테이너 내부의 /var/lib/mysql ↔ 호스트의 /mnt/mysql-data)
-# ──────────────────────────────────────────────────────────────────
+# 4. mysql-data 서브디렉토리 생성
+mkdir -p $MOUNT_POINT/mysql-data
 
 
 # 로그 설정
@@ -76,7 +63,7 @@ docker run -d \
   -e MYSQL_DATABASE="${db_name}" \
   -e MYSQL_USER="${user_name}" \
   -e MYSQL_PASSWORD="${rootpasswd}" \
-  -v $${MOUNT_POINT}:/var/lib/mysql \
+  -v $${MOUNT_POINT}/mysql-data:/var/lib/mysql \
   -p 3306:3306 \
   mysql:8.0
 

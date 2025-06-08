@@ -359,7 +359,17 @@ locals {
       target_tags  = ["redis"]
       protocol     = "tcp"
       ports        = ["6379"]
-    }
+    },
+    {
+  name         = "${var.vpc_name}-fw-backend-to-mysql-ssh"
+  direction    = "INGRESS"
+  priority     = 1000
+  description  = "Allow backend VM to SSH/SCP to MySQL VM"
+  source_tags  = ["backend"]
+  target_tags  = ["mysql"]
+  protocol     = "tcp"
+  ports        = ["22"]
+}
   ]
 
   # 3) 두 리스트를 합쳐서 최종 firewall_rules 로 사용
