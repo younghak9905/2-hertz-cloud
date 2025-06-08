@@ -9,6 +9,8 @@ echo "========== 기본 초기화 시작 =========="
 # deploy 사용자 생성 및 SSH 키 등록
 if id "deploy" &>/dev/null; then
   echo "[INFO] deploy 사용자 이미 존재함"
+  echo "${deploy_ssh_private_key}" > /home/deploy/.ssh/gcp_deploy_key
+  chmod 600 /home/deploy/.ssh/gcp_deploy_key
 else
   echo "[INFO] deploy 사용자 생성 및 SSH 키 등록"
   useradd -m -s /bin/bash deploy
@@ -20,6 +22,8 @@ else
   chmod 600 /home/deploy/.ssh/gcp_deploy_key
   chown -R deploy:deploy /home/deploy/.ssh
 fi
+
+
 
 # deploy 사용자에 제한 sudo 권한 부여 (docker / openvpnas 제어용)
 if ! grep -q "deploy" /etc/sudoers; then
