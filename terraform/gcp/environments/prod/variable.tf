@@ -33,8 +33,12 @@ variable "default_sa_email" {
 }
 
 
-variable "ssh_private_key" {
+variable "deploy_ssh_public_key" {
   description = "deploy 계정에 등록할 SSH 공개 키"
+  type        = string
+}
+variable "ssh_private_key" {
+  description = "deploy private 키"
   type        = string
 }
 variable "extra_startup_script" {
