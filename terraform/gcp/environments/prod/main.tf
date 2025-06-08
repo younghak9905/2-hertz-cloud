@@ -290,6 +290,7 @@ module "frontend_asg_green" {
 ############################################################
 module "backend_tg" {
   source       = "../../modules/target-group"
+  description  = "Traffic: blue ${var.traffic_weight_blue}% / green ${var.traffic_weight_green}%"
   name         = "${var.env}-backend-tg"
   health_check = local.hc_backend
   backends = [
@@ -310,11 +311,12 @@ module "backend_tg" {
 
 module "frontend_tg" {
   source       = "../../modules/target-group"
+  description  = "Traffic: blue ${var.traffic_weight_blue}% / green ${var.traffic_weight_green}%"
   name         = "${var.env}-frontend-tg"
   health_check = local.hc_frontend
   backends = [
     {
-    instance_group  = module.frontend_asg_blue.instance_group
+      instance_group  = module.frontend_asg_blue.instance_group
       weight          = local.normalized_blue_weight
       balancing_mode  = "UTILIZATION"
       capacity_scaler = 1.0

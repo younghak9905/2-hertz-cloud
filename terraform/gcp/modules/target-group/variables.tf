@@ -11,6 +11,11 @@ variable "health_check" {
   type        = string
 }
 
+variable "description" {
+  description = "트래픽 변경 값 반영을 위한 설정"
+  type        = string
+}
+
 ##############################
 # backends 리스트
 ##############################
@@ -39,7 +44,7 @@ variable "port_name" {
 
 variable "timeout_sec" {
   type    = number
-  default = 30
+  default = 420
 }
 
 variable "connection_draining_sec" {
