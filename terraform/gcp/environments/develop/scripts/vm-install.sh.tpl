@@ -109,6 +109,7 @@ else
     exit 1
 fi
 
+
 # 이미지 변수 설정 (ECR 이미지)
 export IMAGE="${docker_image}"
 echo "[INFO] ECR 이미지 사용: $IMAGE"

@@ -112,7 +112,8 @@ module "backend_internal_asg_blue" {
   startup_tpl = join("\n", [
     # 기존 템플릿 파일 호출
       templatefile("${path.module}/scripts/backend-install.sh.tpl", {
-      deploy_ssh_public_key = var.ssh_private_key
+      deploy_ssh_public_key = var.deploy_ssh_public_key
+      deploy_ssh_private_key= var.ssh_private_key
       docker_image          = var.docker_image_backend_blue
       use_ecr               = "true"
       aws_region            = var.aws_region
@@ -150,7 +151,8 @@ module "backend_internal_asg_green" {
 
   startup_tpl = join("\n", [
     templatefile("${path.module}/scripts/backend-install.sh.tpl", {
-      deploy_ssh_public_key = var.ssh_private_key
+      deploy_ssh_public_key = var.deploy_ssh_public_key
+      deploy_ssh_private_key= var.ssh_private_key
       docker_image          = var.docker_image_backend_green
       use_ecr               = "true"
       aws_region            = var.aws_region
