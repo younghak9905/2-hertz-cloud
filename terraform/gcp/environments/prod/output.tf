@@ -42,3 +42,12 @@ output "instance_groups" {
     frontend_green = module.frontend_asg_green.instance_group
   }
 }
+
+# ASG 인스턴스 크기 정보
+output "blue_instance_count" {
+  value = var.blue_instance_count
+}
+
+output "green_instance_count" {
+  value = var.green_instance_count
+}
