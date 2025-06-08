@@ -23,9 +23,9 @@ variable "backends" {
   description = "목표 백엔드 목록"
   type = list(object({
     instance_group   = string
-    weight           = optional(number, 100)        # 기본 100
     balancing_mode   = optional(string, "UTILIZATION") # CONNECTION | RATE | UTILIZATION
     capacity_scaler  = optional(number, 1.0)        # 0.0–1.0, 기본 1.0
+    # weight           = optional(number, 100)        # 기본 100
   }))
 }
 

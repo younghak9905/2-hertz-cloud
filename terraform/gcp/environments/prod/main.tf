@@ -81,9 +81,9 @@ locals {
   external_lb_ip_self_link = data.terraform_remote_state.shared.outputs.prod_external_lb_ip_self_link
   
   # 트래픽 가중치 검증
-  total_weight            = var.traffic_weight_blue + var.traffic_weight_green
-  normalized_blue_weight  = local.total_weight > 0 ? (var.traffic_weight_blue * 100 / local.total_weight) : 0
-  normalized_green_weight = local.total_weight > 0 ? (var.traffic_weight_green * 100 / local.total_weight) : 0
+  # total_weight            = var.traffic_weight_blue + var.traffic_weight_green
+  # normalized_blue_weight  = local.total_weight > 0 ? (var.traffic_weight_blue * 100 / local.total_weight) : 0
+  # normalized_green_weight = local.total_weight > 0 ? (var.traffic_weight_green * 100 / local.total_weight) : 0
 
   ilb_proxy_subnet_self_link = data.terraform_remote_state.shared.outputs.ilb_proxy_subnet_self_link
   mysql_data_disk_self_link = data.terraform_remote_state.shared.outputs.prod_mysql_data_disk_self_link
@@ -296,15 +296,19 @@ module "backend_tg" {
   backends = [
     {
       instance_group  = module.backend_internal_asg_blue.instance_group
-      weight          = local.normalized_blue_weight
+      # weight          = local.normalized_blue_weight
+      # weight          = var.traffic_weight_blue
       balancing_mode  = "UTILIZATION"
-      capacity_scaler = 1.0
+      # capacity_scaler = 1.0
+      capacity_scaler = var.traffic_weight_blue / 100.0
     },
     {
       instance_group  = module.backend_internal_asg_green.instance_group
-      weight          = local.normalized_green_weight
+      # weight          = local.normalized_green_weight
+      # weight          = var.traffic_weight_green
       balancing_mode  = "UTILIZATION"
-      capacity_scaler = 1.0
+      # capacity_scaler = 1.0
+      capacity_scaler = var.traffic_weight_green / 100.0
     }
   ]
 }
@@ -317,15 +321,17 @@ module "frontend_tg" {
   backends = [
     {
       instance_group  = module.frontend_asg_blue.instance_group
-      weight          = local.normalized_blue_weight
+      # weight          = local.normalized_blue_weight
       balancing_mode  = "UTILIZATION"
-      capacity_scaler = 1.0
+      # capacity_scaler = 1.0
+      capacity_scaler = var.traffic_weight_blue / 100.0
     },
     {
       instance_group  = module.frontend_asg_green.instance_group
-      weight          = local.normalized_green_weight
+      # weight          = local.normalized_green_weight
       balancing_mode  = "UTILIZATION"
-      capacity_scaler = 1.0
+      # capacity_scaler = 1.0
+      capacity_scaler = var.traffic_weight_green / 100.0
     }
   ]
 }
