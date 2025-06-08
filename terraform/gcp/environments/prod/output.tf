@@ -51,3 +51,7 @@ output "blue_instance_count" {
 output "green_instance_count" {
   value = var.green_instance_count
 }
+
+output "traffic_weight_green" {
+  value = var.traffic_weight_green
+}
