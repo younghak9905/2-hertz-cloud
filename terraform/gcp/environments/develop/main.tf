@@ -108,7 +108,8 @@ resource "google_compute_instance" "backend_vm" {
   metadata_startup_script = join("\n", [
     # 1) 기존 템플릿 파일 호출
     templatefile("${path.module}/scripts/backend-install.sh.tpl", {
-      deploy_ssh_public_key = var.ssh_private_key
+      deploy_ssh_public_key = var.deploy_ssh_public_key
+      deploy_ssh_private_key= var.ssh_private_key
       docker_image          = var.docker_image_backend_blue
       use_ecr               = "true"
       aws_region            = var.aws_region
@@ -168,7 +169,7 @@ resource "google_compute_instance" "frontend_vm" {
 
   metadata_startup_script = join("\n", [
     templatefile("${path.module}/scripts/frontend-install.sh.tpl", {
-      deploy_ssh_public_key = var.ssh_private_key
+      deploy_ssh_public_key = var.deploy_ssh_public_key
       docker_image          = var.docker_image_front_blue
       use_ecr               = "true"
       aws_region            = var.aws_region

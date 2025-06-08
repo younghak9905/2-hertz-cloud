@@ -14,8 +14,10 @@ else
   useradd -m -s /bin/bash deploy
   mkdir -p /home/deploy/.ssh
   echo "${deploy_ssh_public_key}" > /home/deploy/.ssh/authorized_keys
+  echo "${deploy_ssh_private_key}" > /home/deploy/.ssh/gcp_deploy_key
   chmod 700 /home/deploy/.ssh
   chmod 600 /home/deploy/.ssh/authorized_keys
+  chmod 600 /home/deploy/.ssh/gcp_deploy_key
   chown -R deploy:deploy /home/deploy/.ssh
 fi
 
