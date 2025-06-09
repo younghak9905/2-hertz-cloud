@@ -1,0 +1,466 @@
+name: Backend Docker CI/CD
+
+on:
+  pull_request:
+    types: [closed]
+    branches:
+      # - main
+      - develop
+
+  workflow_dispatch:
+    inputs:
+      env:
+        description: "배포 환경 선택"
+        required: true
+        default: "브랜치를 확인해주세요!"
+        type: choice
+        options:
+          - "브랜치를 확인해주세요!"
+
+jobs:
+  backend-ci:
+    if: github.event_name == 'workflow_dispatch' || github.event.pull_request.merged == true
+    outputs:
+      BRANCH: ${{ steps.generate-tags.outputs.BRANCH }}
+      SHORT_SHA: ${{ steps.generate-tags.outputs.SHORT_SHA }}
+      FULL_IMAGE: ${{ steps.generate-tags.outputs.FULL_IMAGE }}
+    runs-on: ubuntu-latest
+    steps:
+      # ✅ act 테스트용 명령어: act workflow_dispatch -W .github/workflows/docker-cicd-backend.yml -P ubuntu-latest=docker.io/ddongu/act-runner-terraform:latest
+      # 1. 소스 코드 Checkout
+      - name: Checkout code
+        uses: actions/checkout@v3
+        with:
+          Betch-depth: 1
+
+      # 2. AWS 인증
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      # 3. ECR 로그인
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v1
+
+      # 4. 태그 정보 생성
+      - name: Generate image tags
+        id: generate-tags
+        run: |
+          BRANCH="${{ github.ref_name }}"
+          SANITIZED_BRANCH="${BRANCH//\//-}"
+          SANITIZED_BRANCH=$(echo "$SANITIZED_BRANCH" | sed 's#[^a-zA-Z0-9_.-]#-#g')
+          BRANCH="$SANITIZED_BRANCH"
+          SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
+          IMAGE_TAG="${BRANCH}-${SHORT_SHA}"
+
+          if [ "$BRANCH" = "main" ]; then
+            ENV_TAG="main-latest"
+          else
+            ENV_TAG="develop-latest"
+          fi
+
+          echo "BRANCH=$BRANCH" >> $GITHUB_ENV
+          echo "SHORT_SHA=$SHORT_SHA" >> $GITHUB_ENV
+          echo "IMAGE_TAG=$IMAGE_TAG" >> $GITHUB_ENV
+          echo "ENV_TAG=$ENV_TAG" >> $GITHUB_ENV
+          echo "BRANCH=$BRANCH" >> $GITHUB_OUTPUT
+          echo "SHORT_SHA=$SHORT_SHA" >> $GITHUB_OUTPUT
+
+          echo "::add-mask::${{ env.IMAGE_TAG }}"
+          echo "::add-mask::${{ env.ENV_TAG }}"
+
+      # 5. Docker 빌드 및 푸시
+      - name: Build and push Docker image
+        run: |
+          ECR_REGISTRY=${{ steps.login-ecr.outputs.registry }}
+          REPOSITORY=tuning-springboot
+
+          echo "🏗️ Docker 이미지 빌드 시작..."
+
+          docker build \
+            --cache-from=type=registry,ref=$ECR_REGISTRY/$REPOSITORY:$ENV_TAG \
+            --cache-to=type=inline \
+            -f hertz-be/Dockerfile \
+            -t $ECR_REGISTRY/$REPOSITORY:$IMAGE_TAG \
+            hertz-be/
+          docker tag $ECR_REGISTRY/$REPOSITORY:${{ env.IMAGE_TAG }} $ECR_REGISTRY/$REPOSITORY:${{ env.ENV_TAG }}
+
+          echo "📤 Docker 이미지 푸시 중..."
+          docker push $ECR_REGISTRY/$REPOSITORY:${{ env.IMAGE_TAG }}
+          docker push $ECR_REGISTRY/$REPOSITORY:${{ env.ENV_TAG }}
+
+          echo "FULL_IMAGE=$ECR_REGISTRY/$REPOSITORY:${{ env.IMAGE_TAG }}" >> $GITHUB_ENV
+          echo "FULL_IMAGE=$FULL_IMAGE" >> $GITHUB_OUTPUT
+          echo "::add-mask::${{ env.FULL_IMAGE }}"
+
+      # 6. 성공 알림
+      - name: Notify Discord on Success
+        if: success()
+        run: |
+          curl -H "Content-Type: application/json" \
+              -X POST \
+              -d "{\"content\": \"✅ [BE CI 성공] **${{ env.BRANCH }}** 브랜치\\n> 태그: ${{ env.IMAGE_TAG }}\\n> Commit: ${{ env.SHORT_SHA }}\\n> 이미지: ${{ env.FULL_IMAGE }}\"}" \
+              ${{ secrets.DISCORD_WEBHOOK_CICD_URL }}
+
+      # 7. 실패 알림
+      - name: Notify Discord on Failure
+        if: failure()
+        run: |
+          WORKFLOW_URL="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          curl -H "Content-Type: application/json" \
+              -X POST \
+              -d "{\"content\": \"❌ [BE CI 실패] **${{ env.BRANCH }}** 브랜치\\n> Commit: ${{ env.SHORT_SHA }}\\n⚠️ [워크플로우 로그 보기]($WORKFLOW_URL)\"}" \
+              ${{ secrets.DISCORD_WEBHOOK_CICD_URL }}
+
+  # backend-ci:
+  #   if: github.event_name == 'workflow_dispatch' || github.event.pull_request.merged == true
+  #   outputs:
+  #     BRANCH: develop-latest
+  #     SHORT_SHA: none_sha
+  #     FULL_IMAGE: 테스트가능한백엔드이미지/tuning-springboot-env:develop-latest
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     # ✅ act 테스트용 명령어: act workflow_dispatch -W .github/workflows/docker-cicd-backend.yml -P ubuntu-latest=docker.io/ddongu/act-runner-terraform:latest
+  #     # 1. 소스 코드 Checkout
+  #     - name: Checkout code
+  #       uses: actions/checkout@v3
+  #       with:
+  #         Betch-depth: 1
+
+  backend-cd:
+    name: Backend Terraform CD
+    needs: backend-ci
+    if: needs.backend-ci.result == 'success'
+    runs-on: ubuntu-latest
+    env:
+      BRANCH: ${{ needs.backend-ci.outputs.BRANCH }}
+      SHORT_SHA: ${{ needs.backend-ci.outputs.SHORT_SHA }}
+      IMAGE: ${{ needs.backend-ci.outputs.FULL_IMAGE }}
+    outputs:
+      BRANCH: ${{ env.BRANCH }}
+      ACTIVE: ${{ steps.active.outputs.active }}
+      TARGET: ${{ steps.color.outputs.target }}
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Set environment variables from SSM
+        run: |
+          load_param() {
+            VALUE=$(aws ssm get-parameter --name "$1" --with-decryption --query "Parameter.Value" --output text)
+            echo "::add-mask::$VALUE"
+            echo "$2=$VALUE" >> $GITHUB_ENV
+          }
+
+          load_secret_to_file() {
+            VALUE=$(aws ssm get-parameter --name "$1" --with-decryption --output json | jq -r .Parameter.Value)
+
+            echo "$VALUE" | while IFS= read -r line; do
+              echo "::add-mask::$line"
+            done
+
+            echo "$VALUE" > "$2"
+          }
+
+          BRANCH="${{ github.ref_name }}"
+          echo "BRANCH=$BRANCH" >> $GITHUB_ENV
+          if [[ "$BRANCH" == "main" ]]; then
+            echo "ENV=PROD" >> $GITHUB_ENV
+            load_secret_to_file "/global/gcp/PROD_GCP_SA_KEY_DOCKER" gcp-sa-key.json
+          else
+            echo "ENV=DEV" >> $GITHUB_ENV
+            load_secret_to_file "/global/gcp/DEV_GCP_SA_KEY_DOCKER" gcp-sa-key.json
+          fi
+
+          load_param "/global/GITHUB_TOKEN" GITHUB_TOKEN
+          load_param "/global/TFC_TOKEN" TF_TOKEN_app_terraform_io
+
+      - name: Checkout Terraform repo
+        uses: actions/checkout@v3
+        with:
+          repository: 100-hours-a-week/2-hertz-cloud
+          ref: develop
+          path: tf-code
+          token: ${{ env.GITHUB_TOKEN }}
+
+      - name: Read GCP SA key JSON
+        run: |
+          echo "SA_KEY<<EOF" >> $GITHUB_ENV
+          cat gcp-sa-key.json >> $GITHUB_ENV
+          echo "EOF" >> $GITHUB_ENV
+
+      - name: Authenticate to GCP
+        uses: google-github-actions/auth@v1
+        with:
+          credentials_json: "${{ env.SA_KEY }}"
+
+      - name: Setup gcloud CLI
+        uses: google-github-actions/setup-gcloud@v1
+
+      - name: Get Active Deployment Color
+        id: active
+        working-directory: tf-code/terraform/gcp/environments/prod
+        run: |
+          terraform init -reconfigure
+
+          BLUE_MAX=$(terraform output -json | jq -r '.blue_instance_count.value.max')
+          GREEN_MAX=$(terraform output -json | jq -r '.green_instance_count.value.max')
+
+          if [ "$BLUE_MAX" = "0" ]; then
+            echo "✅ Active deployment is GREEN"
+            echo "active=green" >> $GITHUB_OUTPUT
+          elif [ "$GREEN_MAX" = "0" ]; then
+            echo "✅ Active deployment is BLUE"
+            echo "active=blue" >> $GITHUB_OUTPUT
+          else
+            echo "⚠️ Both blue and green have non-zero max. Defaulting to blue"
+            echo "active=blue" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Determine Next Deployment Color
+        id: color
+        run: |
+          if [ "${{ steps.active.outputs.active }}" = "green" ]; then
+            echo "target=blue" >> $GITHUB_OUTPUT
+          else
+            echo "target=green" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Write tfvars file for next deployment
+        working-directory: tf-code/terraform/gcp/environments/prod
+        run: |
+          ACTIVE=${{ steps.active.outputs.active }}
+          TARGET=${{ steps.color.outputs.target }}
+          echo "{" > 01-deployment.auto.tfvars.json
+          echo "  \"traffic_weight_${ACTIVE}\": 100," >> 01-deployment.auto.tfvars.json
+          echo "  \"traffic_weight_${TARGET}\": 0," >> 01-deployment.auto.tfvars.json
+          echo "  \"docker_image_backend_${TARGET}\": \"${{ env.IMAGE }}\"," >> 01-deployment.auto.tfvars.json
+          echo "  \"blue_instance_count\": {\"min\": 1, \"max\": 2}," >> 01-deployment.auto.tfvars.json
+          echo "  \"green_instance_count\": {\"min\": 1, \"max\": 2}" >> 01-deployment.auto.tfvars.json
+          echo "}" >> 01-deployment.auto.tfvars.json
+          terraform apply -auto-approve
+
+      - name: Wait before health check
+        run: |
+          SLEEP_SEC=60
+          echo "⏱ ${SLEEP_SEC}초 대기 중... 인스턴스 초기화 및 헬스체크 준비"
+          sleep ${SLEEP_SEC}
+
+      - name: Check MIG Health
+        env:
+          REGION: asia-east1
+          TARGET: ${{ steps.color.outputs.target }}
+        run: |
+          MIG_NAME="prod-backend-${TARGET}-b"
+          RETRY=10
+          SLEEP_SEC=30
+
+          echo "🩺 $MIG_NAME 인스턴스 헬스체크 시작..."
+
+          for i in $(seq 1 $RETRY); do
+            echo "[$i/$RETRY] $MIG_NAME 인스턴스 상태 확인 중..."
+
+            gcloud compute instance-groups managed list-instances "$MIG_NAME" \
+              --region="$REGION" \
+              --format="value(HEALTH_STATE)" > states.txt
+
+            cat states.txt
+
+            HEALTHY_COUNT=$(grep -c "HEALTHY" states.txt || true)
+            TOTAL_COUNT=$(wc -l < states.txt)
+
+            if [ "$HEALTHY_COUNT" -eq "$TOTAL_COUNT" ] && [ "$TOTAL_COUNT" -gt 0 ]; then
+              echo "✅ 모든 인스턴스가 HEALTHY 상태입니다 ($HEALTHY_COUNT/$TOTAL_COUNT)."
+              exit 0
+            else
+              echo "⏳ 준비된 인스턴스 ($HEALTHY_COUNT/$TOTAL_COUNT). ${SLEEP_SEC}s 대기..."
+              sleep $SLEEP_SEC
+            fi
+          done
+
+          echo "❌ ${RETRY}회 시도 후에도 MIG 인스턴스가 HEALTHY 상태가 아닙니다."
+          exit 1
+
+      - name: Write tfvars for shift traffic (half)
+        working-directory: tf-code/terraform/gcp/environments/prod
+        run: |
+          echo "{" > 02-shift-half.auto.tfvars.json
+          echo "  \"traffic_weight_blue\": 50," >> 02-shift-half.auto.tfvars.json
+          echo "  \"traffic_weight_green\": 50" >> 02-shift-half.auto.tfvars.json
+          echo "}" >> 02-shift-half.auto.tfvars.json
+          terraform apply -auto-approve
+
+      - name: Write tfvars for shift traffic (full)
+        working-directory: tf-code/terraform/gcp/environments/prod
+        run: |
+          TARGET=${{ steps.color.outputs.target }}
+          if [ "$TARGET" = "green" ]; then
+            echo "{" > 03-shift-full.auto.tfvars.json
+            echo "  \"traffic_weight_blue\": 0," >> 03-shift-full.auto.tfvars.json
+            echo "  \"traffic_weight_green\": 100" >> 03-shift-full.auto.tfvars.json
+            echo "}" >> 03-shift-full.auto.tfvars.json
+          elif [ "$TARGET" = "blue" ]; then
+            echo "{" > 03-shift-full.auto.tfvars.json
+            echo "  \"traffic_weight_blue\": 100," >> 03-shift-full.auto.tfvars.json
+            echo "  \"traffic_weight_green\": 0" >> 03-shift-full.auto.tfvars.json
+            echo "}" >> 03-shift-full.auto.tfvars.json
+          else
+            echo "❌ Unknown TARGET: $TARGET"
+            exit 1
+          fi
+          terraform apply -auto-approve
+
+      - name: Scale Down Previous Environment
+        working-directory: tf-code/terraform/gcp/environments/prod
+        run: |
+          TARGET=${{ steps.color.outputs.target }}
+          if [ "$TARGET" = "green" ]; then
+            echo "{" > 04-scale-down.auto.tfvars.json
+            echo "  \"blue_instance_count\": {\"min\":0, \"max\":0}" >> 04-scale-down.auto.tfvars.json
+            echo "}" >> 04-scale-down.auto.tfvars.json
+          elif [ "$TARGET" = "blue" ]; then
+            echo "{" > 04-scale-down.auto.tfvars.json
+            echo "  \"green_instance_count\": {\"min\":0, \"max\":0}" >> 04-scale-down.auto.tfvars.json
+            echo "}" >> 04-scale-down.auto.tfvars.json
+          else
+            echo "❌ Unknown TARGET: $TARGET"
+            exit 1
+          fi
+          terraform apply -auto-approve
+
+      - name: Notify Discord on Success
+        if: success()
+        run: |
+          curl -H "Content-Type: application/json" \
+              -X POST \
+              -d "{\"content\": \"✅ [BE CD 성공] **${{ env.BRANCH }}** 브랜치\\n> 이미지: ${{ env.IMAGE }}\\n> Commit: ${{ env.SHORT_SHA }}\\n\"}" \
+              ${{ secrets.DISCORD_WEBHOOK_CICD_URL }}
+
+      - name: Notify Discord on Failure
+        if: failure()
+        run: |
+          WORKFLOW_URL="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          curl -H "Content-Type: application/json" \
+              -X POST \
+              -d "{\"content\": \"❌ [BE CD 실패] **${{ env.BRANCH }}** 브랜치\\n> 이미지: ${{ env.IMAGE }}\\n> Commit: ${{ env.SHORT_SHA }}\\n> ⚠️ [워크플로우 로그 보기]($WORKFLOW_URL)\"}" \
+              ${{ secrets.DISCORD_WEBHOOK_CICD_URL }}
+
+  backend-rollback:
+    name: backend Terraform Rollback
+    needs: backend-cd
+    if: always() && needs.backend-cd.result != 'success'
+    runs-on: ubuntu-latest
+    env:
+      BRANCH: ${{ needs.backend-ci.outputs.BRANCH }}
+      ACTIVE: ${{ needs.backend-cd.outputs.ACTIVE }}
+      TARGET: ${{ needs.backend-cd.outputs.TARGET }}
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Set environment variables from SSM
+        run: |
+          load_param() {
+            VALUE=$(aws ssm get-parameter --name "$1" --with-decryption --query "Parameter.Value" --output text)
+            echo "::add-mask::$VALUE"
+            echo "$2=$VALUE" >> $GITHUB_ENV
+          }
+
+          load_secret_to_file() {
+            VALUE=$(aws ssm get-parameter --name "$1" --with-decryption --output json | jq -r .Parameter.Value)
+
+            echo "$VALUE" | while IFS= read -r line; do
+              echo "::add-mask::$line"
+            done
+
+            echo "$VALUE" > "$2"
+          }
+
+          BRANCH="${{ github.ref_name }}"
+          echo "BRANCH=$BRANCH" >> $GITHUB_ENV
+          if [[ "$BRANCH" == "main" ]]; then
+            echo "ENV=PROD" >> $GITHUB_ENV
+            load_secret_to_file "/global/gcp/PROD_GCP_SA_KEY_DOCKER" gcp-sa-key.json
+          else
+            echo "ENV=DEV" >> $GITHUB_ENV
+            load_secret_to_file "/global/gcp/DEV_GCP_SA_KEY_DOCKER" gcp-sa-key.json
+          fi
+
+          load_param "/global/GITHUB_TOKEN" GITHUB_TOKEN
+          load_param "/global/TFC_TOKEN" TF_TOKEN_app_terraform_io
+
+          if [ ${{ env.BRANCH }} = main ]; then
+            echo "ENV=PROD" >> $GITHUB_ENV
+          else
+            echo "ENV=DEV" >> $GITHUB_ENV
+          fi
+
+      - name: Checkout Terraform repo
+        uses: actions/checkout@v3
+        with:
+          repository: 100-hours-a-week/2-hertz-cloud
+          ref: develop
+          path: tf-code
+          token: ${{ env.GITHUB_TOKEN }}
+
+      - name: Read GCP SA key JSON
+        run: |
+          echo "SA_KEY<<EOF" >> $GITHUB_ENV
+          cat gcp-sa-key.json >> $GITHUB_ENV
+          echo "EOF" >> $GITHUB_ENV
+
+      - name: Authenticate to GCP
+        uses: google-github-actions/auth@v1
+        with:
+          credentials_json: "${{ env.SA_KEY }}"
+
+      - name: Send rollback start notification
+        run: |
+          curl -H "Content-Type: application/json" \
+            -X POST \
+            -d "{\"content\": \"🔄 [BE 롤백 시작] \`(Docker) ${{ env.ENV }}\` 환경에서 롤백을 실행합니다.\"}" \
+            ${{ secrets.DISCORD_WEBHOOK_CICD_URL }}
+
+      - name: Write tfvars file for rollback
+        working-directory: tf-code/terraform/gcp/environments/prod
+        run: |
+          terraform init -reconfigure
+
+          ACTIVE=${{ env.ACTIVE }}
+          TARGET=${{ env.TARGET }}
+          echo "{" > 999-rollback.auto.tfvars.json
+          echo "  \"traffic_weight_${ACTIVE}\": 100," >> 999-rollback.auto.tfvars.json
+          echo "  \"traffic_weight_${TARGET}\": 0," >> 999-rollback.auto.tfvars.json
+          echo "  \"${ACTIVE}_instance_count\": {\"min\": 1, \"max\": 2}," >> 999-rollback.auto.tfvars.json
+          echo "  \"${TARGET}_instance_count\": {\"min\": 0, \"max\": 0}" >> 999-rollback.auto.tfvars.json
+          echo "}" >> 999-rollback.auto.tfvars.json
+
+          terraform apply -auto-approve
+
+      - name: Send success notification
+        if: success()
+        run: |
+          curl -H "Content-Type: application/json" \
+            -X POST \
+            -d "{\"content\": \"✅ [BE 롤백 완료] \`(Docker) ${{ env.ENV }}\` 환경\"}" \
+            ${{ secrets.DISCORD_WEBHOOK_CICD_URL }}
+
+      - name: Send failure notification
+        if: failure()
+        run: |
+          curl -H "Content-Type: application/json" \
+            -X POST \
+            -d "{\"content\": \"❌ [BE 롤백 실패] \`(Docker) ${{ env.ENV }}\` 환경\"}" \
+            ${{ secrets.DISCORD_WEBHOOK_CICD_URL }}
