@@ -25,25 +25,27 @@ if ! grep -q "deploy" /etc/sudoers; then
 fi
 
 echo "[INFO] 기본 초기화 완료"
-
-
 DEVICE="/dev/disk/by-id/google-mysql-data"
 MOUNT_POINT="/mnt/tmp"
 
-# 마운트 디렉토리 생성
-mkdir -p $${MOUNT_POINT}
+# 1. 마운트 디렉토리 생성
+sudo mkdir -p $MOUNT_POINT
 
-# /etc/fstab에 등록하여 재부팅 시 자동 마운트
-if ! grep -q "$${DEVICE}" /etc/fstab; then
-  echo "$${DEVICE} $${MOUNT_POINT} ext4 defaults 0 2" >> /etc/fstab
+# 2. 디스크가 ext4로 포맷되어 있지 않다면, 포맷 (데이터 모두 삭제됨, 최초 1회만!)
+if ! sudo blkid $DEVICE | grep -q 'ext4'; then
+  sudo mkfs.ext4 -F $DEVICE
 fi
 
-# 즉시 마운트
-mount $${MOUNT_POINT}
+# 3. /etc/fstab에 등록 (중복 방지)
+if ! grep -q "$DEVICE" /etc/fstab; then
+  echo "$DEVICE $MOUNT_POINT ext4 defaults 0 2" | sudo tee -a /etc/fstab
+fi
 
-# 4. mysql-data 서브디렉토리 생성
-mkdir -p $MOUNT_POINT/mysql-data
+# 4. 즉시 마운트 (fstab에 등록된 대로)
+sudo mount $MOUNT_POINT
 
+# 5. mysql-data 서브디렉토리 생성
+sudo mkdir -p $MOUNT_POINT/mysql-data
 
 # 로그 설정
 exec > >(tee /var/log/user-data.log) 2>&1

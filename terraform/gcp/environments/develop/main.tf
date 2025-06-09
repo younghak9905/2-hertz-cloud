@@ -35,7 +35,7 @@ provider "google" {
 resource "google_compute_router" "router" {
   name    = "${var.env}-router"
   region  = var.region
-  network = data.terraform_remote_state.shared.outputs.vpc_self_link
+  network = data.terraform_remote_state.shared-dev.outputs.vpc_self_link
 }
 
 # Cloud NAT용 외부 고정 IP
@@ -68,7 +68,7 @@ locals {
   region           = var.region
   subnet_self_link = data.terraform_remote_state.shared-dev.outputs.nat_a_subnet_self_link
   vpc_self_link    = data.terraform_remote_state.shared-dev.outputs.vpc_self_link
-  private_subnet_self_link = data.terraform_remote_state-dev.shared.outputs.private_subnet_self_link
+  private_subnet_self_link = data.terraform_remote_state.shared-dev.outputs.private_subnet_self_link
 
   external_lb_ip = data.terraform_remote_state.shared-dev.outputs.dev_external_lb_ip_address
   external_lb_ip_self_link = data.terraform_remote_state.shared-dev.outputs.dev_external_lb_ip_self_link
@@ -91,11 +91,11 @@ resource "google_compute_instance" "backend_vm" {
   machine_type = "e2-medium"
   zone         = "${var.region}-a"
   tags         = ["backend", "backend-hc", "allow-vpn-ssh"]
-
+  
   boot_disk {
     initialize_params {
-       image = "projects/${var.source_image_project_id}/global/images/${var.source_image_name}"
-      size  = 30
+      image = "projects/${var.source_image_project_id}/global/images/${var.source_image_name}"
+      size  = 20
       type  = "pd-balanced"
     }
   }
@@ -122,6 +122,9 @@ resource "google_compute_instance" "backend_vm" {
       ssm_path            = "/global/springboot/dev/"
     })
   ])
+  metadata = {
+    ssh-keys = "deploy:${var.deploy_ssh_public_key}"
+  }
 }
 
 # 2) Unmanaged Instance Group으로 Backend VM 묶기
@@ -150,11 +153,10 @@ resource "google_compute_instance" "frontend_vm" {
   machine_type = "e2-small"
   zone         = "${var.region}-a"
   tags         = ["frontend", "allow-ssh-http", "allow-vpn-ssh"]
-
-  boot_disk {
+    boot_disk {
     initialize_params {
       image  = "projects/tuning-zero-1/global/images/base-vm-template"
-      size  = 30
+      size  = 10
       type  = "pd-balanced"
     }
   }
@@ -181,6 +183,9 @@ resource "google_compute_instance" "frontend_vm" {
       ssm_path            = "/global/nextjs/"
     })
   ])
+  metadata = {
+    ssh-keys = "deploy:${var.deploy_ssh_public_key}"
+  }
 }
 
 # 2) Unmanaged Instance Group으로 Frontend VM 묶기
@@ -210,7 +215,7 @@ module "backend_tg" {
   backends = [
     {
       instance_group  = google_compute_instance_group.backend_ig.self_link
-      weight          = 100
+      #weight          = 100
       balancing_mode  = "UTILIZATION"
       capacity_scaler = 1.0
     }
@@ -269,10 +274,9 @@ resource "google_compute_instance" "mysql_vm" {
   tags         = ["mysql", "allow-vpn-ssh"]
 
   boot_disk {
-
     initialize_params {
       image = "ubuntu-os-cloud/ubuntu-2204-lts"
-      size  = 30
+      size  = 10
       type  = "pd-balanced"
     }
   }
@@ -293,7 +297,7 @@ resource "google_compute_instance" "mysql_vm" {
     network_ip = google_compute_address.mysql_internal_ip.address
     # 외부 접근 필요 없으면 access_config 생략
   }
-
+  
   metadata_startup_script =join("\n", [
     templatefile("${path.module}/scripts/db-install.sh.tpl", {
       deploy_ssh_public_key = var.ssh_private_key
@@ -302,7 +306,11 @@ resource "google_compute_instance" "mysql_vm" {
       user_name             = var.mysql_user_name
     })
     
+
   ])
+  metadata = {
+    ssh-keys = "deploy:${var.deploy_ssh_public_key}"
+  }
 }
 
 
