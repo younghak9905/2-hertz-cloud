@@ -2,7 +2,7 @@ terraform {
   backend "remote" {
     organization = "hertz-tuning"
     workspaces {
-      name = "gcp-shared"
+      name = "shared-dev"
     }
   }
 }

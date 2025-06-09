@@ -11,12 +11,12 @@ terraform {
 }
 
 # 기존에 생성된 리소스(공유 VPC 등) 상태 조회
-data "terraform_remote_state" "shared" {
+data "terraform_remote_state" "shared-dev" {
   backend = "remote"
   config = {
     organization = "hertz-tuning"
     workspaces = {
-      name = "gcp-shared"
+      name = "shared-dev"
     }
   }
 }
@@ -63,22 +63,22 @@ resource "google_compute_router_nat" "nat" {
 }
 
 locals {
-  nat_subnet_info = data.terraform_remote_state.shared.outputs.nat_a_subnet_info
+  nat_subnet_info = data.terraform_remote_state.shared-dev.outputs.nat_a_subnet_info
 
   region           = var.region
-  subnet_self_link = data.terraform_remote_state.shared.outputs.nat_a_subnet_self_link
-  vpc_self_link    = data.terraform_remote_state.shared.outputs.vpc_self_link
-  private_subnet_self_link = data.terraform_remote_state.shared.outputs.private_subnet_self_link
+  subnet_self_link = data.terraform_remote_state.shared-dev.outputs.nat_a_subnet_self_link
+  vpc_self_link    = data.terraform_remote_state.shared-dev.outputs.vpc_self_link
+  private_subnet_self_link = data.terraform_remote_state-dev.shared.outputs.private_subnet_self_link
 
-  external_lb_ip = data.terraform_remote_state.shared.outputs.dev_external_lb_ip_address
-  external_lb_ip_self_link = data.terraform_remote_state.shared.outputs.dev_external_lb_ip_self_link
+  external_lb_ip = data.terraform_remote_state.shared-dev.outputs.dev_external_lb_ip_address
+  external_lb_ip_self_link = data.terraform_remote_state.shared-dev.outputs.dev_external_lb_ip_self_link
 
   # 헬스체크
-  hc_backend  = data.terraform_remote_state.shared.outputs.hc_backend_self_link
-  hc_frontend = data.terraform_remote_state.shared.outputs.hc_frontend_self_link
+  hc_backend  = data.terraform_remote_state.shared-dev.outputs.hc_backend_self_link
+  hc_frontend = data.terraform_remote_state.shared-dev.outputs.hc_frontend_self_link
 
 
-  mysql_data_disk_self_link = data.terraform_remote_state.shared.outputs.mysql_data_disk_self_link
+  mysql_data_disk_self_link = data.terraform_remote_state.shared-dev.outputs.mysql_data_disk_self_link
 }
 
 ############################################################
@@ -94,7 +94,7 @@ resource "google_compute_instance" "backend_vm" {
 
   boot_disk {
     initialize_params {
-      image  = "projects/tuning-zero-1/global/images/base-vm-template"
+       image = "projects/${var.source_image_project_id}/global/images/${var.source_image_name}"
       size  = 30
       type  = "pd-balanced"
     }
