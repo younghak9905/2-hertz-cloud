@@ -40,7 +40,7 @@ resource "google_compute_region_instance_group_manager" "this" {
 
   auto_healing_policies {
     health_check      = var.health_check
-    initial_delay_sec = 420
+    initial_delay_sec = 300
   }
 }
 
@@ -53,5 +53,6 @@ resource "google_compute_region_autoscaler" "this" {
     min_replicas    = var.min
     max_replicas    = var.max
     cpu_utilization { target = var.cpu_target }
+    cooldown_period = 300
   }
 }
