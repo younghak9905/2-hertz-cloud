@@ -204,8 +204,56 @@ jobs:
 
       - name: Setup gcloud CLI
         uses: google-github-actions/setup-gcloud@v1
+      
+      - name: Deploy to Dev Environment
+        if: env.ENV == 'DEV'
+        working-directory: tf-code/terraform/gcp/environments/dev
+        run: |
+          terraform init -reconfigure
+    
+          echo "{" > 01-deployment.auto.tfvars.json
+          echo "  \"docker_image\": \"${{ env.IMAGE }}\"," >> 01-deployment.auto.tfvars.json
+          echo "  \"instance_count\": {\"min\": 1, \"max\": 1}" >> 01-deployment.auto.tfvars.json
+          echo "}" >> 01-deployment.auto.tfvars.json
+    
+          cat 01-deployment.auto.tfvars.json
+    
+          terraform apply -auto-approve
+      - name: Check MIG Health (Dev)
+        if: env.ENV == 'DEV'
+        env:
+          REGION: asia-east1 # DEV 환경에 맞게 수정
+        run: |
+          MIG_NAME="dev-frontend-b" # DEV MIG 이름으로 수정
+          RETRY=10
+          SLEEP_SEC=30
+
+          echo "🩺 $MIG_NAME 인스턴스 헬스체크 시작..."
+          sleep 60 # Wait for instances to initialize
+
+          for i in $(seq 1 $RETRY); do
+            echo "[$i/$RETRY] $MIG_NAME 인스턴스 상태 확인 중..."
+            gcloud compute instance-groups managed list-instances "$MIG_NAME" --region="$REGION" --format="value(status,version.instanceTemplate,instanceHealth[0].detailedHealthState)" > states.txt
+            cat states.txt
+
+            HEALTHY_COUNT=$(grep -c "HEALTHY" states.txt || true)
+            TOTAL_COUNT=$(wc -l < states.txt)
+
+            if [ "$HEALTHY_COUNT" -eq "$TOTAL_COUNT" ] && [ "$TOTAL_COUNT" -gt 0 ]; then
+              echo "✅ 모든 인스턴스가 HEALTHY 상태입니다 ($HEALTHY_COUNT/$TOTAL_COUNT)."
+              exit 0
+            else
+              echo "⏳ 준비된 인스턴스 ($HEALTHY_COUNT/$TOTAL_COUNT). ${SLEEP_SEC}s 대기..."
+              sleep $SLEEP_SEC
+            fi
+          done
+
+          echo "❌ ${RETRY}회 시도 후에도 MIG 인스턴스가 HEALTHY 상태가 아닙니다."
+          exit 1
+
 
       - name: Get Active Deployment Color
+        if: env.ENV == 'PROD'
         id: active
         working-directory: tf-code/terraform/gcp/environments/prod
         run: |
@@ -226,6 +274,7 @@ jobs:
           fi        
           
       - name: Determine Next Deployment Color
+        if: env.ENV == 'PROD'
         id: color
         run: |
           if [ "${{ steps.active.outputs.active }}" = "green" ]; then
@@ -235,6 +284,7 @@ jobs:
           fi
 
       - name: Write tfvars file for next deployment
+        if: env.ENV == 'PROD'
         working-directory: tf-code/terraform/gcp/environments/prod
         run: |
           ACTIVE=${{ steps.active.outputs.active }}
@@ -249,12 +299,14 @@ jobs:
           terraform apply -auto-approve
           
       - name: Wait before health check
+        if: env.ENV == 'PROD'
         run: |
           SLEEP_SEC=60
           echo "⏱ ${SLEEP_SEC}초 대기 중... 인스턴스 초기화 및 헬스체크 준비"
           sleep ${SLEEP_SEC}
 
       - name: Check MIG Health
+        if: env.ENV == 'PROD'
         env:
           REGION: asia-east1
           TARGET: ${{ steps.color.outputs.target }}
@@ -290,6 +342,7 @@ jobs:
           exit 1
 
       - name: Write tfvars for shift traffic (half)
+        if: env.ENV == 'PROD'
         working-directory: tf-code/terraform/gcp/environments/prod
         run: |
           echo "{" > 02-shift-half.auto.tfvars.json
@@ -299,6 +352,8 @@ jobs:
           terraform apply -auto-approve
 
       - name: Write tfvars for shift traffic (full)
+      - name: Write tfvars for shift traffic (full)
+        if: env.ENV == 'PROD'
         working-directory: tf-code/terraform/gcp/environments/prod
         run: |
           TARGET=${{ steps.color.outputs.target }}
@@ -319,6 +374,7 @@ jobs:
           terraform apply -auto-approve
 
       - name: Scale Down Previous Environment
+        if: env.ENV == 'PROD'
         working-directory: tf-code/terraform/gcp/environments/prod
         run: |
           TARGET=${{ steps.color.outputs.target }}
@@ -427,6 +483,7 @@ jobs:
           credentials_json: "${{ env.SA_KEY }}"
 
       - name: Send rollback start notification
+        if: env.ENV == 'PROD'
         run: |
           curl -H "Content-Type: application/json" \
             -X POST \
@@ -434,6 +491,7 @@ jobs:
             ${{ secrets.DISCORD_WEBHOOK_CICD_URL }}
 
       - name: Write tfvars file for rollback
+        if: env.ENV == 'PROD'
         working-directory: tf-code/terraform/gcp/environments/prod
         run: |
           terraform init -reconfigure
@@ -448,6 +506,13 @@ jobs:
           echo "}" >> 999-rollback.auto.tfvars.json
           
           terraform apply -auto-approve
+      # =================== DEV Rollback Step ===================
+      - name: Notify for Dev Rollback
+        if: env.ENV == 'DEV'
+        run: |
+          echo "DEV 환경 배포에 실패했습니다."
+          echo "DEV 환경은 Blue/Green 배포가 아니므로 자동 롤백 작업은 알림 전송으로 대체됩니다."
+          echo "GCP 콘솔에서 'dev-frontend-b' Managed Instance Group의 상태를 직접 확인해주세요."
 
       - name: Send success notification
         if: success()
