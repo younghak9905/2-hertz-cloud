@@ -94,7 +94,7 @@ resource "google_compute_instance" "backend_vm" {
 
   boot_disk {
     initialize_params {
-      image = "ubuntu-os-cloud/ubuntu-2204-lts"
+      image  = "projects/tuning-zero-1/global/images/base-vm-template"
       size  = 30
       type  = "pd-balanced"
     }
@@ -153,7 +153,7 @@ resource "google_compute_instance" "frontend_vm" {
 
   boot_disk {
     initialize_params {
-      image = "ubuntu-os-cloud/ubuntu-2204-lts"
+      image  = "projects/tuning-zero-1/global/images/base-vm-template"
       size  = 30
       type  = "pd-balanced"
     }
