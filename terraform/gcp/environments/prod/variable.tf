@@ -89,13 +89,13 @@ variable "domain_frontend" {
 variable "docker_image_backend_blue" {
   description = "백엔드 Blue 컨테이너 이미지 (예: gcr.io/proj/backend:blue)"
   type        = string
-  default = "gcr.io/proj/backend:blue"
+  default = "969400486509.dkr.ecr.ap-northeast-2.amazonaws.com/tuning-springboot:develop-latest"
 }
 
 variable "docker_image_backend_green" {
   description = "백엔드 Green 컨테이너 이미지 (예: gcr.io/proj/backend:green)"
   type        = string
-  default = "gcr.io/proj/backend:green"
+  default = "969400486509.dkr.ecr.ap-northeast-2.amazonaws.com/tuning-nextjs:develop-latest"
 }
 
 variable "docker_image_front_blue" {
@@ -133,7 +133,7 @@ variable "active_deployment" {
 variable "traffic_weight_blue" {
   description = "Traffic weight for blue deployment (0-100)"
   type        = number
-  default     = 0
+  default     = 100
   
   validation {
     condition     = var.traffic_weight_blue >= 0 && var.traffic_weight_blue <= 100
@@ -144,7 +144,7 @@ variable "traffic_weight_blue" {
 variable "traffic_weight_green" {
   description = "Traffic weight for green deployment (0-100)"
   type        = number
-  default     = 10
+  default     = 0
   
   validation {
     condition     = var.traffic_weight_green >= 0 && var.traffic_weight_green <= 100
@@ -162,8 +162,8 @@ variable "blue_instance_count" {
   })
   default = {
     # desired = 1
-    min     = 0
-    max     = 0
+    min     = 1
+    max     = 2
   }
 }
 
