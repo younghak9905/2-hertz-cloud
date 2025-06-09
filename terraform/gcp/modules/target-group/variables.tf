@@ -44,7 +44,7 @@ variable "port_name" {
 
 variable "timeout_sec" {
   type    = number
-  default = 420
+  default = 30
 }
 
 variable "connection_draining_sec" {
