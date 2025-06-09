@@ -30,7 +30,7 @@ output "prod_private_subnet_self_link" {
    value = google_compute_subnetwork.shared_subnets["${var.vpc_name}-private-b"].self_link
 }
 
-output "nat_subnet_info" {
+output "nat_a_subnet_info" {
   value = {
     for s in google_compute_subnetwork.shared_subnets :
     s.name => {
@@ -38,7 +38,19 @@ output "nat_subnet_info" {
       self_link = s.self_link
       cidr      = s.ip_cidr_range
     }
-    if can(regex("-nat-", s.name))
+    if can(regex("-nat-a", s.name))
+  }
+}
+
+output "nat_b_subnet_info" {
+  value = {
+    for s in google_compute_subnetwork.shared_subnets :
+    s.name => {
+      name      = s.name
+      self_link = s.self_link
+      cidr      = s.ip_cidr_range
+    }
+    if can(regex("-nat-b", s.name))
   }
 }
 
