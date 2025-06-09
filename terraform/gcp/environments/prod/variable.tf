@@ -144,7 +144,7 @@ variable "traffic_weight_blue" {
 variable "traffic_weight_green" {
   description = "Traffic weight for green deployment (0-100)"
   type        = number
-  default     = 0
+  default     = 10
   
   validation {
     condition     = var.traffic_weight_green >= 0 && var.traffic_weight_green <= 100
