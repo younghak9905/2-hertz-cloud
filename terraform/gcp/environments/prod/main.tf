@@ -63,7 +63,7 @@ resource "google_compute_router_nat" "nat" {
 }
 
 locals {
-  nat_subnet_info = data.terraform_remote_state.shared.outputs.nat_subnet_info
+  nat_subnet_info = data.terraform_remote_state.shared.outputs.nat_b_subnet_info
   firewall_rules  = data.terraform_remote_state.shared.outputs.firewall_rules
 
   region           = var.region
