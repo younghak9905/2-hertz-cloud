@@ -33,20 +33,20 @@ provider "google" {
 
 # Cloud Router 생성
 resource "google_compute_router" "router" {
-  name    = "${var.vpc_name}-router-${var.env}"
+  name    = "${var.env}-router"
   region  = var.region
   network = data.terraform_remote_state.shared.outputs.vpc_self_link
 }
 
 # Cloud NAT용 외부 고정 IP
 resource "google_compute_address" "nat_ip" {
-  name   = "${var.vpc_name}-nat-ip-${var.env}"
+  name   = "${var.env}-nat-ip"
   region = var.region
 }
 
 # Cloud NAT 설정
 resource "google_compute_router_nat" "nat" {
-  name                               = "${var.vpc_name}-nat"
+  name                               = "${var.env}-nat"
   router                             = google_compute_router.router.name
   region                             = var.region
   nat_ip_allocate_option             = "MANUAL_ONLY"
@@ -119,7 +119,7 @@ resource "google_compute_instance" "backend_vm" {
       container_port        = "8080"
       host_port            = "8080"
       db_host              = google_compute_address.mysql_internal_ip.address
-      ssm_path            = "/global/springboot/"
+      ssm_path            = "/global/springboot/dev/"
     })
   ])
 }
@@ -205,6 +205,7 @@ resource "google_compute_instance_group" "frontend_ig" {
 module "backend_tg" {
   source       = "../../modules/target-group"
   name         = "${var.env}-be-tg"
+  description  = "Traffic: blue ${var.traffic_weight_blue}% / green ${var.traffic_weight_green}%"
   health_check = local.hc_backend
   backends = [
     {
@@ -219,11 +220,12 @@ module "backend_tg" {
 module "frontend_tg" {
   source       = "../../modules/target-group"
   name         = "${var.env}-fe-tg"
+  description  = "Traffic: blue ${var.traffic_weight_blue}% / green ${var.traffic_weight_green}%"
   health_check = local.hc_frontend
   backends = [
     {
       instance_group  = google_compute_instance_group.frontend_ig.self_link
-      weight          = 100
+     # weight          = 100
       balancing_mode  = "UTILIZATION"
       capacity_scaler = 1.0
     }

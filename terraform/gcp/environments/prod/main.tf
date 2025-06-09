@@ -33,20 +33,20 @@ provider "google" {
 
 # Cloud Router 생성
 resource "google_compute_router" "router" {
-  name    = "${var.vpc_name}-router"
+  name    = "${var.env}-router"
   region  = var.region
   network = data.terraform_remote_state.shared.outputs.vpc_self_link
 }
 
 # Cloud NAT용 외부 고정 IP
 resource "google_compute_address" "nat_ip" {
-  name   = "${var.vpc_name}-nat-ip"
+  name   = "${var.env}-nat-ip"
   region = var.region
 }
 
 # Cloud NAT 설정
 resource "google_compute_router_nat" "nat" {
-  name                               = "${var.vpc_name}-nat"
+  name                               = "${var.env}-nat"
   router                             = google_compute_router.router.name
   region                             = var.region
   nat_ip_allocate_option             = "MANUAL_ONLY"
@@ -123,7 +123,7 @@ module "backend_internal_asg_blue" {
       container_port        = "8080"
       host_port            = "8080"
       db_host              = google_compute_address.mysql_internal_ip.address
-      ssm_path            = "/global/springboot/"
+      ssm_path            = "/global/springboot/prod/"
     })
 
 
@@ -162,7 +162,7 @@ module "backend_internal_asg_green" {
       container_port        = "8080"
       host_port            = "8080"
       db_host              = google_compute_address.mysql_internal_ip.address
-      ssm_path            = "/global/springboot/"
+      ssm_path            = "/global/springboot/prod/"
     })
 
    
@@ -240,7 +240,7 @@ module "frontend_asg_blue" {
       container_name        = "tuning-frontend"
       container_port        = "3000"
       host_port            = "80"
-      ssm_path            = "/global/nextjs/"
+      ssm_path            = "/global/nextjs/prod/"
     })
   ])
   
@@ -275,7 +275,7 @@ module "frontend_asg_green" {
       container_name        = "tuning-frontend"
       container_port        = "3000"
       host_port            = "80"
-      ssm_path            = "/global/nextjs/"
+      ssm_path            = "/global/nextjs/prod/"
     })
 
    
