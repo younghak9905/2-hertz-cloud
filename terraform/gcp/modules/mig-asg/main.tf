@@ -4,7 +4,7 @@ resource "google_compute_instance_template" "this" {
    disk {
     auto_delete  = true
     boot         = true
-    source_image = "projects/ubuntu-os-cloud/global/images/family/ubuntu-2204-lts"
+    source_image = "projects/tuning-zero-1/global/images/vm-start-image"
     disk_size_gb = var.disk_size_gb              # 필요시 조정
     type         = "pd-balanced"
   }
