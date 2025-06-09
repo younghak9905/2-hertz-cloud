@@ -65,3 +65,16 @@ variable "proxy_subnet_cidr" {
   description = "프록시 서브넷 CIDR (예:"
   default     = "10.10.31.0/26"
 }
+
+variable "source_image_project_id" {
+  description = "GCP에서 사용할 소스 이미지 프로젝트 ID"
+  type        = string
+  
+}
+
+variable "source_image_name" {
+  description = "GCP에서 사용할 소스 이미지 이름"
+  type        = string
+  default     = "base-vm-template"
+  
+}
