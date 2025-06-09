@@ -207,7 +207,7 @@ jobs:
       
       - name: Deploy to Dev Environment
         if: env.ENV == 'DEV'
-        working-directory: tf-code/terraform/gcp/environments/dev
+        working-directory: tf-code/terraform/gcp/environments/develop
         run: |
           terraform init -reconfigure
     
@@ -224,7 +224,7 @@ jobs:
         env:
           REGION: asia-east1 # DEV 환경에 맞게 수정
         run: |
-          MIG_NAME="dev-frontend-b" # DEV MIG 이름으로 수정
+          MIG_NAME="dev-frontend-a" # DEV MIG 이름으로 수정
           RETRY=10
           SLEEP_SEC=30
 
