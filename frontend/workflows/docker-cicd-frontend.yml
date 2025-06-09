@@ -83,6 +83,7 @@ jobs:
           echo "🏗️ Docker 이미지 빌드 시작..."
 
           docker build \
+            --platform linux/amd64 \
             --cache-from=type=registry,ref=$ECR_REGISTRY/$REPOSITORY:$ENV_TAG \
             --cache-to=type=inline \
             -t $ECR_REGISTRY/$REPOSITORY:$IMAGE_TAG \
