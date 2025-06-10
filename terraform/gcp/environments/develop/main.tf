@@ -85,7 +85,7 @@ locals {
 # 백엔드(Backend) ASG - 단일 인스턴스용 Unmanaged IG
 ############################################################
 module "backend_ig" {
-
+  deploy_ssh_public_key = var.deploy_ssh_public_key
   project_id = var.dev_gcp_project_id
   source           = "../../modules/mig-asg"
   name             = "${var.env}-be-ig-a"
@@ -130,7 +130,7 @@ module "backend_ig" {
 
 
 module "frontend_ig" {
-
+  deploy_ssh_public_key = var.deploy_ssh_public_key
   project_id       = var.dev_gcp_project_id
   source           = "../../modules/mig-asg"
   name             = "${var.env}-fe-ig-a"

@@ -84,3 +84,9 @@ variable "project_id" {
   type = string
   default = ""
 }
+
+variable "deploy_ssh_public_key" {
+  type    = string
+  default = ""
+  
+}
