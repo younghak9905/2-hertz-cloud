@@ -252,3 +252,10 @@ variable "mysql_internal_ip" {
   type        = string
   default     = ""
 }
+
+variable "redis_password" {
+  description = "Redis 비밀번호"
+  type        = string
+  default     = ""
+  sensitive   = true
+}
