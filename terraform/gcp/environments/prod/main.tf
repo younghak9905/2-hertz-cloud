@@ -404,7 +404,7 @@ resource "google_compute_instance" "mysql_vm" {
   name         = "${var.env}-mysql-vm"
   machine_type = "e2-small"
   zone         = "${var.region}-b"
-  tags         = ["mysql", "allow-vpn-ssh"]
+  tags         = ["mysql", "redis", "allow-vpn-ssh"]
 
   boot_disk {
 

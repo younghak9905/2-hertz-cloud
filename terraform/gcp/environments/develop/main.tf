@@ -235,7 +235,7 @@ resource "google_compute_instance" "mysql_vm" {
   name         = "${var.env}-mysql-vm"
   machine_type = "e2-small"
   zone         = "${var.region}-a"
-  tags         = ["mysql", "allow-vpn-ssh"]
+  tags         = ["mysql", "redis", "allow-vpn-ssh"]
 
   boot_disk {
     initialize_params {
@@ -267,7 +267,9 @@ resource "google_compute_instance" "mysql_vm" {
       deploy_ssh_public_key = var.ssh_private_key
       rootpasswd            = var.mysql_root_password,
       db_name               = var.mysql_database_name,
-      user_name             = var.mysql_user_name
+      user_name             = var.mysql_user_name,
+      redis_password        = var.redis_password
+
     })
     
 
