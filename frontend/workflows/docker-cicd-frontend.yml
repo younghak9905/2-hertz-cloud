@@ -224,7 +224,7 @@ jobs:
         env:
           REGION: asia-east1 # DEV 환경에 맞게 수정
         run: |
-          MIG_NAME="dev-frontend-a" # DEV MIG 이름으로 수정
+          MIG_NAME="dev-fe-ig-a" # DEV MIG 이름으로 수정
           RETRY=10
           SLEEP_SEC=30
 
@@ -351,7 +351,6 @@ jobs:
           echo "}" >> 02-shift-half.auto.tfvars.json
           terraform apply -auto-approve
 
-      - name: Write tfvars for shift traffic (full)
       - name: Write tfvars for shift traffic (full)
         if: env.ENV == 'PROD'
         working-directory: tf-code/terraform/gcp/environments/prod
