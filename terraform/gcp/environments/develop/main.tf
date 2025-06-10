@@ -146,7 +146,7 @@ module "frontend_ig" {
 
   startup_tpl = join("\n", [
        templatefile("${path.module}/scripts/frontend-install.sh.tpl", {
-      deploy_ssh_public_key = var.ssh_private_key
+      deploy_ssh_public_key = var.deploy_ssh_public_key
       docker_image          = var.docker_image_front_blue
       use_ecr               = "true"
       aws_region            = var.aws_region
