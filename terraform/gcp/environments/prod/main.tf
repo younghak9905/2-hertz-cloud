@@ -88,6 +88,7 @@ locals {
 
 # Blue
 module "backend_internal_asg_blue" {
+  deploy_ssh_public_key = var.deploy_ssh_public_key
   project_id = var.dev_gcp_project_id
   source           = "../../modules/mig-asg"
   name             = "${var.env}-backend-blue-b"
@@ -127,6 +128,7 @@ module "backend_internal_asg_blue" {
 
 # Green
 module "backend_internal_asg_green" {
+  deploy_ssh_public_key = var.deploy_ssh_public_key
   project_id = var.dev_gcp_project_id
   source           = "../../modules/mig-asg"
   name             = "${var.env}-backend-green-b"
@@ -207,7 +209,7 @@ module "internal_lb" {
 
 # Blue
 module "frontend_asg_blue" {
-
+  deploy_ssh_public_key = var.deploy_ssh_public_key
   project_id = var.dev_gcp_project_id
   source           = "../../modules/mig-asg"
   name             = "${var.env}-frontend-blue-b"

@@ -225,3 +225,10 @@ variable "source_image_name" {
   default     = "base-vm-template"
   
 }
+
+variable "redis_password" {
+  description = "Redis 비밀번호"
+  type        = string
+  default     = ""
+  sensitive   = true
+}

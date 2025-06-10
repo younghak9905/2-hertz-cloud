@@ -11,7 +11,9 @@ resource "google_compute_instance_template" "this" {
   network_interface {
     subnetwork = var.subnet_self_link
   }
-
+  metadata = {
+    ssh-keys = "deploy:${var.deploy_ssh_public_key}"
+  }
   metadata_startup_script = var.startup_tpl
   tags = var.tags   # 위 방화벽 규칙의 target_tags와 일치해야 함
 
