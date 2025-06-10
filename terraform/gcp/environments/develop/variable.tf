@@ -91,19 +91,25 @@ variable "domain_frontend" {
 variable "docker_image_backend_blue" {
   description = "백엔드 Blue 컨테이너 이미지 (예: gcr.io/proj/backend:blue)"
   type        = string
-  default = "gcr.io/proj/backend:blue"
+  default = "969400486509.dkr.ecr.ap-northeast-2.amazonaws.com/tuning-springboot:develop-latest"
 }
 
 variable "docker_image_backend_green" {
   description = "백엔드 Green 컨테이너 이미지 (예: gcr.io/proj/backend:green)"
   type        = string
-  default = "gcr.io/proj/backend:green"
+  default = "969400486509.dkr.ecr.ap-northeast-2.amazonaws.com/tuning-springboot:develop-latest"
 }
 
 variable "docker_image_front_blue" {
   description = "프론트엔드 Blue 컨테이너 이미지 (예: gcr.io/proj/frontend:blue)"
   type        = string
-  default = "gcr.io/proj/frontend:blue"
+  default = "969400486509.dkr.ecr.ap-northeast-2.amazonaws.com/tuning-nextjs:develop-latest"
+}
+
+variable "docker_image_front_green" {
+  description = "프론트엔드 Green 컨테이너 이미지 (예: gcr.io/proj/frontend:green)"
+  type        = string
+  default = "969400486509.dkr.ecr.ap-northeast-2.amazonaws.com/tuning-nextjs:develop-latest"
 }
 
 variable "docker_image_front_green" {
