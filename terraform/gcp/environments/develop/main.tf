@@ -84,30 +84,21 @@ locals {
 ############################################################
 # 백엔드(Backend) ASG - 단일 인스턴스용 Unmanaged IG
 ############################################################
+module "backend_ig" {
+  source           = "../../modules/mig-asg"
+  name             = "${var.env}-be-ig-a"
+  region           = var.region
+  subnet_self_link = local.subnet_self_link
+  disk_size_gb     = 20
+  machine_type     = "e2-medium"
+  # 동적 인스턴스 수 설정
+  min        = 1
+  max        = 1
+  cpu_target = 0.8
 
-# 1) Backend VM 생성
-resource "google_compute_instance" "backend_vm" {
-  name         = "${var.env}-backend-vm-a"
-  machine_type = "e2-medium"
-  zone         = "${var.region}-a"
-  tags         = ["backend", "backend-hc", "allow-vpn-ssh"]
-  
-  boot_disk {
-    initialize_params {
-      image = "projects/${var.source_image_project_id}/global/images/${var.source_image_name}"
-      size  = 20
-      type  = "pd-balanced"
-    }
-  }
-
-  network_interface {
-    network    = local.vpc_self_link
-    subnetwork = local.subnet_self_link
-  }
-
-  metadata_startup_script = join("\n", [
-    # 1) 기존 템플릿 파일 호출
-    templatefile("${path.module}/scripts/backend-install.sh.tpl", {
+  startup_tpl = join("\n", [
+    # 기존 템플릿 파일 호출
+      templatefile("${path.module}/scripts/backend-install.sh.tpl", {
       deploy_ssh_public_key = var.deploy_ssh_public_key
       deploy_ssh_private_key= var.ssh_private_key
       docker_image          = var.docker_image_backend_blue
@@ -121,13 +112,16 @@ resource "google_compute_instance" "backend_vm" {
       db_host              = google_compute_address.mysql_internal_ip.address
       ssm_path            = "/global/springboot/dev/"
     })
+
+
   ])
-  metadata = {
-    ssh-keys = "deploy:${var.deploy_ssh_public_key}"
-  }
+  
+  health_check = local.hc_backend
+  tags         = ["backend", "backend-hc", "allow-vpn-ssh"]
+  port_http    = 8080
 }
 
-# 2) Unmanaged Instance Group으로 Backend VM 묶기
+
 resource "google_compute_instance_group" "backend_ig" {
   name    = "${var.env}-be-ig-a"
   zone    = "${var.region}-a"
@@ -147,32 +141,23 @@ resource "google_compute_instance_group" "backend_ig" {
 ############################################################
 
 
-# 1) Frontend VM 생성
-resource "google_compute_instance" "frontend_vm" {
-  name         = "${var.env}-frontend-vm-a"
-  machine_type = "e2-small"
-  zone         = "${var.region}-a"
-  tags         = ["frontend", "allow-ssh-http", "allow-vpn-ssh"]
-    boot_disk {
-    initialize_params {
-      image  = "projects/tuning-zero-1/global/images/base-vm-template"
-      size  = 10
-      type  = "pd-balanced"
-    }
-  }
+module "frontend_ig" {
+  source           = "../../modules/mig-asg"
+  name             = "${var.env}-fe-ig-a"
+  region           = var.region
+  subnet_self_link = local.subnet_self_link
+  disk_size_gb     = 20
+  machine_type     = "e2-small"
+  
+  # 동적 인스턴스 수 설정
+  min        = 1
+  max        = 1
+  cpu_target = 0.8
 
-  network_interface {
-    network    = local.vpc_self_link
-    subnetwork = local.subnet_self_link
-
-
-
-  }
-
-  metadata_startup_script = join("\n", [
-    templatefile("${path.module}/scripts/frontend-install.sh.tpl", {
-      deploy_ssh_public_key = var.deploy_ssh_public_key
-      docker_image          = var.docker_image_front_blue
+  startup_tpl = join("\n", [
+       templatefile("${path.module}/scripts/frontend-install.sh.tpl", {
+      deploy_ssh_public_key = var.ssh_private_key
+      docker_image          = var.docker_image_front_green
       use_ecr               = "true"
       aws_region            = var.aws_region
       aws_access_key_id     = var.aws_access_key_id
@@ -180,28 +165,15 @@ resource "google_compute_instance" "frontend_vm" {
       container_name        = "tuning-frontend"
       container_port        = "3000"
       host_port            = "80"
-      ssm_path            = "/global/nextjs/"
+      ssm_path            = "/global/nextjs/dev/"
     })
   ])
-  metadata = {
-    ssh-keys = "deploy:${var.deploy_ssh_public_key}"
-  }
+  port_http    = 80
+  health_check = local.hc_frontend
+  tags         = ["frontend", "allow-ssh-http", "allow-vpn-ssh"]
 }
 
-# 2) Unmanaged Instance Group으로 Frontend VM 묶기
-resource "google_compute_instance_group" "frontend_ig" {
-  name    = "${var.env}-fe-ig-a"
-  zone    = "${var.region}-a"
-  network = local.vpc_self_link
-   named_port {
-    name = "http"
-    port = 80
-  }
 
-  instances = [
-    google_compute_instance.frontend_vm.self_link
-  ]
-}
 
 ############################################################
 # External Backend/Frontend Target Group 생성 (HTTP LB 용)
