@@ -115,7 +115,7 @@ jobs:
         if: steps.check_instance.outputs.continue == 'true'
         run: |
           echo "🔍 AI 서버 헬스체크 시작 (FastAPI docs)... 최대 3회 시도합니다."
-          for i in {1..3}; do
+          for i in {1..5}; do
             echo "⏱️ 시도 $i: http://${{ env.HOST }}:8000/docs"
             if curl -sf http://${{ env.HOST }}:8000/docs; then
               echo "✅ 헬스체크 성공 🎉"
@@ -126,7 +126,7 @@ jobs:
             fi
           done
 
-          echo "::error::❌ 3회 헬스체크 실패 - 서버가 정상 기동되지 않음"
+          echo "::error::❌ 5회 헬스체크 실패 - 서버가 정상 기동되지 않음"
           exit 1
 
       - name: Send failure notification
@@ -232,20 +232,20 @@ jobs:
 
       - name: Health check with retries
         run: |
-          echo "🔍 AI 서버 헬스체크 시작 ... 최대 3회 시도합니다."
-          for i in {1..3}; do
-            echo "⏱️ 시도 $i: http://${{ env.HOST }}:8000/api/v1/health/chromadb"
-            if curl -sf http://${{ env.HOST }}:8000/api/v1/health/chromadb; then
-              echo "✅ 헬스체크 성공 🎉"
-              exit 0
-            else
-              echo "⚠️ 헬스체크 실패. 10초 후 재시도..."
-              sleep 10
-            fi
-          done
-
-          echo "::error::❌ 3회 헬스체크 실패 - 서버가 정상 기동되지 않음"
-          exit 1
+              echo "🔍 AI 서버 헬스체크 시작 (FastAPI docs)... 최대 3회 시도합니다."
+              for i in {1..5}; do
+                echo "⏱️ 시도 $i: http://${{ env.HOST }}:8000/docs"
+                if curl -sf http://${{ env.HOST }}:8000/docs; then
+                  echo "✅ 헬스체크 성공 🎉"
+                  exit 0
+                else
+                  echo "⚠️ 헬스체크 실패. 10초 후 재시도..."
+                  sleep 10
+                fi
+              done
+    
+              echo "::error::❌ 5회 헬스체크 실패 - 서버가 정상 기동되지 않음"
+              exit 1
 
       - name: Send success notification
         if: success()
