@@ -205,53 +205,6 @@ jobs:
 
       - name: Setup gcloud CLI
         uses: google-github-actions/setup-gcloud@v1
-      
-      - name: Deploy to Dev Environment
-        if: env.ENV == 'DEV'
-        working-directory: tf-code/terraform/gcp/environments/develop
-        run: |
-          terraform init -reconfigure
-    
-          echo "{" > 01-deployment.auto.tfvars.json
-          echo "  \"docker_image_front_blue\": \"${{ env.IMAGE }}\"," >> 01-deployment.auto.tfvars.json
-          echo "  \"instance_count\": {\"min\": 1, \"max\": 1}" >> 01-deployment.auto.tfvars.json
-          echo "}" >> 01-deployment.auto.tfvars.json
-    
-          cat 01-deployment.auto.tfvars.json
-    
-          terraform apply -auto-approve
-      - name: Check MIG Health (Dev)
-        if: env.ENV == 'DEV'
-        env:
-          REGION: asia-east1 # DEV 환경에 맞게 수정
-        run: |
-          MIG_NAME="dev-fe-ig-a" # DEV MIG 이름으로 수정
-          RETRY=10
-          SLEEP_SEC=30
-
-          echo "🩺 $MIG_NAME 인스턴스 헬스체크 시작..."
-          sleep 60 # Wait for instances to initialize
-
-          for i in $(seq 1 $RETRY); do
-            echo "[$i/$RETRY] $MIG_NAME 인스턴스 상태 확인 중..."
-            gcloud compute instance-groups managed list-instances "$MIG_NAME" --region="$REGION" --format="value(status,version.instanceTemplate,instanceHealth[0].detailedHealthState)" > states.txt
-            cat states.txt
-
-            HEALTHY_COUNT=$(grep -c "HEALTHY" states.txt || true)
-            TOTAL_COUNT=$(wc -l < states.txt)
-
-            if [ "$HEALTHY_COUNT" -eq "$TOTAL_COUNT" ] && [ "$TOTAL_COUNT" -gt 0 ]; then
-              echo "✅ 모든 인스턴스가 HEALTHY 상태입니다 ($HEALTHY_COUNT/$TOTAL_COUNT)."
-              exit 0
-            else
-              echo "⏳ 준비된 인스턴스 ($HEALTHY_COUNT/$TOTAL_COUNT). ${SLEEP_SEC}s 대기..."
-              sleep $SLEEP_SEC
-            fi
-          done
-
-          echo "❌ ${RETRY}회 시도 후에도 MIG 인스턴스가 HEALTHY 상태가 아닙니다."
-          exit 1
-
 
       - name: Deploy to Dev Environment
         if: env.ENV == 'DEV'
@@ -585,13 +538,6 @@ jobs:
           echo "}" >> 999-rollback.auto.tfvars.json
 
           terraform apply -auto-approve
-      # =================== DEV Rollback Step ===================
-      - name: Notify for Dev Rollback
-        if: env.ENV == 'DEV'
-        run: |
-          echo "DEV 환경 배포에 실패했습니다."
-          echo "DEV 환경은 Blue/Green 배포가 아니므로 자동 롤백 작업은 알림 전송으로 대체됩니다."
-          echo "GCP 콘솔에서 'dev-frontend-b' Managed Instance Group의 상태를 직접 확인해주세요."
 
       - name: Send success notification
         if: success() && env.ENV == 'PROD'
