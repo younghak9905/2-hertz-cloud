@@ -106,7 +106,7 @@ variable "docker_image_front_blue" {
   default = "969400486509.dkr.ecr.ap-northeast-2.amazonaws.com/tuning-nextjs:develop-latest"
 }
 
-variable "docker_image_front_green" {
+variable "docker_image_front_blue" {
   description = "프론트엔드 Green 컨테이너 이미지 (예: gcr.io/proj/frontend:green)"
   type        = string
   default = "969400486509.dkr.ecr.ap-northeast-2.amazonaws.com/tuning-nextjs:develop-latest"
