@@ -438,6 +438,7 @@ resource "google_compute_instance" "mysql_vm" {
       rootpasswd            = var.mysql_root_password,
       db_name               = var.mysql_database_name,
       user_name             = var.mysql_user_name
+      redis_password        = var.redis_password
     })
     
   ])
