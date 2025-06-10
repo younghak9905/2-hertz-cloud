@@ -122,20 +122,6 @@ module "backend_ig" {
 }
 
 
-resource "google_compute_instance_group" "backend_ig" {
-  name    = "${var.env}-be-ig-a"
-  zone    = "${var.region}-a"
-  network = local.vpc_self_link
-
-   named_port {
-    name = "http"
-    port = 8080
-  }
-  instances = [
-    google_compute_instance.backend_vm.self_link
-  ]
-}
-
 ############################################################
 # 프론트엔드(Frontend) ASG - 단일 인스턴스용 Unmanaged IG
 ############################################################
@@ -186,13 +172,15 @@ module "backend_tg" {
   health_check = local.hc_backend
   backends = [
     {
-      instance_group  = google_compute_instance_group.backend_ig.self_link
+      instance_group  = module.backend_ig.instance_group
       #weight          = 100
       balancing_mode  = "UTILIZATION"
       capacity_scaler = 1.0
     }
   ]
 }
+
+
 
 module "frontend_tg" {
   source       = "../../modules/target-group"
@@ -201,7 +189,7 @@ module "frontend_tg" {
   health_check = local.hc_frontend
   backends = [
     {
-      instance_group  = google_compute_instance_group.frontend_ig.self_link
+      instance_group  = module.frontend_ig.instance_group
      # weight          = 100
       balancing_mode  = "UTILIZATION"
       capacity_scaler = 1.0
