@@ -80,7 +80,7 @@ docker run -d \
   --name redis \
   --restart unless-stopped \
   -e REDIS_PASSWORD="${redis_password}" \
-  -v redis_data:/data \
+  -v $${MOUNT_POINT}/redis_data:/data \
   -p 6379:6379 \
   "redis:7.2.4" \
   redis-server --requirepass "${redis_password}"

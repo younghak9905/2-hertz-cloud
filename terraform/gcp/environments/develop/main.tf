@@ -308,7 +308,7 @@ locals {
   # 2) 직접 정의한 추가 방화벽 규칙
   firewall_rules = [
     {
-      name          = "${var.vpc_name}-fw-frontend-to-backend"
+      name          = "${var.env}-fw-frontend-to-backend"
       direction     = "INGRESS"
       priority      = 1000
       description   = "Allow frontend to access backend"
@@ -318,7 +318,7 @@ locals {
       ports         = ["8080"]
     },
     {
-      name         = "${var.vpc_name}-fw-backend-to-mysql"
+      name         = "${var.env}-fw-backend-to-mysql"
       direction    = "INGRESS"
       priority     = 1000
       description  = "Allow backend to access MySQL"
@@ -328,7 +328,7 @@ locals {
       ports        = ["3306"]
     },
     {
-      name         = "${var.vpc_name}-fw-backend-to-redis"
+      name         = "${var.env}-fw-backend-to-redis"
       direction    = "INGRESS"
       priority     = 1000
       description  = "Allow backend to access Redis"
