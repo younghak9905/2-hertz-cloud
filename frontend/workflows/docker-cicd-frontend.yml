@@ -422,15 +422,7 @@ jobs:
       ACTIVE: ${{ needs.frontend-cd.outputs.ACTIVE }}
       TARGET: ${{ needs.frontend-cd.outputs.TARGET }}
     steps:
-      - name: Notify for Dev Rollback
-        if: env.ENV == 'DEV'
-        run: |
-          echo "❗DEV 환경 배포에 실패했습니다."
-          echo "❗DEV 환경은 Blue/Green 배포가 아니므로 자동 롤백 작업이 없습니다."
-          echo "❗GCP 콘솔에서 'dev-frontend-b' Managed Instance Group의 상태를 직접 확인해주세요."
-
       - name: Configure AWS credentials
-        if: env.ENV == 'PROD'
         uses: aws-actions/configure-aws-credentials@v2
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
@@ -438,7 +430,6 @@ jobs:
           aws-region: ${{ secrets.AWS_REGION }}
 
       - name: Set environment variables from SSM
-        if: env.ENV == 'PROD'
         run: |
           load_param() {
             VALUE=$(aws ssm get-parameter --name "$1" --with-decryption --query "Parameter.Value" --output text)
@@ -474,6 +465,13 @@ jobs:
           else
             echo "ENV=DEV" >> $GITHUB_ENV
           fi
+
+      - name: Notify for Dev Rollback
+        if: env.ENV == 'DEV'
+        run: |
+          echo "❗DEV 환경 배포에 실패했습니다."
+          echo "❗DEV 환경은 Blue/Green 배포가 아니므로 자동 롤백 작업이 없습니다."
+          echo "❗GCP 콘솔에서 'dev-frontend-b' Managed Instance Group의 상태를 직접 확인해주세요."
 
       - name: Checkout Terraform repo
         if: env.ENV == 'PROD'
