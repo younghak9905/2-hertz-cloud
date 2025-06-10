@@ -24,7 +24,7 @@ variable "dev_gcp_sa_key" {
 variable "env" {
   description = "환경 이름 (예: dev, prod)"
   type        = string
-  default     = "shared"
+  default     = "shared-dev"
   
 }
 variable "default_sa_email" {
@@ -37,7 +37,7 @@ variable "openvpn_admin_password" {
   type        = string
 }
 
-variable "ssh_private_key" {
+variable "ssh_public_key" {
   description = "deploy 계정에 등록할 SSH 공개 키"
   type        = string
 }
@@ -64,4 +64,17 @@ variable "proxy_subnet_cidr" {
   type = string
   description = "프록시 서브넷 CIDR (예:"
   default     = "10.10.31.0/26"
+}
+
+variable "source_image_project_id" {
+  description = "GCP에서 사용할 소스 이미지 프로젝트 ID"
+  type        = string
+  
+}
+
+variable "source_image_name" {
+  description = "GCP에서 사용할 소스 이미지 이름"
+  type        = string
+  default     = "base-vm-template"
+  
 }

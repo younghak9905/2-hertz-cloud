@@ -1,10 +1,10 @@
 resource "google_compute_instance_template" "this" {
-  name_prefix  = "${var.name}-tmpl-"
+  name_prefix  = "${var.name}-tmpl"
   machine_type = var.machine_type
    disk {
     auto_delete  = true
     boot         = true
-    source_image = "projects/ubuntu-os-cloud/global/images/family/ubuntu-2204-lts"
+    source_image = "projects/${var.project_id}/global/images/base-vm-template"
     disk_size_gb = var.disk_size_gb              # 필요시 조정
     type         = "pd-balanced"
   }
@@ -17,13 +17,16 @@ resource "google_compute_instance_template" "this" {
 
   
   service_account { scopes = ["https://www.googleapis.com/auth/cloud-platform"] }
+  lifecycle {
+    create_before_destroy = true
+  }
 }
 
 resource "google_compute_region_instance_group_manager" "this" {
   name               = var.name
   region             = var.region
   base_instance_name = var.name
-  target_size        = var.desired
+  //target_size        = var.desired
 
   named_port {
     name = "http"
@@ -37,7 +40,7 @@ resource "google_compute_region_instance_group_manager" "this" {
 
   auto_healing_policies {
     health_check      = var.health_check
-    initial_delay_sec = 60
+    initial_delay_sec = 300
   }
 }
 
@@ -50,5 +53,6 @@ resource "google_compute_region_autoscaler" "this" {
     min_replicas    = var.min
     max_replicas    = var.max
     cpu_utilization { target = var.cpu_target }
+    cooldown_period = 300
   }
 }

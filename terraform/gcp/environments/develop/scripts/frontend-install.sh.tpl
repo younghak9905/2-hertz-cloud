@@ -24,48 +24,51 @@ if ! grep -q "deploy" /etc/sudoers; then
   echo "deploy ALL=(ALL) NOPASSWD: /bin/systemctl * docker, /bin/systemctl * openvpnas, /bin/service openvpnas *" >> /etc/sudoers
 fi
 
-echo "[INFO] 기본 초기화 완료"
-
-# 로그 설정
-exec > >(tee /var/log/user-data.log) 2>&1
-echo "======================================================"
-
-# 시스템 업데이트 및 필요한 패키지 설치
-echo "[INFO] 시스템 업데이트 및 필수 패키지 설치 중..."
-apt-get update -y
-apt-get install -y \
-  curl \
-  wget \
-  unzip \
-  ca-certificates \
-  gnupg \
-  lsb-release
-
-# Docker 설치 (공식 스크립트 사용)
-echo "[INFO] Docker 설치 중..."
-curl -fsSL https://get.docker.com -o get-docker.sh
-chmod +x get-docker.sh
-sh get-docker.sh
-rm -f get-docker.sh
-
 # deploy 사용자에 docker 그룹 권한 부여
 usermod -aG docker deploy
 
-# Docker 서비스 시작 및 활성화
-systemctl start docker
-systemctl enable docker
+echo "[INFO] 기본 초기화 완료"
 
-# AWS CLI 설치 (ECR 로그인용)
-echo "[INFO] AWS CLI 설치 중..."
-curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
-unzip awscliv2.zip
-./aws/install
-rm -rf aws awscliv2.zip
+# # 로그 설정
+# exec > >(tee /var/log/user-data.log) 2>&1
+# echo "======================================================"
 
-# AWS CLI 설치 확인
-aws --version
+# # 시스템 업데이트 및 필요한 패키지 설치
+# echo "[INFO] 시스템 업데이트 및 필수 패키지 설치 중..."
+# apt-get update -y
+# apt-get install -y \
+#   curl \
+#   wget \
+#   unzip \
+#   ca-certificates \
+#   gnupg \
+#   lsb-release
 
-echo "[INFO] Docker 및 AWS CLI 설치 완료"
+# # Docker 설치 (공식 스크립트 사용)
+# echo "[INFO] Docker 설치 중..."
+# curl -fsSL https://get.docker.com -o get-docker.sh
+# chmod +x get-docker.sh
+# sh get-docker.sh
+# rm -f get-docker.sh
+
+# # deploy 사용자에 docker 그룹 권한 부여
+# usermod -aG docker deploy
+
+# # Docker 서비스 시작 및 활성화
+# systemctl start docker
+# systemctl enable docker
+
+# # AWS CLI 설치 (ECR 로그인용)
+# echo "[INFO] AWS CLI 설치 중..."
+# curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+# unzip awscliv2.zip
+# ./aws/install
+# rm -rf aws awscliv2.zip
+
+# # AWS CLI 설치 확인
+# aws --version
+
+# echo "[INFO] Docker 및 AWS CLI 설치 완료"
 
 # ───────────────────────────────────────────────
 # ECR 로그인 및 Docker 이미지 처리
@@ -88,7 +91,7 @@ systemctl is-active docker || {
 # AWS 자격 증명 설정
 export AWS_ACCESS_KEY_ID="${aws_access_key_id}"
 export AWS_SECRET_ACCESS_KEY="${aws_secret_access_key}"
-export AWS_DEFAULT_REGION="${aws_region}"
+export AWS_REGION="${aws_region}"
 
 # ECR 레지스트리 URL 추출
 ECR_REGISTRY=$(echo "${docker_image}" | cut -d'/' -f1)
@@ -108,6 +111,31 @@ else
     aws sts get-caller-identity || echo "[ERROR] AWS 자격 증명 확인 실패"
     exit 1
 fi
+
+ENV_FILE="/home/deploy/app.env"
+DIR_PATH=$(dirname "$ENV_FILE")
+if [ ! -d "$DIR_PATH" ]; then
+  mkdir -p "$DIR_PATH"
+  chown $(whoami) "$DIR_PATH"
+fi
+
+> "$ENV_FILE"
+echo "# nextjs 환경변수" >> "$ENV_FILE"
+
+
+# SSM 파라미터 prefix
+SSM_PATH="${ssm_path}"
+
+PARAM_JSON=$(aws ssm get-parameters-by-path \
+  --path "$SSM_PATH" \
+  --recursive \
+  --with-decryption \
+  --region "$AWS_REGION" \
+  --output json)
+echo "$PARAM_JSON" | jq -r '.Parameters[] | "\(.Name | ltrimstr("'"$SSM_PATH"'"))=\(.Value)"' >> "$ENV_FILE"
+
+
+echo "✅ SSM 파라미터를 $ENV_FILE 파일로 저장 완료"
 
 
 # 이미지 변수 설정 (ECR 이미지)
@@ -136,6 +164,7 @@ if [ $? -eq 0 ]; then
     docker run -d \
         --name ${container_name} \
         --restart always \
+        --env-file $ENV_FILE \
         -p ${host_port}:${container_port} \
         "$IMAGE"
     

@@ -37,6 +37,11 @@ variable "ssh_private_key" {
   description = "deploy 계정에 등록할 SSH 공개 키"
   type        = string
 }
+
+variable "deploy_ssh_public_key" {
+  description = "배포 계정에 등록할 SSH 공개 키"
+  type        = string
+}
 variable "extra_startup_script" {
   description = "추가 사용자 정의 startup script (예: OpenVPN 등)"
   type        = string
@@ -86,26 +91,27 @@ variable "domain_frontend" {
 variable "docker_image_backend_blue" {
   description = "백엔드 Blue 컨테이너 이미지 (예: gcr.io/proj/backend:blue)"
   type        = string
-  default = "gcr.io/proj/backend:blue"
+  default = "969400486509.dkr.ecr.ap-northeast-2.amazonaws.com/tuning-springboot:develop-latest"
 }
 
 variable "docker_image_backend_green" {
   description = "백엔드 Green 컨테이너 이미지 (예: gcr.io/proj/backend:green)"
   type        = string
-  default = "gcr.io/proj/backend:green"
+  default = "969400486509.dkr.ecr.ap-northeast-2.amazonaws.com/tuning-springboot:develop-latest"
 }
 
 variable "docker_image_front_blue" {
   description = "프론트엔드 Blue 컨테이너 이미지 (예: gcr.io/proj/frontend:blue)"
   type        = string
-  default = "gcr.io/proj/frontend:blue"
+  default = "969400486509.dkr.ecr.ap-northeast-2.amazonaws.com/tuning-nextjs:develop-latest"
 }
 
 variable "docker_image_front_green" {
   description = "프론트엔드 Green 컨테이너 이미지 (예: gcr.io/proj/frontend:green)"
   type        = string
-  default = "gcr.io/proj/frontend:green"
+  default = "969400486509.dkr.ecr.ap-northeast-2.amazonaws.com/tuning-nextjs:develop-latest"
 }
+
 
 variable "proxy_subnet_cidr" {
   
@@ -199,4 +205,23 @@ variable "mysql_user_name" {
   type        = string
   sensitive = true
   default = ""
+}
+
+variable "mysql_internal_ip" {
+  description = "MySQL 인스턴스의 내부 IP 주소"
+  type        = string
+  default     = ""
+}
+
+variable "source_image_project_id" {
+  description = "GCP에서 사용할 소스 이미지 프로젝트 ID"
+  type        = string
+  
+}
+
+variable "source_image_name" {
+  description = "GCP에서 사용할 소스 이미지 이름"
+  type        = string
+  default     = "base-vm-template"
+  
 }

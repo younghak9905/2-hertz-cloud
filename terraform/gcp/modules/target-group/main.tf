@@ -2,6 +2,7 @@
 # Target Group(Backend Service) – GCP HTTP(S) LB 전용
 ############################################################
 resource "google_compute_backend_service" "this" {
+  description   = var.description
   name          = var.name
   protocol      = var.protocol          # HTTP | HTTPS | HTTP2 | GRPC
   port_name     = var.port_name         # "http" 기본

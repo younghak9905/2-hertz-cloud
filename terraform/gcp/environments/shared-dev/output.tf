@@ -15,9 +15,6 @@ output "firewall_rules" {
 }
 
 # shared/output.tf
-output "nat_b_subnet_self_link" {
-  value = google_compute_subnetwork.shared_subnets["${var.vpc_name}-nat-b"].self_link
-}
 
 output "nat_a_subnet_self_link" {
   value = google_compute_subnetwork.shared_subnets["${var.vpc_name}-nat-a"].self_link
@@ -26,9 +23,7 @@ output "nat_a_subnet_self_link" {
 output "private_subnet_self_link" {
    value = google_compute_subnetwork.shared_subnets["${var.vpc_name}-private-a"].self_link
 }
-output "prod_private_subnet_self_link" {
-   value = google_compute_subnetwork.shared_subnets["${var.vpc_name}-private-b"].self_link
-}
+
 
 output "nat_a_subnet_info" {
   value = {
@@ -42,17 +37,7 @@ output "nat_a_subnet_info" {
   }
 }
 
-output "nat_b_subnet_info" {
-  value = {
-    for s in google_compute_subnetwork.shared_subnets :
-    s.name => {
-      name      = s.name
-      self_link = s.self_link
-      cidr      = s.ip_cidr_range
-    }
-    if can(regex("-nat-b", s.name))
-  }
-}
+
 
 
 # Backend Health Check의 self_link
@@ -77,15 +62,7 @@ output "mysql_data_disk_id" {
   value       = google_compute_disk.mysql_data.id
 }
 
-output "prod_mysql_data_disk_self_link" {
-  description = "MySQL 데이터 저장용 Persistent Disk (self_link)"
-  value       = google_compute_disk.mysql_data_prod.self_link
-}
 
-output "prod_mysql_data_disk_id" {
-  description = "MySQL 데이터 저장용 Persistent Disk (id)"
-  value       = google_compute_disk.mysql_data_prod.id
-}
 
 
 output "dev_external_lb_ip_address" {
@@ -98,15 +75,6 @@ output "dev_external_lb_ip_self_link" {
   value       = google_compute_global_address.dev_external_lb_ip.self_link
 }
 
-output "prod_external_lb_ip_address" {
-  description = "Prod 환경 External LB에 할당된 Global IP"
-  value       = google_compute_global_address.prod_external_lb_ip.address
-}
-
-output "prod_external_lb_ip_self_link" {
-  description = "Prod 환경 External LB IP의 Self Link"
-  value       = google_compute_global_address.prod_external_lb_ip.self_link
-}
 
 output "ilb_proxy_subnet_self_link" {
   description = "Internal Load Balancer용 Proxy Subnet의 Self Link"

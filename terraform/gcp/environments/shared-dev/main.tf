@@ -2,7 +2,7 @@ terraform {
   backend "remote" {
     organization = "hertz-tuning"
     workspaces {
-      name = "gcp-shared"
+      name = "shared-dev"
     }
   }
 }
@@ -29,9 +29,6 @@ resource "google_compute_address" "openvpn_static_ip" {
 
 resource "google_compute_global_address" "dev_external_lb_ip" {
   name = "dev-external-lb-ip"
-}
-resource "google_compute_global_address" "prod_external_lb_ip" {
-  name = "prod-external-lb-ip"
 }
 
 resource "google_compute_instance" "openvpn" {
@@ -263,7 +260,7 @@ locals {
 locals {
   startup_script = join("\n", [
     templatefile("../../modules/compute/scripts/base-init.sh.tpl", {
-      deploy_ssh_public_key = var.ssh_private_key
+      deploy_ssh_public_key = var.ssh_public_key
     }),
     templatefile("${path.module}/scripts/install-openvpn.sh.tpl", {
       openvpn_admin_password = var.openvpn_admin_password,
@@ -305,15 +302,8 @@ module "hc_frontend" {
 }
 
 resource "google_compute_disk" "mysql_data" {
-  name  = "${var.env}-mysql-data-disk-a"
+  name  = "${var.env}-mysql-data-disk-a" //shared-dev 환경의 MySQL 데이터 디스크
   type  = "pd-ssd"          # 성능을 위해 SSD(‘pd-ssd’)를 사용합니다. 필요에 따라 'pd-standard'로 변경 가능.
   zone  = "${var.region}-a" # MySQL 인스턴스가 위치한 zone과 동일해야 합니다.
-  size  = 30               # GB 단위. 원하는 크기로 조정하세요.
-}
-
-resource "google_compute_disk" "mysql_data_prod" {
-  name  = "${var.env}-mysql-data-disk-b"
-  type  = "pd-ssd"          # 성능을 위해 SSD(‘pd-ssd’)를 사용합니다. 필요에 따라 'pd-standard'로 변경 가능.
-  zone  = "${var.region}-b" # MySQL 인스턴스가 위치한 zone과 동일해야 합니다.
-  size  = 30               # GB 단위. 원하는 크기로 조정하세요.
+  size  = 15               # GB 단위. 원하는 크기로 조정하세요.
 }
