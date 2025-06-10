@@ -64,8 +64,6 @@ resource "google_compute_router_nat" "nat" {
 
 locals {
   nat_subnet_info = data.terraform_remote_state.shared.outputs.nat_b_subnet_info
-  firewall_rules  = data.terraform_remote_state.shared.outputs.firewall_rules
-
   region           = var.region
   subnet_self_link = data.terraform_remote_state.shared.outputs.nat_b_subnet_self_link
   vpc_self_link    = data.terraform_remote_state.shared.outputs.vpc_self_link
@@ -442,4 +440,73 @@ resource "google_compute_instance" "mysql_vm" {
     })
     
   ])
+}
+
+
+resource "google_compute_firewall" "prod_firewalls" {
+  for_each = { for rule in local.firewall_rules : rule.name => rule }
+
+  name    = "${var.vpc_name}-${each.key}"
+  network = local.vpc_self_link
+
+  direction     = each.value.direction
+  priority      = each.value.priority
+  description   = each.value.description
+  source_ranges = lookup(each.value, "source_ranges", [])
+  source_tags   = lookup(each.value, "source_tags", [])
+  target_tags   = lookup(each.value, "target_tags", [])
+  allow {
+    protocol = each.value.protocol
+    ports    = lookup(each.value, "ports", [])
+  }
+}
+
+locals {
+ 
+  # 2) 직접 정의한 추가 방화벽 규칙
+  firewall_rules = [
+    {
+      name          = "${var.env}-fw-frontend-to-backend"
+      direction     = "INGRESS"
+      priority      = 1000
+      description   = "Allow frontend to access backend"
+      source_tags   = ["frontend"]
+      target_tags   = ["backend"]
+      protocol      = "tcp"
+      ports         = ["8080"]
+    },
+    {
+      name         = "${var.env}-fw-backend-to-mysql"
+      direction    = "INGRESS"
+      priority     = 1000
+      description  = "Allow backend to access MySQL"
+      source_tags  = ["backend"]
+      target_tags  = ["mysql"]
+      protocol     = "tcp"
+      ports        = ["3306"]
+    },
+    {
+      name         = "${var.env}-fw-backend-to-redis"
+      direction    = "INGRESS"
+      priority     = 1000
+      description  = "Allow backend to access Redis"
+      source_tags  = ["backend", "websocket"]
+      target_tags  = ["redis"]
+      protocol     = "tcp"
+      ports        = ["6379"]
+    },
+    {
+  name         = "${var.vpc_name}-fw-backend-to-mysql-ssh"
+  direction    = "INGRESS"
+  priority     = 1000
+  description  = "Allow backend VM to SSH/SCP to MySQL VM"
+  source_tags  = ["backend"]
+  target_tags  = ["mysql"]
+  protocol     = "tcp"
+  ports        = ["22"]
+}
+  ]
+
+  # 3) 두 리스트를 합쳐서 최종 firewall_rules 로 사용
+ 
 }
