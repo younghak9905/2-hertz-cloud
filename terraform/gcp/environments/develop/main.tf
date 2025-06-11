@@ -220,6 +220,9 @@ module "backend_tg" {
       capacity_scaler = 1.0
     }
   ]
+  timeout_sec             = 86400
+  session_affinity        = "GENERATED_COOKIE"
+  affinity_cookie_ttl_sec = 0
 }
 
 module "frontend_tg" {
