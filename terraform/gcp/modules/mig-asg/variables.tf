@@ -80,7 +80,3 @@ variable "port_http" {
   default = 80
   
 }
-variable "project_id" {
-  type = string
-  default = ""
-}

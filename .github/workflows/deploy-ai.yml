@@ -92,43 +92,19 @@ jobs:
             echo "✅ 이미 실행 중 - 대기 생략"
           fi
 
-       # 2. AWS 인증
-      - name: Configure AWS credentials
-        if: env.DEPLOY_TYPE == 'docker'
-        uses: aws-actions/configure-aws-credentials@v1
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ secrets.AWS_REGION }}
-
-      # 3. ECR 로그인
-      - name: Login to Amazon ECR
-        if: env.DEPLOY_TYPE == 'docker'
-        id: login-ecr
-        uses: aws-actions/amazon-ecr-login@v1
-
-      - name: Set registry
-        if: env.DEPLOY_TYPE == 'docker'
-        run: echo "ECR_REGISTRY=${{ steps.login-ecr.outputs.registry }}" >> $GITHUB_ENV
-
       - name: Deploy via SSH
         uses: appleboy/ssh-action@master
         with:
           host: ${{ env.HOST }}
           username: ${{ secrets.SSH_USERNAME }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
-          envs: AWS_REGION,ECR_REGISTRY
         
           script: |
-            
             if [[ "${{ env.DEPLOY_TYPE }}" == "docker" ]]; then
-    
               echo "🚀 Docker 배포 시작..."
               cd /home/deploy
               pm2 stop ecosystem.config.js || true
-              aws ecr get-login-password --region ${{ env.AWS_REGION }} | docker login --username AWS --password-stdin ${{ env.ECR_REGISTRY }}
               sleep 5
-
               docker compose --env-file .env up -d
             else
               echo "🚀 PM2 배포 시작..."

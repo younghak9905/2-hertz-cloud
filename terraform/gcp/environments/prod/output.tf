@@ -1,5 +1,9 @@
 
 # 현재 배포 상태 출력
+output "active_deployment" {
+  description = "Currently active deployment color"
+  value       = var.active_deployment
+}
 output "blue_deployment_status" {
   description = "Blue deployment status"
   value = {
@@ -40,36 +44,18 @@ output "instance_groups" {
 }
 
 # ASG 인스턴스 크기 정보
-## Frontend
-output "blue_instance_count_frontend" {
-  value = var.blue_instance_count_frontend
+output "blue_instance_count" {
+  value = var.blue_instance_count
 }
 
-output "green_instance_count_frontend" {
-  value = var.green_instance_count_frontend
+output "green_instance_count" {
+  value = var.green_instance_count
 }
 
-output "traffic_weight_blue_frontend" {
-  value = var.traffic_weight_blue_frontend
+output "traffic_weight_blue" {
+  value = var.traffic_weight_blue
 }
 
-output "traffic_weight_green_frontend" {
-  value = var.traffic_weight_green_frontend
-}
-
-## Backend
-output "blue_instance_count_backend" {
-  value = var.blue_instance_count_backend
-}
-
-output "green_instance_count_backend" {
-  value = var.green_instance_count_backend
-}
-
-output "traffic_weight_blue_backend" {
-  value = var.traffic_weight_blue_backend
-}
-
-output "traffic_weight_green_backend" {
-  value = var.traffic_weight_green_backend
+output "traffic_weight_green" {
+  value = var.traffic_weight_green
 }
