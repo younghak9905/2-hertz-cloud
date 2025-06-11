@@ -4,7 +4,7 @@ resource "google_compute_instance_template" "this" {
    disk {
     auto_delete  = true
     boot         = true
-    source_image = "projects/tuning-zero-1/global/images/base-vm-template"
+    source_image = "projects/${var.project_id}/global/images/base-vm-template"
     disk_size_gb = var.disk_size_gb              # 필요시 조정
     type         = "pd-balanced"
   }

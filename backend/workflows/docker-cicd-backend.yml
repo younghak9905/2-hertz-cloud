@@ -1,4 +1,4 @@
-name: Frontend Docker CI/CD
+name: Backend Docker CI/CD
 
 on:
   pull_request:
@@ -18,7 +18,7 @@ on:
           - "브랜치를 확인해주세요!"
 
 jobs:
-  frontend-ci:
+  backend-ci:
     if: github.event_name == 'workflow_dispatch' || github.event.pull_request.merged == true
     outputs:
       BRANCH: ${{ steps.generate-tags.outputs.BRANCH }}
@@ -26,12 +26,12 @@ jobs:
       FULL_IMAGE: ${{ steps.generate-tags.outputs.FULL_IMAGE }}
     runs-on: ubuntu-latest
     steps:
-      # ✅ act 테스트용 명령어: act workflow_dispatch -W .github/workflows/docker-cicd-frontend.yml -P ubuntu-latest=docker.io/ddongu/act-runner-terraform:latest
+      # ✅ act 테스트용 명령어: act workflow_dispatch -W .github/workflows/docker-cicd-backend.yml -P ubuntu-latest=docker.io/ddongu/act-runner-terraform:latest
       # 1. 소스 코드 Checkout
       - name: Checkout code
         uses: actions/checkout@v3
         with:
-          fetch-depth: 1
+          Betch-depth: 1
 
       # 2. AWS 인증
       - name: Configure AWS credentials
@@ -57,12 +57,11 @@ jobs:
           SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
           IMAGE_TAG="${BRANCH}-${SHORT_SHA}"
 
-          # if [ "$BRANCH" = "main" ]; then
-          #   ENV_TAG="main-latest"
-          # else
-          #   ENV_TAG="develop-latest"
-          # fi
-          ENV_TAG="develop-latest"
+          if [ "$BRANCH" = "main" ]; then
+            ENV_TAG="main-latest"
+          else
+            ENV_TAG="develop-latest"
+          fi
 
           echo "BRANCH=$BRANCH" >> $GITHUB_ENV
           echo "SHORT_SHA=$SHORT_SHA" >> $GITHUB_ENV
@@ -78,15 +77,16 @@ jobs:
       - name: Build and push Docker image
         run: |
           ECR_REGISTRY=${{ steps.login-ecr.outputs.registry }}
-          REPOSITORY=tuning-nextjs
+          REPOSITORY=tuning-springboot
 
           echo "🏗️ Docker 이미지 빌드 시작..."
 
           docker build \
             --cache-from=type=registry,ref=$ECR_REGISTRY/$REPOSITORY:$ENV_TAG \
             --cache-to=type=inline \
+            -f hertz-be/Dockerfile \
             -t $ECR_REGISTRY/$REPOSITORY:$IMAGE_TAG \
-            .
+            hertz-be/
           docker tag $ECR_REGISTRY/$REPOSITORY:${{ env.IMAGE_TAG }} $ECR_REGISTRY/$REPOSITORY:${{ env.ENV_TAG }}
 
           echo "📤 Docker 이미지 푸시 중..."
@@ -103,7 +103,7 @@ jobs:
         run: |
           curl -H "Content-Type: application/json" \
               -X POST \
-              -d "{\"content\": \"✅ [FE CI 성공] **${{ env.BRANCH }}** 브랜치\\n> 태그: ${{ env.IMAGE_TAG }}\\n> Commit: ${{ env.SHORT_SHA }}\\n> 이미지: ${{ env.FULL_IMAGE }}\"}" \
+              -d "{\"content\": \"✅ [BE CI 성공] **${{ env.BRANCH }}** 브랜치\\n> 태그: ${{ env.IMAGE_TAG }}\\n> Commit: ${{ env.SHORT_SHA }}\\n> 이미지: ${{ env.FULL_IMAGE }}\"}" \
               ${{ secrets.DISCORD_WEBHOOK_CICD_URL }}
 
       # 7. 실패 알림
@@ -113,33 +113,33 @@ jobs:
           WORKFLOW_URL="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
           curl -H "Content-Type: application/json" \
               -X POST \
-              -d "{\"content\": \"❌ [FE CI 실패] **${{ env.BRANCH }}** 브랜치\\n> Commit: ${{ env.SHORT_SHA }}\\n⚠️ [워크플로우 로그 보기]($WORKFLOW_URL)\"}" \
+              -d "{\"content\": \"❌ [BE CI 실패] **${{ env.BRANCH }}** 브랜치\\n> Commit: ${{ env.SHORT_SHA }}\\n⚠️ [워크플로우 로그 보기]($WORKFLOW_URL)\"}" \
               ${{ secrets.DISCORD_WEBHOOK_CICD_URL }}
 
-  # frontend-ci:
+  # backend-ci:
   #   if: github.event_name == 'workflow_dispatch' || github.event.pull_request.merged == true
   #   outputs:
   #     BRANCH: develop-latest
   #     SHORT_SHA: none_sha
-  #     FULL_IMAGE: 테스트가능한프론트엔드이미지:develop-latest
+  #     FULL_IMAGE: 테스트가능한백엔드이미지/tuning-springboot-env:develop-latest
   #   runs-on: ubuntu-latest
   #   steps:
-  #     # ✅ act 테스트용 명령어: act workflow_dispatch -W .github/workflows/docker-cicd-frontend.yml -P ubuntu-latest=docker.io/ddongu/act-runner-terraform:latest
+  #     # ✅ act 테스트용 명령어: act workflow_dispatch -W .github/workflows/docker-cicd-backend.yml -P ubuntu-latest=docker.io/ddongu/act-runner-terraform:latest
   #     # 1. 소스 코드 Checkout
   #     - name: Checkout code
   #       uses: actions/checkout@v3
   #       with:
-  #         fetch-depth: 1
+  #         Betch-depth: 1
 
-  frontend-cd:
-    name: frontend Terraform CD
-    needs: frontend-ci
-    if: needs.frontend-ci.result == 'success'
+  backend-cd:
+    name: Backend Terraform CD
+    needs: backend-ci
+    if: needs.backend-ci.result == 'success'
     runs-on: ubuntu-latest
     env:
-      BRANCH: ${{ needs.frontend-ci.outputs.BRANCH }}
-      SHORT_SHA: ${{ needs.frontend-ci.outputs.SHORT_SHA }}
-      IMAGE: ${{ needs.frontend-ci.outputs.FULL_IMAGE }}
+      BRANCH: ${{ needs.backend-ci.outputs.BRANCH }}
+      SHORT_SHA: ${{ needs.backend-ci.outputs.SHORT_SHA }}
+      IMAGE: ${{ needs.backend-ci.outputs.FULL_IMAGE }}
     outputs:
       BRANCH: ${{ env.BRANCH }}
       ACTIVE: ${{ steps.active.outputs.active }}
@@ -204,56 +204,8 @@ jobs:
 
       - name: Setup gcloud CLI
         uses: google-github-actions/setup-gcloud@v1
-      
-      - name: Deploy to Dev Environment
-        if: env.ENV == 'DEV'
-        working-directory: tf-code/terraform/gcp/environments/develop
-        run: |
-          terraform init -reconfigure
-    
-          echo "{" > 01-deployment.auto.tfvars.json
-          echo "  \"docker_image_front_blue\": \"${{ env.IMAGE }}\"," >> 01-deployment.auto.tfvars.json
-          echo "  \"instance_count\": {\"min\": 1, \"max\": 1}" >> 01-deployment.auto.tfvars.json
-          echo "}" >> 01-deployment.auto.tfvars.json
-    
-          cat 01-deployment.auto.tfvars.json
-    
-          terraform apply -auto-approve
-      - name: Check MIG Health (Dev)
-        if: env.ENV == 'DEV'
-        env:
-          REGION: asia-east1 # DEV 환경에 맞게 수정
-        run: |
-          MIG_NAME="dev-fe-ig-a" # DEV MIG 이름으로 수정
-          RETRY=10
-          SLEEP_SEC=30
-
-          echo "🩺 $MIG_NAME 인스턴스 헬스체크 시작..."
-          sleep 60 # Wait for instances to initialize
-
-          for i in $(seq 1 $RETRY); do
-            echo "[$i/$RETRY] $MIG_NAME 인스턴스 상태 확인 중..."
-            gcloud compute instance-groups managed list-instances "$MIG_NAME" --region="$REGION" --format="value(status,version.instanceTemplate,instanceHealth[0].detailedHealthState)" > states.txt
-            cat states.txt
-
-            HEALTHY_COUNT=$(grep -c "HEALTHY" states.txt || true)
-            TOTAL_COUNT=$(wc -l < states.txt)
-
-            if [ "$HEALTHY_COUNT" -eq "$TOTAL_COUNT" ] && [ "$TOTAL_COUNT" -gt 0 ]; then
-              echo "✅ 모든 인스턴스가 HEALTHY 상태입니다 ($HEALTHY_COUNT/$TOTAL_COUNT)."
-              exit 0
-            else
-              echo "⏳ 준비된 인스턴스 ($HEALTHY_COUNT/$TOTAL_COUNT). ${SLEEP_SEC}s 대기..."
-              sleep $SLEEP_SEC
-            fi
-          done
-
-          echo "❌ ${RETRY}회 시도 후에도 MIG 인스턴스가 HEALTHY 상태가 아닙니다."
-          exit 1
-
 
       - name: Get Active Deployment Color
-        if: env.ENV == 'PROD'
         id: active
         working-directory: tf-code/terraform/gcp/environments/prod
         run: |
@@ -271,10 +223,9 @@ jobs:
           else
             echo "⚠️ Both blue and green have non-zero max. Defaulting to blue"
             echo "active=blue" >> $GITHUB_OUTPUT
-          fi        
-          
+          fi
+
       - name: Determine Next Deployment Color
-        if: env.ENV == 'PROD'
         id: color
         run: |
           if [ "${{ steps.active.outputs.active }}" = "green" ]; then
@@ -284,7 +235,6 @@ jobs:
           fi
 
       - name: Write tfvars file for next deployment
-        if: env.ENV == 'PROD'
         working-directory: tf-code/terraform/gcp/environments/prod
         run: |
           ACTIVE=${{ steps.active.outputs.active }}
@@ -292,26 +242,24 @@ jobs:
           echo "{" > 01-deployment.auto.tfvars.json
           echo "  \"traffic_weight_${ACTIVE}\": 100," >> 01-deployment.auto.tfvars.json
           echo "  \"traffic_weight_${TARGET}\": 0," >> 01-deployment.auto.tfvars.json
-          echo "  \"docker_image_front_${TARGET}\": \"${{ env.IMAGE }}\"," >> 01-deployment.auto.tfvars.json
+          echo "  \"docker_image_backend_${TARGET}\": \"${{ env.IMAGE }}\"," >> 01-deployment.auto.tfvars.json
           echo "  \"blue_instance_count\": {\"min\": 1, \"max\": 2}," >> 01-deployment.auto.tfvars.json
           echo "  \"green_instance_count\": {\"min\": 1, \"max\": 2}" >> 01-deployment.auto.tfvars.json
           echo "}" >> 01-deployment.auto.tfvars.json
           terraform apply -auto-approve
-          
+
       - name: Wait before health check
-        if: env.ENV == 'PROD'
         run: |
           SLEEP_SEC=60
           echo "⏱ ${SLEEP_SEC}초 대기 중... 인스턴스 초기화 및 헬스체크 준비"
           sleep ${SLEEP_SEC}
 
       - name: Check MIG Health
-        if: env.ENV == 'PROD'
         env:
           REGION: asia-east1
           TARGET: ${{ steps.color.outputs.target }}
         run: |
-          MIG_NAME="prod-frontend-${TARGET}-b"
+          MIG_NAME="prod-backend-${TARGET}-b"
           RETRY=10
           SLEEP_SEC=30
 
@@ -342,7 +290,6 @@ jobs:
           exit 1
 
       - name: Write tfvars for shift traffic (half)
-        if: env.ENV == 'PROD'
         working-directory: tf-code/terraform/gcp/environments/prod
         run: |
           echo "{" > 02-shift-half.auto.tfvars.json
@@ -352,7 +299,6 @@ jobs:
           terraform apply -auto-approve
 
       - name: Write tfvars for shift traffic (full)
-        if: env.ENV == 'PROD'
         working-directory: tf-code/terraform/gcp/environments/prod
         run: |
           TARGET=${{ steps.color.outputs.target }}
@@ -373,7 +319,6 @@ jobs:
           terraform apply -auto-approve
 
       - name: Scale Down Previous Environment
-        if: env.ENV == 'PROD'
         working-directory: tf-code/terraform/gcp/environments/prod
         run: |
           TARGET=${{ steps.color.outputs.target }}
@@ -396,7 +341,7 @@ jobs:
         run: |
           curl -H "Content-Type: application/json" \
               -X POST \
-              -d "{\"content\": \"✅ [FE CD 성공] **${{ env.BRANCH }}** 브랜치\\n> 이미지: ${{ env.IMAGE }}\\n> Commit: ${{ env.SHORT_SHA }}\\n\"}" \
+              -d "{\"content\": \"✅ [BE CD 성공] **${{ env.BRANCH }}** 브랜치\\n> 이미지: ${{ env.IMAGE }}\\n> Commit: ${{ env.SHORT_SHA }}\\n\"}" \
               ${{ secrets.DISCORD_WEBHOOK_CICD_URL }}
 
       - name: Notify Discord on Failure
@@ -405,18 +350,18 @@ jobs:
           WORKFLOW_URL="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
           curl -H "Content-Type: application/json" \
               -X POST \
-              -d "{\"content\": \"❌ [FE CD 실패] **${{ env.BRANCH }}** 브랜치\\n> 이미지: ${{ env.IMAGE }}\\n> Commit: ${{ env.SHORT_SHA }}\\n> ⚠️ [워크플로우 로그 보기]($WORKFLOW_URL)\"}" \
+              -d "{\"content\": \"❌ [BE CD 실패] **${{ env.BRANCH }}** 브랜치\\n> 이미지: ${{ env.IMAGE }}\\n> Commit: ${{ env.SHORT_SHA }}\\n> ⚠️ [워크플로우 로그 보기]($WORKFLOW_URL)\"}" \
               ${{ secrets.DISCORD_WEBHOOK_CICD_URL }}
 
-  frontend-rollback:
-    name: frontend Terraform Rollback
-    needs: frontend-cd
-    if: always() && needs.frontend-cd.result != 'success'
+  backend-rollback:
+    name: backend Terraform Rollback
+    needs: backend-cd
+    if: always() && needs.backend-cd.result != 'success'
     runs-on: ubuntu-latest
     env:
-      BRANCH: ${{ needs.frontend-ci.outputs.BRANCH }}
-      ACTIVE: ${{ needs.frontend-cd.outputs.ACTIVE }}
-      TARGET: ${{ needs.frontend-cd.outputs.TARGET }}
+      BRANCH: ${{ needs.backend-ci.outputs.BRANCH }}
+      ACTIVE: ${{ needs.backend-cd.outputs.ACTIVE }}
+      TARGET: ${{ needs.backend-cd.outputs.TARGET }}
     steps:
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v2
@@ -482,19 +427,17 @@ jobs:
           credentials_json: "${{ env.SA_KEY }}"
 
       - name: Send rollback start notification
-        if: env.ENV == 'PROD'
         run: |
           curl -H "Content-Type: application/json" \
             -X POST \
-            -d "{\"content\": \"🔄 [FE 롤백 시작] \`(Docker) ${{ env.ENV }}\` 환경에서 롤백을 실행합니다.\"}" \
+            -d "{\"content\": \"🔄 [BE 롤백 시작] \`(Docker) ${{ env.ENV }}\` 환경에서 롤백을 실행합니다.\"}" \
             ${{ secrets.DISCORD_WEBHOOK_CICD_URL }}
 
       - name: Write tfvars file for rollback
-        if: env.ENV == 'PROD'
         working-directory: tf-code/terraform/gcp/environments/prod
         run: |
           terraform init -reconfigure
-          
+
           ACTIVE=${{ env.ACTIVE }}
           TARGET=${{ env.TARGET }}
           echo "{" > 999-rollback.auto.tfvars.json
@@ -503,22 +446,15 @@ jobs:
           echo "  \"${ACTIVE}_instance_count\": {\"min\": 1, \"max\": 2}," >> 999-rollback.auto.tfvars.json
           echo "  \"${TARGET}_instance_count\": {\"min\": 0, \"max\": 0}" >> 999-rollback.auto.tfvars.json
           echo "}" >> 999-rollback.auto.tfvars.json
-          
+
           terraform apply -auto-approve
-      # =================== DEV Rollback Step ===================
-      - name: Notify for Dev Rollback
-        if: env.ENV == 'DEV'
-        run: |
-          echo "DEV 환경 배포에 실패했습니다."
-          echo "DEV 환경은 Blue/Green 배포가 아니므로 자동 롤백 작업은 알림 전송으로 대체됩니다."
-          echo "GCP 콘솔에서 'dev-frontend-b' Managed Instance Group의 상태를 직접 확인해주세요."
 
       - name: Send success notification
         if: success()
         run: |
           curl -H "Content-Type: application/json" \
             -X POST \
-            -d "{\"content\": \"✅ [FE 롤백 완료] \`(Docker) ${{ env.ENV }}\` 환경\"}" \
+            -d "{\"content\": \"✅ [BE 롤백 완료] \`(Docker) ${{ env.ENV }}\` 환경\"}" \
             ${{ secrets.DISCORD_WEBHOOK_CICD_URL }}
 
       - name: Send failure notification
@@ -526,5 +462,5 @@ jobs:
         run: |
           curl -H "Content-Type: application/json" \
             -X POST \
-            -d "{\"content\": \"❌ [FE 롤백 실패] \`(Docker) ${{ env.ENV }}\` 환경\"}" \
+            -d "{\"content\": \"❌ [BE 롤백 실패] \`(Docker) ${{ env.ENV }}\` 환경\"}" \
             ${{ secrets.DISCORD_WEBHOOK_CICD_URL }}
