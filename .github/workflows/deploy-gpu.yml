@@ -138,7 +138,7 @@ jobs:
           WORKFLOW_URL="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
           curl -H "Content-Type: application/json" \
               -X POST \
-              -d "{\"content\": \"❌ [AI 배포 실패] **${{ env.ENV }}** AI 서버 (브랜치: \`${{ env.BRANCH }}\`)\\n🔖 Commit: ${{ env.COMMIT_HASH }}\\n⚠️ [워크플로우 로그 보기]($WORKFLOW_URL)\"}" \
+              -d "{\"content\": \"❌ [GPU 배포 실패] **${{ env.ENV }}** GPU 서버 (브랜치: \`${{ env.BRANCH }}\`)\\n🔖 Commit: ${{ env.COMMIT_HASH }}\\n⚠️ [워크플로우 로그 보기]($WORKFLOW_URL)\"}" \
               ${{ secrets.DISCORD_WEBHOOK_CICD_URL }}
 
       - name: Send success notification
@@ -146,7 +146,7 @@ jobs:
         run: |
           curl -H "Content-Type: application/json" \
                -X POST \
-               -d "{\"content\": \"🚀 [AI 배포 완료] **${{ env.ENV }}** AI 서버 (브랜치: \`${{ env.BRANCH }}\`)\\n🔖 Commit: ${{ env.COMMIT_HASH }}\"}" \
+               -d "{\"content\": \"🚀 [GPU 배포 완료] **${{ env.ENV }}** GPU 서버 (브랜치: \`${{ env.BRANCH }}\`)\\n🔖 Commit: ${{ env.COMMIT_HASH }}\"}" \
                 ${{ secrets.DISCORD_WEBHOOK_CICD_URL }}
 
   rollback:
@@ -235,7 +235,7 @@ jobs:
 
       - name: Health check with retries
         run: |
-              echo "🔍 AI 서버 헬스체크 시작 (FastAPI docs)... 최대 3회 시도합니다."
+              echo "🔍 GPU 서버 헬스체크 시작 (FastAPI docs)... 최대 3회 시도합니다."
               for i in {1..5}; do
                 echo "⏱️ 시도 $i: http://${{ env.HOST }}:8000/docs"
                 if curl -sf http://${{ env.HOST }}:8000/docs; then
@@ -255,12 +255,12 @@ jobs:
         run: |
           curl -H "Content-Type: application/json" \
             -X POST \
-            -d "{\"content\": \"✅ [AI 롤백 완료] \`${{ env.ENVIRONMENT }}\` 환경\"}" \
+            -d "{\"content\": \"✅ [GPU 롤백 완료] \`${{ env.ENVIRONMENT }}\` 환경\"}" \
             ${{ secrets.DISCORD_WEBHOOK_CICD_URL }}
       - name: Send failure notification
         if: failure()
         run: |
           curl -H "Content-Type: application/json" \
             -X POST \
-            -d "{\"content\": \"❌ [AI 롤백 실패] \`${{ env.ENVIRONMENT }}\` 환경\"}" \
+            -d "{\"content\": \"❌ [GPU 롤백 실패] \`${{ env.ENVIRONMENT }}\` 환경\"}" \
             ${{ secrets.DISCORD_WEBHOOK_CICD_URL }}
