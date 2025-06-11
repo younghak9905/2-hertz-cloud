@@ -232,6 +232,11 @@ jobs:
       - name: Setup gcloud CLI
         uses: google-github-actions/setup-gcloud@v1
 
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: 1.6.6   # <-- 본인 terraform 버전에 맞게 작성
+
       - name: Deploy to Dev Environment
         if: env.ENV == 'DEV'
         working-directory: tf-code/terraform/gcp/environments/develop
