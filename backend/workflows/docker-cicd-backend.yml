@@ -58,7 +58,7 @@ jobs:
           IMAGE_TAG="${BRANCH}-${SHORT_SHA}"
 
           if [ "$BRANCH" = "main" ]; then
-            ENV_TAG="main-latest"
+            ENV_TAG="prod-latest"
           else
             ENV_TAG="develop-latest"
           fi
@@ -205,6 +205,11 @@ jobs:
 
       - name: Setup gcloud CLI
         uses: google-github-actions/setup-gcloud@v1
+      
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: 1.6.6   # <-- 본인 terraform 버전에 맞게 작성
 
       - name: Deploy to Dev Environment
         if: env.ENV == 'DEV'
@@ -373,6 +378,7 @@ jobs:
           terraform apply -auto-approve
 
       - name: Write tfvars for shift traffic (full)
+        if: env.ENV == 'PROD'
         working-directory: tf-code/terraform/gcp/environments/prod
         run: |
           ACTIVE=${{ steps.active.outputs.active }}
