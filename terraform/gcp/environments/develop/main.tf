@@ -76,6 +76,7 @@ locals {
   # 헬스체크
   hc_backend  = data.terraform_remote_state.shared-dev.outputs.hc_backend_self_link
   hc_frontend = data.terraform_remote_state.shared-dev.outputs.hc_frontend_self_link
+  hc_websocket = data.terraform_remote_state.shared-dev.outputs.hc_websocket_self_link
 
 
   mysql_data_disk_self_link = data.terraform_remote_state.shared-dev.outputs.mysql_data_disk_self_link
@@ -119,7 +120,7 @@ module "backend_ig" {
   ])
   
   health_check = local.hc_backend
-  tags         = ["backend", "backend-hc", "allow-vpn-ssh"]
+  tags         = ["backend", "allow-vpn-ssh"]
   port_http    = 8080
 }
 
@@ -163,6 +164,55 @@ module "frontend_ig" {
   tags         = ["frontend", "allow-ssh-http", "allow-vpn-ssh"]
 }
 
+module "websocket_ig" {
+  source           = "../../modules/mig-asg"
+  project_id       = var.dev_gcp_project_id
+  deploy_ssh_public_key = var.deploy_ssh_public_key
+
+  name             = "${var.env}-ws-ig-a"        # e.g. dev-ws-ig-a
+  region           = var.region
+  subnet_self_link = local.subnet_self_link
+
+  disk_size_gb     = 20
+  machine_type     = "e2-medium"
+
+  # 최소/최대 인스턴스 수 및 CPU 타겟
+  min        = 1
+  max        = 1
+  cpu_target = 0.8
+
+  # startup script: WebSocket 서버 실행용 템플릿
+  # scripts/websocket-install.sh.tpl 파일을 하나 만들어두고,
+  # 아래 변수들을 전달하세요.
+  startup_tpl = join("\n", [
+    templatefile("${path.module}/scripts/websocket-intstall.sh.tpl", {
+      deploy_ssh_public_key  = var.deploy_ssh_public_key
+      deploy_ssh_private_key = var.ssh_private_key
+
+      docker_image           = var.docker_image_websocket   # ex) tuning-websocket:latest
+      use_ecr                = "true"
+      aws_region             = var.aws_region
+      aws_access_key_id      = var.aws_access_key_id
+      aws_secret_access_key  = var.aws_secret_access_key
+      ssm_path               = "/global/websocket/dev/"
+      container_name         = "tuning-websocket"
+      container_port         = "9092"
+      host_port              = "9092"
+    
+      # (필요시) 추가 환경변수들…
+    })
+  ])
+
+  # 앞서 만든 WebSocket 전용 Health Check
+  health_check = local.hc_websocket
+
+  tags = [
+    "websocket", "allow-vpn-ssh",
+  ]
+
+  # 내부적으로 Nginx → Netty 로 가정할 때, 포트 HTTP 모드로 9092 바인딩
+  port_http = 9092
+}
 
 
 ############################################################
@@ -182,9 +232,10 @@ module "backend_tg" {
       capacity_scaler = 1.0
     }
   ]
+  timeout_sec             = 86400
+  session_affinity        = "GENERATED_COOKIE"
+  affinity_cookie_ttl_sec = 0
 }
-
-
 
 module "frontend_tg" {
   source       = "../../modules/target-group"
@@ -201,6 +252,25 @@ module "frontend_tg" {
   ]
 }
 
+module "websocket_tg" {
+  source       = "../../modules/target-group"
+  name         = "${var.env}-ws-tg"
+  description  = "WebSocket Target Group"
+  health_check = local.hc_websocket
+  backends = [
+    {
+      instance_group  = module.websocket_ig.instance_group
+      #weight          = 100
+      balancing_mode  = "UTILIZATION"
+      capacity_scaler = 1.0
+    }
+  ]
+  timeout_sec             = 86400
+  session_affinity        = "GENERATED_COOKIE"
+  affinity_cookie_ttl_sec = 0
+  
+}
+
 ############################################################
 # 외부 HTTPS LB + URL Map (프론트엔드 기본, /api/* 백엔드)
 ############################################################
@@ -212,6 +282,7 @@ module "external_lb" {
   domains          = [var.domain_frontend]
   backend_service  = module.backend_tg.backend_service_self_link
   frontend_service = module.frontend_tg.backend_service_self_link
+  websocket_service = module.websocket_tg.backend_service_self_link
   lb_ip = {
     address     = local.external_lb_ip
     self_link   = local.external_lb_ip_self_link
@@ -328,6 +399,26 @@ locals {
       ports        = ["3306"]
     },
     {
+      name         = "${var.env}-fw-backend-to-backend"
+      direction    = "INGRESS"
+      priority     = 1000
+      description  = "Allow backend to access Redis"
+      source_tags  = ["backend"]
+      target_tags  = ["websocket"]
+      protocol     = "tcp"
+      ports        = ["9093"]
+    },
+    {
+      name         = "${var.env}-fw-befe-to-websocket"
+      direction    = "INGRESS"
+      priority     = 1000
+      description  = "Allow backend to access websocket"
+      source_tags  = ["backend","frontend"]
+      target_tags  = ["websocket"]
+      protocol     = "tcp"
+      ports        = ["9092"]
+    },
+    {
       name         = "${var.env}-fw-backend-to-redis"
       direction    = "INGRESS"
       priority     = 1000
@@ -336,19 +427,8 @@ locals {
       target_tags  = ["redis"]
       protocol     = "tcp"
       ports        = ["6379"]
-    },
-    {
-  name         = "${var.vpc_name}-fw-backend-to-mysql-ssh"
-  direction    = "INGRESS"
-  priority     = 1000
-  description  = "Allow backend VM to SSH/SCP to MySQL VM"
-  source_tags  = ["backend"]
-  target_tags  = ["mysql"]
-  protocol     = "tcp"
-  ports        = ["22"]
-}
+    }
+   
   ]
 
-  # 3) 두 리스트를 합쳐서 최종 firewall_rules 로 사용
- 
 }

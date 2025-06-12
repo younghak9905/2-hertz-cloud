@@ -25,6 +25,10 @@ resource "google_compute_url_map" "this" {
     name            = "main-matcher"
     default_service = var.frontend_service  # "/" 이하 기본은 프론트엔드 서비스로
 
+    path_rule {
+      paths   = ["/ws/*"]
+      service = var.websocket_service  # WebSocket 서비스
+    }
     # --- Spring Boot API(기존) ---
     path_rule {
       paths   = ["/api/*"]       # 예: "/api/foo"
@@ -70,6 +74,8 @@ resource "google_compute_global_forwarding_rule" "https_fr" {
   target                = google_compute_target_https_proxy.this.self_link
   ip_address            = var.lb_ip.address
 }
+
+
 
 
 

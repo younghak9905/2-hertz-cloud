@@ -254,9 +254,9 @@ locals {
         "130.211.0.0/22",
         "35.191.0.0/16",
       ]
-      target_tags   = ["backend"]
+      target_tags   = ["websocket"]
       protocol      = "tcp"
-      ports         = ["8080"]
+      ports         = ["9093"]
     }
   ]
 }
@@ -309,7 +309,7 @@ module "hc_frontend" {
 module "hc_websocket" {
   source       = "../../modules/health-check"
   name         = "websocket-hc"
-  port         = 9092
+  port         = 9093
   request_path = "/ws/ping"
 }
 
