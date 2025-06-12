@@ -301,6 +301,14 @@ module "hc_frontend" {
   request_path  = "/"
 }
 
+# modules/health-check
+module "hc_websocket" {
+  source       = "../../modules/health-check"
+  name         = "websocket-hc"
+  port         = 9092
+  request_path = "/ws/ping"
+}
+
 resource "google_compute_disk" "mysql_data" {
   name  = "${var.env}-mysql-data-disk-a" //shared-dev 환경의 MySQL 데이터 디스크
   type  = "pd-ssd"          # 성능을 위해 SSD(‘pd-ssd’)를 사용합니다. 필요에 따라 'pd-standard'로 변경 가능.
