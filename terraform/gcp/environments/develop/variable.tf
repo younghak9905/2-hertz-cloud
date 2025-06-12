@@ -232,3 +232,10 @@ variable "redis_password" {
   default     = ""
   sensitive   = true
 }
+
+variable "docker_image_websocket" {
+  description = "WebSocket 서버 Docker 이미지"
+  type        = string
+  default     = "969400486509.dkr.ecr.ap-northeast-2.amazonaws.com/tuning-websocket:develop-latest"
+  
+}

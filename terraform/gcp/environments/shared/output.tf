@@ -67,6 +67,11 @@ output "hc_frontend_self_link" {
   value       = module.hc_frontend.self_link
 }
 
+output "hc_websocket_self_link" {
+  description = "Self link of the websocket health check"
+  value       = module.hc_websocket.self_link
+}
+
 output "mysql_data_disk_self_link" {
   description = "MySQL 데이터 저장용 Persistent Disk (self_link)"
   value       = google_compute_disk.mysql_data.self_link

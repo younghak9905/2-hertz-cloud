@@ -245,14 +245,14 @@ locals {
       name          = "${var.vpc_name}-fw-healthcheck-to-backend"
       direction     = "INGRESS"
       priority      = 1000
-      description   = "Allow GCP Health Checks (130.211.0.0/22, 35.191.0.0/16) to Backend on TCP:8080"
+      description   = "Allow GCP Health Checks (130.211.0.0/22, 35.191.0.0/16) to websocket on TCP:9093"
       source_ranges = [
         "130.211.0.0/22",
         "35.191.0.0/16",
       ]
-      target_tags   = ["backend"]
+      target_tags   = ["websocket"]
       protocol      = "tcp"
-      ports         = ["8080"]
+      ports         = ["9093"]
     }
   ]
 }
@@ -299,6 +299,14 @@ module "hc_frontend" {
   name          = "frontend-http-hc"
   port          = 80
   request_path  = "/"
+}
+
+# modules/health-check
+module "hc_websocket" {
+  source       = "../../modules/health-check"
+  name         = "websocket-hc"
+  port         = 9093
+  request_path = "/ws/ping"
 }
 
 resource "google_compute_disk" "mysql_data" {

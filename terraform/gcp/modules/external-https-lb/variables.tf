@@ -19,6 +19,11 @@ variable "frontend_service" {
   type        = string
 }
 
+variable "websocket_service" {
+  description = "WebSocket 전용 BackendService self_link"
+  type        = string
+}
+
 variable "lb_ip" {
   description = "External Load Balancer의 Global IP 주소 self_link"
   type        = object({
