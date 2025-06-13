@@ -6,6 +6,8 @@ on:
     branches:
       - main
       - develop
+    paths-ignore:
+      - .github/workflows/cicd-backend.yml
 
   workflow_dispatch:
     inputs:
@@ -104,7 +106,7 @@ jobs:
         run: |
           curl -H "Content-Type: application/json" \
               -X POST \
-              -d "{\"content\": \"✅ [BE CI 성공] **${{ env.BRANCH }}** 브랜치\\n> 태그: ${{ env.IMAGE_TAG }}\\n> Commit: ${{ env.SHORT_SHA }}\\n> 이미지: ${{ env.FULL_IMAGE }}\"}" \
+              -d "{\"content\": \"✅ [BE 도커 CI 성공] **${{ env.BRANCH }}** 브랜치\\n> 태그: ${{ env.IMAGE_TAG }}\\n> Commit: ${{ env.SHORT_SHA }}\\n> 이미지: ${{ env.FULL_IMAGE }}\"}" \
               ${{ secrets.DISCORD_WEBHOOK_CICD_URL }}
 
       # 7. 실패 알림
@@ -114,23 +116,8 @@ jobs:
           WORKFLOW_URL="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
           curl -H "Content-Type: application/json" \
               -X POST \
-              -d "{\"content\": \"❌ [BE CI 실패] **${{ env.BRANCH }}** 브랜치\\n> Commit: ${{ env.SHORT_SHA }}\\n⚠️ [워크플로우 로그 보기]($WORKFLOW_URL)\"}" \
+              -d "{\"content\": \"❌ [BE 도커 CI 실패] **${{ env.BRANCH }}** 브랜치\\n> Commit: ${{ env.SHORT_SHA }}\\n⚠️ [워크플로우 로그 보기]($WORKFLOW_URL)\"}" \
               ${{ secrets.DISCORD_WEBHOOK_CICD_URL }}
-
-  # backend-ci:
-  #   if: github.event_name == 'workflow_dispatch' || github.event.pull_request.merged == true
-  #   outputs:
-  #     BRANCH: develop-latest
-  #     SHORT_SHA: none_sha
-  #     FULL_IMAGE: 테스트가능한백엔드이미지/tuning-springboot-env:develop-latest
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #     # ✅ act 테스트용 명령어: act workflow_dispatch -W .github/workflows/docker-cicd-backend.yml -P ubuntu-latest=docker.io/ddongu/act-runner-terraform:latest
-  #     # 1. 소스 코드 Checkout
-  #     - name: Checkout code
-  #       uses: actions/checkout@v3
-  #       with:
-  #         Betch-depth: 1
 
   backend-cd:
     name: Backend Terraform CD
@@ -152,6 +139,11 @@ jobs:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_REGION }}
+
+         # 3. ECR 로그인
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v1
 
       - name: Set environment variables from SSM
         run: |
@@ -183,6 +175,11 @@ jobs:
 
           load_param "/global/GITHUB_TOKEN" GITHUB_TOKEN
           load_param "/global/TFC_TOKEN" TF_TOKEN_app_terraform_io
+          
+          ECR_REGISTRY=${{ steps.login-ecr.outputs.registry }}
+          REPOSITORY=tuning-nextjs
+          IMAGE_TAG="${BRANCH}-${SHORT_SHA}"
+          echo "IMAGE=${ECR_REGISTRY}/${REPOSITORY}:${IMAGE_TAG}" >> $GITHUB_ENV
 
       - name: Checkout Terraform repo
         uses: actions/checkout@v3
@@ -205,7 +202,7 @@ jobs:
 
       - name: Setup gcloud CLI
         uses: google-github-actions/setup-gcloud@v1
-      
+    
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v2
         with:
@@ -215,6 +212,7 @@ jobs:
         if: env.ENV == 'DEV'
         working-directory: tf-code/terraform/gcp/environments/develop
         run: |
+          
           terraform init -reconfigure
 
           echo "{" > 01-deployment.auto.tfvars.json
@@ -224,7 +222,7 @@ jobs:
 
           cat 01-deployment.auto.tfvars.json
 
-          terraform apply -auto-approve
+          terraform apply -auto-approve -target=module.backend_ig
 
       - name: Check MIG Health (Dev)
         if: env.ENV == 'DEV'
@@ -320,7 +318,7 @@ jobs:
           echo "  \"green_instance_count_frontend\": ${GREEN_COUNT_FRONTEND}" >> 01-deployment.auto.tfvars.json
           echo "}" >> 01-deployment.auto.tfvars.json
 
-          terraform apply -auto-approve
+          terraform apply -auto-approve -target=module.backend_ig
 
       - name: Wait before health check
         if: env.ENV == 'PROD'
@@ -375,7 +373,7 @@ jobs:
           echo "  \"traffic_weight_${ACTIVE}_backend\": 50," >> 02-shift-half.auto.tfvars.json
           echo "  \"traffic_weight_${TARGET}_backend\": 50" >> 02-shift-half.auto.tfvars.json
           echo "}" >> 02-shift-half.auto.tfvars.json
-          terraform apply -auto-approve
+          terraform apply -auto-approve -target=module.backend_ig
 
       - name: Write tfvars for shift traffic (full)
         if: env.ENV == 'PROD'
@@ -387,7 +385,7 @@ jobs:
           echo "  \"traffic_weight_${ACTIVE}_backend\": 0," >> 03-shift-full.auto.tfvars.json
           echo "  \"traffic_weight_${TARGET}_backend\": 100" >> 03-shift-full.auto.tfvars.json
           echo "}" >> 03-shift-full.auto.tfvars.json
-          terraform apply -auto-approve
+          terraform apply -auto-approve -target=module.backend_ig
 
       - name: Scale Down Previous Environment
         if: env.ENV == 'PROD'
@@ -397,14 +395,14 @@ jobs:
           echo "{" > 04-scale-down.auto.tfvars.json
           echo "  \"${ACTIVE}_instance_count_backend\": {\"min\":0, \"max\":0}" >> 04-scale-down.auto.tfvars.json
           echo "}" >> 04-scale-down.auto.tfvars.json
-          terraform apply -auto-approve
+          terraform apply -auto-approve -target=module.backend_ig
 
       - name: Notify Discord on Success
         if: success()
         run: |
           curl -H "Content-Type: application/json" \
               -X POST \
-              -d "{\"content\": \"✅ [BE CD 성공] **${{ env.BRANCH }}** 브랜치\\n> 이미지: ${{ env.IMAGE }}\\n> Commit: ${{ env.SHORT_SHA }}\\n\"}" \
+              -d "{\"content\": \"✅ [BE 도커 CD 성공] **${{ env.BRANCH }}** 브랜치\\n> 이미지: ${{ env.IMAGE }}\\n> Commit: ${{ env.SHORT_SHA }}\\n\"}" \
               ${{ secrets.DISCORD_WEBHOOK_CICD_URL }}
 
       - name: Notify Discord on Failure
@@ -413,7 +411,7 @@ jobs:
           WORKFLOW_URL="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
           curl -H "Content-Type: application/json" \
               -X POST \
-              -d "{\"content\": \"❌ [BE CD 실패] **${{ env.BRANCH }}** 브랜치\\n> 이미지: ${{ env.IMAGE }}\\n> Commit: ${{ env.SHORT_SHA }}\\n> ⚠️ [워크플로우 로그 보기]($WORKFLOW_URL)\"}" \
+              -d "{\"content\": \"❌ [BE 도커 CD 실패] **${{ env.BRANCH }}** 브랜치\\n> 이미지: ${{ env.IMAGE }}\\n> Commit: ${{ env.SHORT_SHA }}\\n> ⚠️ [워크플로우 로그 보기]($WORKFLOW_URL)\"}" \
               ${{ secrets.DISCORD_WEBHOOK_CICD_URL }}
 
   backend-rollback:
@@ -504,7 +502,7 @@ jobs:
         run: |
           curl -H "Content-Type: application/json" \
             -X POST \
-            -d "{\"content\": \"🔄 [BE 롤백 시작] \`(Docker) ${{ env.ENV }}\` 환경에서 롤백을 실행합니다.\"}" \
+            -d "{\"content\": \"🔄 [BE 도커 롤백 시작] \`(Docker) ${{ env.ENV }}\` 환경에서 롤백을 실행합니다.\"}" \
             ${{ secrets.DISCORD_WEBHOOK_CICD_URL }}
 
       - name: Write tfvars file for rollback
@@ -532,14 +530,14 @@ jobs:
           echo "  \"green_instance_count_frontend\": ${GREEN_COUNT_FRONTEND}" >> 999-rollback.auto.tfvars.json
           echo "}" >> 999-rollback.auto.tfvars.json
 
-          terraform apply -auto-approve
+          terraform apply -auto-approve -target=module.backend_ig
 
       - name: Send success notification
         if: success() && env.ENV == 'PROD'
         run: |
           curl -H "Content-Type: application/json" \
             -X POST \
-            -d "{\"content\": \"✅ [BE 롤백 완료] \`(Docker) ${{ env.ENV }}\` 환경\"}" \
+            -d "{\"content\": \"✅ [BE 도커 롤백 완료] \`(Docker) ${{ env.ENV }}\` 환경\"}" \
             ${{ secrets.DISCORD_WEBHOOK_CICD_URL }}
 
       - name: Send failure notification
@@ -547,5 +545,5 @@ jobs:
         run: |
           curl -H "Content-Type: application/json" \
             -X POST \
-            -d "{\"content\": \"❌ [BE 롤백 실패] \`(Docker) ${{ env.ENV }}\` 환경\"}" \
+            -d "{\"content\": \"❌ [BE 도커 롤백 실패] \`(Docker) ${{ env.ENV }}\` 환경\"}" \
             ${{ secrets.DISCORD_WEBHOOK_CICD_URL }}
