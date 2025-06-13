@@ -96,7 +96,7 @@ module "backend_ig" {
   machine_type     = "e2-medium"
   # 동적 인스턴스 수 설정
   min        = 1
-  max        = 1
+  max        = 2
   cpu_target = 0.8
 
   startup_tpl = join("\n", [
@@ -142,7 +142,7 @@ module "frontend_ig" {
   
   # 동적 인스턴스 수 설정
   min        = 1
-  max        = 1
+  max        = 2
   cpu_target = 0.8
 
   startup_tpl = join("\n", [
@@ -178,7 +178,7 @@ module "websocket_ig" {
 
   # 최소/최대 인스턴스 수 및 CPU 타겟
   min        = 1
-  max        = 1
+  max        = 2
   cpu_target = 0.8
 
   # startup script: WebSocket 서버 실행용 템플릿
