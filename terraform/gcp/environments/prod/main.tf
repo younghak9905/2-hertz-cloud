@@ -70,7 +70,7 @@ locals {
   private_subnet_self_link = data.terraform_remote_state.shared.outputs.prod_private_subnet_self_link
   hc_backend  = data.terraform_remote_state.shared.outputs.hc_backend_self_link
   hc_frontend = data.terraform_remote_state.shared.outputs.hc_frontend_self_link
-  hc_websocket = data.terraform_remote_state.shared-dev.outputs.hc_websocket_self_link
+  hc_websocket = data.terraform_remote_state.shared.outputs.hc_websocket_self_link
 
   external_lb_ip = data.terraform_remote_state.shared.outputs.prod_external_lb_ip_address
   external_lb_ip_self_link = data.terraform_remote_state.shared.outputs.prod_external_lb_ip_self_link
