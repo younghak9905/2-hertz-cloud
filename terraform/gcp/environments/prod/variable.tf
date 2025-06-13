@@ -252,3 +252,17 @@ variable "mysql_internal_ip" {
   type        = string
   default     = ""
 }
+
+variable "redis_password" {
+  description = "Redis 비밀번호"
+  type        = string
+  default     = ""
+  sensitive   = true
+}
+
+variable "docker_image_websocket" {
+  description = "WebSocket 서버 Docker 이미지"
+  type        = string
+  default     = "969400486509.dkr.ecr.ap-northeast-2.amazonaws.com/tuning-websocket:prod-latest"
+  
+}

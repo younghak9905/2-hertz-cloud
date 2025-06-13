@@ -64,17 +64,17 @@ resource "google_compute_router_nat" "nat" {
 
 locals {
   nat_subnet_info = data.terraform_remote_state.shared.outputs.nat_b_subnet_info
-  firewall_rules  = data.terraform_remote_state.shared.outputs.firewall_rules
-
   region           = var.region
   subnet_self_link = data.terraform_remote_state.shared.outputs.nat_b_subnet_self_link
   vpc_self_link    = data.terraform_remote_state.shared.outputs.vpc_self_link
   private_subnet_self_link = data.terraform_remote_state.shared.outputs.prod_private_subnet_self_link
   hc_backend  = data.terraform_remote_state.shared.outputs.hc_backend_self_link
   hc_frontend = data.terraform_remote_state.shared.outputs.hc_frontend_self_link
+  hc_websocket = data.terraform_remote_state.shared-dev.outputs.hc_websocket_self_link
 
   external_lb_ip = data.terraform_remote_state.shared.outputs.prod_external_lb_ip_address
   external_lb_ip_self_link = data.terraform_remote_state.shared.outputs.prod_external_lb_ip_self_link
+
   
   ilb_proxy_subnet_self_link = data.terraform_remote_state.shared.outputs.ilb_proxy_subnet_self_link
   mysql_data_disk_self_link = data.terraform_remote_state.shared.outputs.prod_mysql_data_disk_self_link
@@ -88,6 +88,8 @@ locals {
 
 # Blue
 module "backend_internal_asg_blue" {
+  deploy_ssh_public_key = var.deploy_ssh_public_key
+  project_id = var.dev_gcp_project_id
   source           = "../../modules/mig-asg"
   name             = "${var.env}-backend-blue-b"
   region           = var.region
@@ -126,6 +128,8 @@ module "backend_internal_asg_blue" {
 
 # Green
 module "backend_internal_asg_green" {
+  deploy_ssh_public_key = var.deploy_ssh_public_key
+  project_id = var.dev_gcp_project_id
   source           = "../../modules/mig-asg"
   name             = "${var.env}-backend-green-b"
   region           = var.region
@@ -205,6 +209,8 @@ module "internal_lb" {
 
 # Blue
 module "frontend_asg_blue" {
+  deploy_ssh_public_key = var.deploy_ssh_public_key
+  project_id = var.dev_gcp_project_id
   source           = "../../modules/mig-asg"
   name             = "${var.env}-frontend-blue-b"
   region           = var.region
@@ -219,7 +225,7 @@ module "frontend_asg_blue" {
 
   startup_tpl = join("\n", [
        templatefile("${path.module}/scripts/frontend-install.sh.tpl", {
-      deploy_ssh_public_key = var.ssh_private_key
+      deploy_ssh_public_key = var.deploy_ssh_public_key
       docker_image          = var.docker_image_front_blue
       use_ecr               = "true"
       aws_region            = var.aws_region
@@ -239,6 +245,8 @@ module "frontend_asg_blue" {
 
 # Green
 module "frontend_asg_green" {
+
+  project_id = var.dev_gcp_project_id
   source           = "../../modules/mig-asg"
   name             = "${var.env}-frontend-green-b"
   region           = var.region
@@ -253,7 +261,7 @@ module "frontend_asg_green" {
 
   startup_tpl = join("\n", [
        templatefile("${path.module}/scripts/frontend-install.sh.tpl", {
-      deploy_ssh_public_key = var.ssh_private_key
+      deploy_ssh_public_key = var.deploy_ssh_public_key
       docker_image          = var.docker_image_front_green
       use_ecr               = "true"
       aws_region            = var.aws_region
@@ -271,6 +279,55 @@ module "frontend_asg_green" {
   port_http    = 80
   health_check = local.hc_frontend
   tags         = ["frontend", "allow-ssh-http", "allow-vpn-ssh"]
+}
+
+module "websocket_ig" {
+  source           = "../../modules/mig-asg"
+  project_id       = var.dev_gcp_project_id
+  deploy_ssh_public_key = var.deploy_ssh_public_key
+
+  name             = "${var.env}-ws-ig-b"        # e.g. dev-ws-ig-b
+  region           = var.region
+  subnet_self_link = local.subnet_self_link
+
+  disk_size_gb     = 20
+  machine_type     = "e2-medium"
+
+  # 최소/최대 인스턴스 수 및 CPU 타겟
+  min        = 1
+  max        = 2
+  cpu_target = 0.8
+
+  # startup script: WebSocket 서버 실행용 템플릿
+  # scripts/websocket-install.sh.tpl 파일을 하나 만들어두고,
+  # 아래 변수들을 전달하세요.
+ startup_tpl = join("\n", [
+    templatefile("${path.module}/scripts/websocket-intstall.sh.tpl", {
+      deploy_ssh_public_key  = var.deploy_ssh_public_key
+      deploy_ssh_private_key = var.ssh_private_key
+
+      docker_image           = var.docker_image_websocket   # ex) tuning-websocket:latest
+      use_ecr                = "true"
+      aws_region             = var.aws_region
+      aws_access_key_id      = var.aws_access_key_id
+      aws_secret_access_key  = var.aws_secret_access_key
+      ssm_path               = "/global/websocket/prod/"
+      container_name         = "tuning-websocket"
+      container_port         = "9092"
+      host_port              = "9092"
+      # (필요시) 추가 환경변수들…
+    })
+  ])
+
+  # 앞서 만든 WebSocket 전용 Health Check
+  health_check = local.hc_websocket
+
+  tags = [
+    "websocket", "allow-vpn-ssh",
+  ]
+
+  # 내부적으로 Nginx → Netty 로 가정할 때, 포트 HTTP 모드로 9092 바인딩
+  port_http = 9092
 }
 
 
@@ -324,23 +381,42 @@ module "frontend_tg" {
     }
   ]
 }
-
+module "websocket_tg" {
+  source       = "../../modules/target-group"
+  name         = "${var.env}-ws-tg"
+  description  = "WebSocket Target Group"
+  health_check = local.hc_websocket
+  backends = [
+    {
+      instance_group  = module.websocket_ig.instance_group
+      #weight          = 100
+      balancing_mode  = "UTILIZATION"
+      capacity_scaler = 1.0
+    }
+  ]
+  timeout_sec             = 86400
+  session_affinity        = "GENERATED_COOKIE"
+  affinity_cookie_ttl_sec = 0
+  
+}
 
 ############################################################
 # 외부 HTTPS LB + URL Map (프론트엔드 기본, /api/* 백엔드)
 ############################################################
 module "external_lb" {
   source           = "../../modules/external-https-lb"
-  name             = "${var.env}-external-lb-b"
-  env              = "prod"
+  name             = "${var.env}-lb-external"
+  env = var.env
   domains          = [var.domain_frontend]
   backend_service  = module.backend_tg.backend_service_self_link
   frontend_service = module.frontend_tg.backend_service_self_link
-   lb_ip = {
+  websocket_service = module.websocket_tg.backend_service_self_link
+  lb_ip = {
     address     = local.external_lb_ip
     self_link   = local.external_lb_ip_self_link
   }
 }
+
 
 
 resource "google_compute_firewall" "allow_internal_hc" {
@@ -396,7 +472,7 @@ resource "google_compute_instance" "mysql_vm" {
   name         = "${var.env}-mysql-vm"
   machine_type = "e2-small"
   zone         = "${var.region}-b"
-  tags         = ["mysql", "allow-vpn-ssh"]
+  tags         = ["mysql", "redis", "allow-vpn-ssh"]
 
   boot_disk {
 
@@ -430,7 +506,86 @@ resource "google_compute_instance" "mysql_vm" {
       rootpasswd            = var.mysql_root_password,
       db_name               = var.mysql_database_name,
       user_name             = var.mysql_user_name
+      redis_password        = var.redis_password
     })
     
   ])
+}
+
+
+resource "google_compute_firewall" "prod_firewalls" {
+  for_each = { for rule in local.firewall_rules : rule.name => rule }
+
+  name    = "${var.vpc_name}-${each.key}"
+  network = local.vpc_self_link
+
+  direction     = each.value.direction
+  priority      = each.value.priority
+  description   = each.value.description
+  source_ranges = lookup(each.value, "source_ranges", [])
+  source_tags   = lookup(each.value, "source_tags", [])
+  target_tags   = lookup(each.value, "target_tags", [])
+  allow {
+    protocol = each.value.protocol
+    ports    = lookup(each.value, "ports", [])
+  }
+}
+
+locals {
+ 
+  # 2) 직접 정의한 추가 방화벽 규칙
+  firewall_rules = [
+    {
+      name          = "${var.env}-fw-frontend-to-backend"
+      direction     = "INGRESS"
+      priority      = 1000
+      description   = "Allow frontend to access backend"
+      source_tags   = ["frontend"]
+      target_tags   = ["backend"]
+      protocol      = "tcp"
+      ports         = ["8080"]
+    },
+    {
+      name         = "${var.env}-fw-backend-to-mysql"
+      direction    = "INGRESS"
+      priority     = 1000
+      description  = "Allow backend to access MySQL"
+      source_tags  = ["backend"]
+      target_tags  = ["mysql"]
+      protocol     = "tcp"
+      ports        = ["3306"]
+    },
+    {
+      name         = "${var.env}-fw-backend-to-backend"
+      direction    = "INGRESS"
+      priority     = 1000
+      description  = "Allow backend to access Redis"
+      source_tags  = ["backend"]
+      target_tags  = ["websocket"]
+      protocol     = "tcp"
+      ports        = ["9093"]
+    },
+    {
+      name         = "${var.env}-fw-befe-to-websocket"
+      direction    = "INGRESS"
+      priority     = 1000
+      description  = "Allow backend to access websocket"
+      source_tags  = ["backend","frontend"]
+      target_tags  = ["websocket"]
+      protocol     = "tcp"
+      ports        = ["9092"]
+    },
+    {
+      name         = "${var.env}-fw-backend-to-redis"
+      direction    = "INGRESS"
+      priority     = 1000
+      description  = "Allow backend to access Redis"
+      source_tags  = ["backend", "websocket"]
+      target_tags  = ["redis"]
+      protocol     = "tcp"
+      ports        = ["6379"]
+    }
+   
+  ]
+
 }

@@ -10,7 +10,7 @@ echo "========== 기본 초기화 시작 =========="
 if id "deploy" &>/dev/null; then
   echo "[INFO] deploy 사용자 이미 존재함"
 else
-  echo "[INFO] deploy 사용자 생성 및 teSSH 키 등록"
+  echo "[INFO] deploy 사용자 생성 및 SSH 키 등록"
   useradd -m -s /bin/bash deploy
   mkdir -p /home/deploy/.ssh
   echo "${deploy_ssh_public_key}" > /home/deploy/.ssh/authorized_keys
@@ -25,13 +25,6 @@ if ! grep -q "deploy" /etc/sudoers; then
 fi
 
 echo "[INFO] 기본 초기화 완료"
-
-# ──────────────────────────────────────────────────────────────────
-# 1) 디스크 포맷 및 마운트
-#    - 디스크가 이미 포맷되어 있지 않다면 포맷
-#    - 마운트 지점: /mnt/mysql-data (필요 시 /var/lib/mysql 로 변경)
-# ──────────────────────────────────────────────────────────────────
-
 DEVICE="/dev/disk/by-id/google-mysql-data"
 MOUNT_POINT="/mnt/tmp"
 
@@ -54,13 +47,6 @@ sudo mount $MOUNT_POINT
 # 5. mysql-data 서브디렉토리 생성
 sudo mkdir -p $MOUNT_POINT/mysql-data
 
-# ──────────────────────────────────────────────────────────────────
-# 2) MySQL 설치 및 데이터 디렉토리 변경
-#    - Docker로 MySQL 컨테이너 실행 시, 데이터 볼륨을 /mnt/mysql-data에 연결
-#    (컨테이너 내부의 /var/lib/mysql ↔ 호스트의 /mnt/mysql-data)
-# ──────────────────────────────────────────────────────────────────
-
-
 # 로그 설정
 exec > >(tee /var/log/user-data.log) 2>&1
 echo "======================================================"
@@ -79,8 +65,22 @@ docker run -d \
   -e MYSQL_DATABASE="${db_name}" \
   -e MYSQL_USER="${user_name}" \
   -e MYSQL_PASSWORD="${rootpasswd}" \
-  -v $${MOUNT_POINT}:/var/lib/mysql \
+  -v $${MOUNT_POINT}/mysql-data:/var/lib/mysql \
   -p 3306:3306 \
   mysql:8.0
 
 echo "[startup] MySQL container launched with data on $${MOUNT_POINT}"
+
+
+# Redis 이미지 로드 및 실행
+echo "[INFO] Redis 컨테이너 시작"
+docker load -i $MOUNT_POINT/redis-7.2.4.tar
+
+docker run -d \
+  --name redis \
+  --restart unless-stopped \
+  -e REDIS_PASSWORD="${redis_password}" \
+  -v $${MOUNT_POINT}/redis_data:/data \
+  -p 6379:6379 \
+  "redis:7.2.4" \
+  redis-server --requirepass "${redis_password}"

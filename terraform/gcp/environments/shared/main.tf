@@ -34,6 +34,7 @@ resource "google_compute_global_address" "prod_external_lb_ip" {
   name = "prod-external-lb-ip"
 }
 
+
 resource "google_compute_instance" "openvpn" {
   name                  = "openvpn"
   machine_type          = "e2-small"
@@ -253,9 +254,9 @@ locals {
         "130.211.0.0/22",
         "35.191.0.0/16",
       ]
-      target_tags   = ["backend"]
+      target_tags   = ["websocket"]
       protocol      = "tcp"
-      ports         = ["8080"]
+      ports         = ["9093"]
     }
   ]
 }
@@ -302,6 +303,14 @@ module "hc_frontend" {
   name          = "frontend-http-hc"
   port          = 80
   request_path  = "/"
+}
+
+# modules/health-check
+module "hc_websocket" {
+  source       = "../../modules/health-check"
+  name         = "websocket-hc"
+  port         = 9093
+  request_path = "/ws/ping"
 }
 
 resource "google_compute_disk" "mysql_data" {

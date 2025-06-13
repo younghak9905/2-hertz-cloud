@@ -31,7 +31,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
         with:
-          Betch-depth: 1
+          fetch-depth: 1
 
       # 2. AWS 인증
       - name: Configure AWS credentials
@@ -58,7 +58,7 @@ jobs:
           IMAGE_TAG="${BRANCH}-${SHORT_SHA}"
 
           if [ "$BRANCH" = "main" ]; then
-            ENV_TAG="main-latest"
+            ENV_TAG="prod-latest"
           else
             ENV_TAG="develop-latest"
           fi
@@ -82,6 +82,7 @@ jobs:
           echo "🏗️ Docker 이미지 빌드 시작..."
 
           docker build \
+            --platform linux/amd64 \
             --cache-from=type=registry,ref=$ECR_REGISTRY/$REPOSITORY:$ENV_TAG \
             --cache-to=type=inline \
             -f hertz-be/Dockerfile \
@@ -204,15 +205,68 @@ jobs:
 
       - name: Setup gcloud CLI
         uses: google-github-actions/setup-gcloud@v1
+      
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v2
+        with:
+          terraform_version: 1.6.6   # <-- 본인 terraform 버전에 맞게 작성
+
+      - name: Deploy to Dev Environment
+        if: env.ENV == 'DEV'
+        working-directory: tf-code/terraform/gcp/environments/develop
+        run: |
+          terraform init -reconfigure
+
+          echo "{" > 01-deployment.auto.tfvars.json
+          echo "  \"docker_image_back_blue\": \"${{ env.IMAGE }}\"," >> 01-deployment.auto.tfvars.json
+          echo "  \"instance_count\": {\"min\": 1, \"max\": 1}" >> 01-deployment.auto.tfvars.json
+          echo "}" >> 01-deployment.auto.tfvars.json
+
+          cat 01-deployment.auto.tfvars.json
+
+          terraform apply -auto-approve
+
+      - name: Check MIG Health (Dev)
+        if: env.ENV == 'DEV'
+        env:
+          REGION: asia-east1 # DEV 환경에 맞게 수정
+        run: |
+          MIG_NAME="dev-be-ig-a" # DEV MIG 이름으로 수정
+          RETRY=10
+          SLEEP_SEC=30
+
+          echo "🩺 $MIG_NAME 인스턴스 헬스체크 시작..."
+          sleep 60 # Wait for instances to initialize
+
+          for i in $(seq 1 $RETRY); do
+            echo "[$i/$RETRY] $MIG_NAME 인스턴스 상태 확인 중..."
+            gcloud compute instance-groups managed list-instances "$MIG_NAME" --region="$REGION" --format="value(status,version.instanceTemplate,instanceHealth[0].detailedHealthState)" > states.txt
+            cat states.txt
+
+            HEALTHY_COUNT=$(grep -c "HEALTHY" states.txt || true)
+            TOTAL_COUNT=$(wc -l < states.txt)
+
+            if [ "$HEALTHY_COUNT" -eq "$TOTAL_COUNT" ] && [ "$TOTAL_COUNT" -gt 0 ]; then
+              echo "✅ 모든 인스턴스가 HEALTHY 상태입니다 ($HEALTHY_COUNT/$TOTAL_COUNT)."
+              exit 0
+            else
+              echo "⏳ 준비된 인스턴스 ($HEALTHY_COUNT/$TOTAL_COUNT). ${SLEEP_SEC}s 대기..."
+              sleep $SLEEP_SEC
+            fi
+          done
+
+          echo "❌ ${RETRY}회 시도 후에도 MIG 인스턴스가 HEALTHY 상태가 아닙니다."
+          exit 1
 
       - name: Get Active Deployment Color
+        if: env.ENV == 'PROD'
         id: active
         working-directory: tf-code/terraform/gcp/environments/prod
         run: |
           terraform init -reconfigure
 
-          BLUE_MAX=$(terraform output -json | jq -r '.blue_instance_count.value.max')
-          GREEN_MAX=$(terraform output -json | jq -r '.green_instance_count.value.max')
+          BLUE_MAX=$(terraform output -json | jq -r '.blue_instance_count_backend.value.max')
+          GREEN_MAX=$(terraform output -json | jq -r '.green_instance_count_backend.value.max')
 
           if [ "$BLUE_MAX" = "0" ]; then
             echo "✅ Active deployment is GREEN"
@@ -226,6 +280,7 @@ jobs:
           fi
 
       - name: Determine Next Deployment Color
+        if: env.ENV == 'PROD'
         id: color
         run: |
           if [ "${{ steps.active.outputs.active }}" = "green" ]; then
@@ -234,27 +289,48 @@ jobs:
             echo "target=green" >> $GITHUB_OUTPUT
           fi
 
+      - name: Get current frontend values
+        if: env.ENV == 'PROD'
+        id: get_frontend
+        working-directory: tf-code/terraform/gcp/environments/prod
+        run: |
+          terraform output -json > outputs.json
+
       - name: Write tfvars file for next deployment
+        if: env.ENV == 'PROD'
         working-directory: tf-code/terraform/gcp/environments/prod
         run: |
           ACTIVE=${{ steps.active.outputs.active }}
           TARGET=${{ steps.color.outputs.target }}
+
+          BLUE_WEIGHT_FRONTEND=$(jq '.traffic_weight_blue_frontend.value' outputs.json)
+          GREEN_WEIGHT_FRONTEND=$(jq '.traffic_weight_green_frontend.value' outputs.json)
+          BLUE_COUNT_FRONTEND=$(jq -c '.blue_instance_count_frontend.value' outputs.json)
+          GREEN_COUNT_FRONTEND=$(jq -c '.green_instance_count_frontend.value' outputs.json)
+
           echo "{" > 01-deployment.auto.tfvars.json
-          echo "  \"traffic_weight_${ACTIVE}\": 100," >> 01-deployment.auto.tfvars.json
-          echo "  \"traffic_weight_${TARGET}\": 0," >> 01-deployment.auto.tfvars.json
-          echo "  \"docker_image_backend_${TARGET}\": \"${{ env.IMAGE }}\"," >> 01-deployment.auto.tfvars.json
-          echo "  \"blue_instance_count\": {\"min\": 1, \"max\": 2}," >> 01-deployment.auto.tfvars.json
-          echo "  \"green_instance_count\": {\"min\": 1, \"max\": 2}" >> 01-deployment.auto.tfvars.json
+          echo "  \"traffic_weight_${ACTIVE}_backend\": 100," >> 01-deployment.auto.tfvars.json
+          echo "  \"traffic_weight_${TARGET}_backend\": 0," >> 01-deployment.auto.tfvars.json
+          echo "  \"docker_image_back_${TARGET}\": \"${{ env.IMAGE }}\"," >> 01-deployment.auto.tfvars.json
+          echo "  \"${ACTIVE}_instance_count_backend\": {\"min\": 1, \"max\": 2}," >> 01-deployment.auto.tfvars.json
+          echo "  \"${TARGET}_instance_count_backend\": {\"min\": 1, \"max\": 2}," >> 01-deployment.auto.tfvars.json
+          echo "  \"traffic_weight_blue_frontend\": ${BLUE_WEIGHT_FRONTEND}," >> 01-deployment.auto.tfvars.json
+          echo "  \"traffic_weight_green_frontend\": ${GREEN_WEIGHT_FRONTEND}," >> 01-deployment.auto.tfvars.json
+          echo "  \"blue_instance_count_frontend\": ${BLUE_COUNT_FRONTEND}," >> 01-deployment.auto.tfvars.json
+          echo "  \"green_instance_count_frontend\": ${GREEN_COUNT_FRONTEND}" >> 01-deployment.auto.tfvars.json
           echo "}" >> 01-deployment.auto.tfvars.json
+
           terraform apply -auto-approve
 
       - name: Wait before health check
+        if: env.ENV == 'PROD'
         run: |
           SLEEP_SEC=60
           echo "⏱ ${SLEEP_SEC}초 대기 중... 인스턴스 초기화 및 헬스체크 준비"
           sleep ${SLEEP_SEC}
 
       - name: Check MIG Health
+        if: env.ENV == 'PROD'
         env:
           REGION: asia-east1
           TARGET: ${{ steps.color.outputs.target }}
@@ -290,50 +366,37 @@ jobs:
           exit 1
 
       - name: Write tfvars for shift traffic (half)
+        if: env.ENV == 'PROD'
         working-directory: tf-code/terraform/gcp/environments/prod
         run: |
+          ACTIVE=${{ steps.active.outputs.active }}
+          TARGET=${{ steps.color.outputs.target }}
           echo "{" > 02-shift-half.auto.tfvars.json
-          echo "  \"traffic_weight_blue\": 50," >> 02-shift-half.auto.tfvars.json
-          echo "  \"traffic_weight_green\": 50" >> 02-shift-half.auto.tfvars.json
+          echo "  \"traffic_weight_${ACTIVE}_backend\": 50," >> 02-shift-half.auto.tfvars.json
+          echo "  \"traffic_weight_${TARGET}_backend\": 50" >> 02-shift-half.auto.tfvars.json
           echo "}" >> 02-shift-half.auto.tfvars.json
           terraform apply -auto-approve
 
       - name: Write tfvars for shift traffic (full)
+        if: env.ENV == 'PROD'
         working-directory: tf-code/terraform/gcp/environments/prod
         run: |
+          ACTIVE=${{ steps.active.outputs.active }}
           TARGET=${{ steps.color.outputs.target }}
-          if [ "$TARGET" = "green" ]; then
-            echo "{" > 03-shift-full.auto.tfvars.json
-            echo "  \"traffic_weight_blue\": 0," >> 03-shift-full.auto.tfvars.json
-            echo "  \"traffic_weight_green\": 100" >> 03-shift-full.auto.tfvars.json
-            echo "}" >> 03-shift-full.auto.tfvars.json
-          elif [ "$TARGET" = "blue" ]; then
-            echo "{" > 03-shift-full.auto.tfvars.json
-            echo "  \"traffic_weight_blue\": 100," >> 03-shift-full.auto.tfvars.json
-            echo "  \"traffic_weight_green\": 0" >> 03-shift-full.auto.tfvars.json
-            echo "}" >> 03-shift-full.auto.tfvars.json
-          else
-            echo "❌ Unknown TARGET: $TARGET"
-            exit 1
-          fi
+          echo "{" > 03-shift-full.auto.tfvars.json
+          echo "  \"traffic_weight_${ACTIVE}_backend\": 0," >> 03-shift-full.auto.tfvars.json
+          echo "  \"traffic_weight_${TARGET}_backend\": 100" >> 03-shift-full.auto.tfvars.json
+          echo "}" >> 03-shift-full.auto.tfvars.json
           terraform apply -auto-approve
 
       - name: Scale Down Previous Environment
+        if: env.ENV == 'PROD'
         working-directory: tf-code/terraform/gcp/environments/prod
         run: |
-          TARGET=${{ steps.color.outputs.target }}
-          if [ "$TARGET" = "green" ]; then
-            echo "{" > 04-scale-down.auto.tfvars.json
-            echo "  \"blue_instance_count\": {\"min\":0, \"max\":0}" >> 04-scale-down.auto.tfvars.json
-            echo "}" >> 04-scale-down.auto.tfvars.json
-          elif [ "$TARGET" = "blue" ]; then
-            echo "{" > 04-scale-down.auto.tfvars.json
-            echo "  \"green_instance_count\": {\"min\":0, \"max\":0}" >> 04-scale-down.auto.tfvars.json
-            echo "}" >> 04-scale-down.auto.tfvars.json
-          else
-            echo "❌ Unknown TARGET: $TARGET"
-            exit 1
-          fi
+          ACTIVE=${{ steps.active.outputs.active }}
+          echo "{" > 04-scale-down.auto.tfvars.json
+          echo "  \"${ACTIVE}_instance_count_backend\": {\"min\":0, \"max\":0}" >> 04-scale-down.auto.tfvars.json
+          echo "}" >> 04-scale-down.auto.tfvars.json
           terraform apply -auto-approve
 
       - name: Notify Discord on Success
@@ -407,7 +470,15 @@ jobs:
             echo "ENV=DEV" >> $GITHUB_ENV
           fi
 
+      - name: Notify for Dev Rollback
+        if: env.ENV == 'DEV'
+        run: |
+          echo "❗DEV 환경 배포에 실패했습니다."
+          echo "❗DEV 환경은 Blue/Green 배포가 아니므로 자동 롤백 작업이 없습니다."
+          echo "❗GCP 콘솔에서 'dev-frontend-b' Managed Instance Group의 상태를 직접 확인해주세요."
+
       - name: Checkout Terraform repo
+        if: env.ENV == 'PROD'
         uses: actions/checkout@v3
         with:
           repository: 100-hours-a-week/2-hertz-cloud
@@ -416,17 +487,20 @@ jobs:
           token: ${{ env.GITHUB_TOKEN }}
 
       - name: Read GCP SA key JSON
+        if: env.ENV == 'PROD'
         run: |
           echo "SA_KEY<<EOF" >> $GITHUB_ENV
           cat gcp-sa-key.json >> $GITHUB_ENV
           echo "EOF" >> $GITHUB_ENV
 
       - name: Authenticate to GCP
+        if: env.ENV == 'PROD'
         uses: google-github-actions/auth@v1
         with:
           credentials_json: "${{ env.SA_KEY }}"
 
       - name: Send rollback start notification
+        if: env.ENV == 'PROD'
         run: |
           curl -H "Content-Type: application/json" \
             -X POST \
@@ -434,23 +508,34 @@ jobs:
             ${{ secrets.DISCORD_WEBHOOK_CICD_URL }}
 
       - name: Write tfvars file for rollback
+        if: env.ENV == 'PROD'
         working-directory: tf-code/terraform/gcp/environments/prod
         run: |
           terraform init -reconfigure
 
           ACTIVE=${{ env.ACTIVE }}
           TARGET=${{ env.TARGET }}
+
+          BLUE_WEIGHT_FRONTEND=$(jq '.traffic_weight_blue_frontend.value' outputs.json)
+          GREEN_WEIGHT_FRONTEND=$(jq '.traffic_weight_green_frontend.value' outputs.json)
+          BLUE_COUNT_FRONTEND=$(jq -c '.blue_instance_count_frontend.value' outputs.json)
+          GREEN_COUNT_FRONTEND=$(jq -c '.green_instance_count_frontend.value' outputs.json)
+
           echo "{" > 999-rollback.auto.tfvars.json
-          echo "  \"traffic_weight_${ACTIVE}\": 100," >> 999-rollback.auto.tfvars.json
-          echo "  \"traffic_weight_${TARGET}\": 0," >> 999-rollback.auto.tfvars.json
-          echo "  \"${ACTIVE}_instance_count\": {\"min\": 1, \"max\": 2}," >> 999-rollback.auto.tfvars.json
-          echo "  \"${TARGET}_instance_count\": {\"min\": 0, \"max\": 0}" >> 999-rollback.auto.tfvars.json
+          echo "  \"traffic_weight_${ACTIVE}_backend\": 100," >> 999-rollback.auto.tfvars.json
+          echo "  \"traffic_weight_${TARGET}_backend\": 0," >> 999-rollback.auto.tfvars.json
+          echo "  \"${ACTIVE}_instance_count_backend\": {\"min\": 1, \"max\": 2}," >> 999-rollback.auto.tfvars.json
+          echo "  \"${TARGET}_instance_count_backend\": {\"min\": 0, \"max\": 0}" >> 999-rollback.auto.tfvars.json
+          echo "  \"traffic_weight_blue_frontend\": ${BLUE_WEIGHT_FRONTEND}," >> 999-rollback.auto.tfvars.json
+          echo "  \"traffic_weight_green_frontend\": ${GREEN_WEIGHT_FRONTEND}," >> 999-rollback.auto.tfvars.json
+          echo "  \"blue_instance_count_frontend\": ${BLUE_COUNT_FRONTEND}," >> 999-rollback.auto.tfvars.json
+          echo "  \"green_instance_count_frontend\": ${GREEN_COUNT_FRONTEND}" >> 999-rollback.auto.tfvars.json
           echo "}" >> 999-rollback.auto.tfvars.json
 
           terraform apply -auto-approve
 
       - name: Send success notification
-        if: success()
+        if: success() && env.ENV == 'PROD'
         run: |
           curl -H "Content-Type: application/json" \
             -X POST \
@@ -458,7 +543,7 @@ jobs:
             ${{ secrets.DISCORD_WEBHOOK_CICD_URL }}
 
       - name: Send failure notification
-        if: failure()
+        if: failure() && env.ENV == 'PROD'
         run: |
           curl -H "Content-Type: application/json" \
             -X POST \

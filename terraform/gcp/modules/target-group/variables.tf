@@ -44,12 +44,24 @@ variable "port_name" {
 
 variable "timeout_sec" {
   type    = number
-  default = 30
+  default = 3600
 }
 
 variable "connection_draining_sec" {
   type    = number
   default = 0
+}
+
+variable "session_affinity" {
+  description = "Session affinity scheme for the backend service. Valid values are NONE, CLIENT_IP, GENERATED_COOKIE, HEADER_FIELD, HTTP_COOKIE. For WebSockets, GENERATED_COOKIE or CLIENT_IP is recommended."
+  type        = string
+  default     = "NONE"
+}
+
+variable "affinity_cookie_ttl_sec" {
+  description = "If session_affinity is GENERATED_COOKIE, this is the TTL in seconds for the generated cookie. Set to 0 to make it a session cookie. If null, the default behavior of the provider for this field will be used when session_affinity is GENERATED_COOKIE."
+  type        = number
+  default     = null
 }
 
 variable "log_enable" {

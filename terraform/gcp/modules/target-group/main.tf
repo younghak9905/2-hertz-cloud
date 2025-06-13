@@ -8,6 +8,8 @@ resource "google_compute_backend_service" "this" {
   port_name     = var.port_name         # "http" 기본
   timeout_sec   = var.timeout_sec
   health_checks = [var.health_check]    # self_link
+  session_affinity          = var.session_affinity
+  affinity_cookie_ttl_sec = var.session_affinity == "GENERATED_COOKIE" ? var.affinity_cookie_ttl_sec : null
 
 dynamic "backend" {
   for_each = var.backends

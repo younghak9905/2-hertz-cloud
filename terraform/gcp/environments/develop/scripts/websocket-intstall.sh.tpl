@@ -6,9 +6,7 @@ exec > >(tee -a /var/log/base-init.log) 2>&1
 
 echo "========== 기본 초기화 시작 =========="
 
-
 # deploy 사용자 생성 및 SSH 키 등록
-
 if id "deploy" &>/dev/null; then
   echo "[INFO] deploy 사용자 이미 존재함"
 else
@@ -121,7 +119,7 @@ if [ ! -d "$DIR_PATH" ]; then
 fi
 
 > "$ENV_FILE"
-echo "# nextjs 환경변수" >> "$ENV_FILE"
+echo "# websocket 환경변수" >> "$ENV_FILE"
 
 
 # SSM 파라미터 prefix
@@ -167,6 +165,7 @@ if [ $? -eq 0 ]; then
         --restart always \
         --env-file $ENV_FILE \
         -p ${host_port}:${container_port} \
+        -p 9093:9093 \
         "$IMAGE"
     
     if [ $? -eq 0 ]; then

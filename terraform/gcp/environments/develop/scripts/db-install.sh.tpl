@@ -70,3 +70,17 @@ docker run -d \
   mysql:8.0
 
 echo "[startup] MySQL container launched with data on $${MOUNT_POINT}"
+
+
+# Redis 이미지 로드 및 실행
+echo "[INFO] Redis 컨테이너 시작"
+docker load -i $MOUNT_POINT/redis-7.4.2.tar
+
+docker run -d \
+  --name redis \
+  --restart unless-stopped \
+  -e REDIS_PASSWORD="${redis_password}" \
+  -v $${MOUNT_POINT}/redis_data:/data \
+  -p 6379:6379 \
+  "redis:7.2.4" \
+  redis-server --requirepass "${redis_password}"
