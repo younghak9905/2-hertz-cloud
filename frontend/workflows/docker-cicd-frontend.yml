@@ -4,8 +4,10 @@ on:
   pull_request:
     types: [closed]
     branches:
-      # - main
+      - main
       - develop
+    paths-ignore:
+      - ".github/workflows/cicd-frontend.yml"
 
   workflow_dispatch:
     inputs:
@@ -116,7 +118,7 @@ jobs:
             .
           docker tag $ECR_REGISTRY/$REPOSITORY:${{ env.IMAGE_TAG }} $ECR_REGISTRY/$REPOSITORY:${{ env.ENV_TAG }}
 
-          echo "📤 Docker 이미지 푸시 중..."`
+          echo "📤 Docker 이미지 푸시 중..."
           docker push $ECR_REGISTRY/$REPOSITORY:${{ env.IMAGE_TAG }}
           docker push $ECR_REGISTRY/$REPOSITORY:${{ env.ENV_TAG }}
 
@@ -130,7 +132,7 @@ jobs:
         run: |
           curl -H "Content-Type: application/json" \
               -X POST \
-              -d "{\"content\": \"✅ [FE CI 성공] **${{ env.BRANCH }}** 브랜치\\n> 태그: ${{ env.IMAGE_TAG }}\\n> Commit: ${{ env.SHORT_SHA }}\\n> 이미지: ${{ env.FULL_IMAGE }}\"}" \
+              -d "{\"content\": \"✅ [FE 도커 CI 성공] **${{ env.BRANCH }}** 브랜치\\n> 태그: ${{ env.IMAGE_TAG }}\\n> Commit: ${{ env.SHORT_SHA }}\\n> 이미지: ${{ env.FULL_IMAGE }}\"}" \
               ${{ secrets.DISCORD_WEBHOOK_CICD_URL }}
 
       # 7. 실패 알림
@@ -140,8 +142,10 @@ jobs:
           WORKFLOW_URL="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
           curl -H "Content-Type: application/json" \
               -X POST \
-              -d "{\"content\": \"❌ [FE CI 실패] **${{ env.BRANCH }}** 브랜치\\n> Commit: ${{ env.SHORT_SHA }}\\n⚠️ [워크플로우 로그 보기]($WORKFLOW_URL)\"}" \
+              -d "{\"content\": \"❌ [FE 도커 CI 실패] **${{ env.BRANCH }}** 브랜치\\n> Commit: ${{ env.SHORT_SHA }}\\n⚠️ [워크플로우 로그 보기]($WORKFLOW_URL)\"}" \
               ${{ secrets.DISCORD_WEBHOOK_CICD_URL }}
+
+
 
   # frontend-ci:
   #   if: github.event_name == 'workflow_dispatch' || github.event.pull_request.merged == true
@@ -179,6 +183,11 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_REGION }}
 
+       # 3. ECR 로그인
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v1
+
       - name: Set environment variables from SSM
         run: |
           load_param() {
@@ -209,6 +218,12 @@ jobs:
 
           load_param "/global/GITHUB_TOKEN" GITHUB_TOKEN
           load_param "/global/TFC_TOKEN" TF_TOKEN_app_terraform_io
+
+          ECR_REGISTRY=${{ steps.login-ecr.outputs.registry }}
+          REPOSITORY=tuning-nextjs
+          IMAGE_TAG="${BRANCH}-${SHORT_SHA}"
+
+          echo "IMAGE=${ECR_REGISTRY}/${REPOSITORY}:${IMAGE_TAG} " >> $GITHUB_ENV
 
       - name: Checkout Terraform repo
         uses: actions/checkout@v3
