@@ -69,7 +69,7 @@ jobs:
           if [[ "$BRANCH" == "main" ]]; then
             load_param "/global/nextjs/prod/NEXT_PUBLIC_API_BASE_URL" NEXT_PUBLIC_API_BASE_URL
           else
-            load_param "/global/nextjs/prod/NEXT_PUBLIC_API_BASE_URL" NEXT_PUBLIC_API_BASE_URL
+            load_param "/global/nextjs/dev/NEXT_PUBLIC_API_BASE_URL" NEXT_PUBLIC_API_BASE_URL
           fi
 
 
