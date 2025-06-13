@@ -28,46 +28,6 @@ usermod -aG docker deploy
 
 echo "[INFO] 기본 초기화 완료"
 
-# # 로그 설정
-# exec > >(tee /var/log/user-data.log) 2>&1
-# echo "======================================================"
-
-# # 시스템 업데이트 및 필요한 패키지 설치
-# echo "[INFO] 시스템 업데이트 및 필수 패키지 설치 중..."
-# apt-get update -y
-# apt-get install -y \
-#   curl \
-#   wget \
-#   unzip \
-#   ca-certificates \
-#   gnupg \
-#   lsb-release
-
-# # Docker 설치 (공식 스크립트 사용)
-# echo "[INFO] Docker 설치 중..."
-# curl -fsSL https://get.docker.com -o get-docker.sh
-# chmod +x get-docker.sh
-# sh get-docker.sh
-# rm -f get-docker.sh
-
-# # deploy 사용자에 docker 그룹 권한 부여
-# usermod -aG docker deploy
-
-# # Docker 서비스 시작 및 활성화
-# systemctl start docker
-# systemctl enable docker
-
-# # AWS CLI 설치 (ECR 로그인용)
-# echo "[INFO] AWS CLI 설치 중..."
-# curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
-# unzip awscliv2.zip
-# ./aws/install
-# rm -rf aws awscliv2.zip
-
-# # AWS CLI 설치 확인
-# aws --version
-
-# echo "[INFO] Docker 및 AWS CLI 설치 완료"
 
 # ───────────────────────────────────────────────
 # ECR 로그인 및 Docker 이미지 처리
@@ -146,6 +106,9 @@ echo "[INFO] ECR 이미지 사용: $IMAGE"
 export IMAGE="${docker_image}"
 echo "[INFO] Docker Hub 이미지 사용: $IMAGE"
 %{ endif }
+
+export IMAGE=$(echo "$IMAGE" | tr -d '[:space:]')
+echo "[INFO] 최종 Docker 이미지: $IMAGE
 
 # 기존 컨테이너 정리
 echo "[INFO] 기존 '${container_name}' 컨테이너 정리 중..."

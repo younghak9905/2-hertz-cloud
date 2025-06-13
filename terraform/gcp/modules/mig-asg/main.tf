@@ -19,8 +19,11 @@ resource "google_compute_instance_template" "this" {
 
   
   service_account { scopes = ["https://www.googleapis.com/auth/cloud-platform"] }
+
+
   lifecycle {
     create_before_destroy = true
+    # 템플릿 ID가 바뀌면 이 IG 리소스를 대체하도록 강제
   }
 }
 
@@ -43,6 +46,12 @@ resource "google_compute_region_instance_group_manager" "this" {
   auto_healing_policies {
     health_check      = var.health_check
     initial_delay_sec = 300
+  }
+
+   update_policy {
+    type                         = "PROACTIVE"
+    minimal_action               = "REPLACE"
+    most_disruptive_allowed_action = "REPLACE"
   }
 }
 
