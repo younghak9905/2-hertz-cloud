@@ -13,6 +13,8 @@ provider "aws" {
   region = var.region
 }
 
+
+
 ### VPC 관련
 
 module "vpc" {
@@ -156,3 +158,107 @@ module "ec2" {
   
 }
 
+
+# IAM Role and Instance Profile for EC2
+resource "aws_iam_role" "ec2_role" {
+  name = "${var.env}-ec2-role" # e.g., shared-ec2-role
+  
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = "sts:AssumeRole"
+        Effect = "Allow"
+        Principal = {
+          Service = "ec2.amazonaws.com"
+        }
+      }
+    ]
+  })
+
+  tags ={
+    Name        = "${var.env}-ec2-role"
+    Environment = var.env
+    Component   = "ec2"
+  }
+}
+
+resource "aws_iam_policy" "ebs_management_policy" {
+  name        = "${var.env}-ebs-management-policy"
+  description = "Policy for EBS volume management (describe, attach, detach)"
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = [
+          "ec2:DescribeVolumes",
+          "ec2:DescribeVolumeStatus",
+          "ec2:AttachVolume",
+          "ec2:DetachVolume",
+          "ec2:CreateSnapshot", // Added for potential backup needs
+          "ec2:DeleteSnapshot", // Added for potential cleanup needs
+          "ec2:CreateTags"      // To tag volumes/snapshots created by CSI driver
+        ]
+        Effect   = "Allow"
+        Resource = "*" // Consider restricting if specific volume/snapshot ARNs are known/preferred
+      }
+    ]
+  })
+
+  tags = {
+    Name        = "${var.env}-ebs-management-policy"
+    Environment = var.env
+    Component   = "ebs-management"
+  }
+}
+
+resource "aws_iam_policy" "ecr_read_policy" {
+  name        = "${var.env}-ecr-read-policy"
+  description = "Policy for read-only access to ECR"
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = [
+          "ecr:GetAuthorizationToken",
+          "ecr:BatchCheckLayerAvailability",
+          "ecr:GetDownloadUrlForLayer",
+          "ecr:BatchGetImage",
+          "ecr:DescribeRepositories", // Added for listing/discovery
+          "ecr:ListImages"
+        ]
+        Effect   = "Allow"
+        Resource = "*" // Consider restricting to specific ECR repository ARNs
+      }
+    ]
+  })
+
+  tags = {
+    Name        = "${var.env}-ecr-read-policy"
+    Environment = var.env
+    Component   = "ecr-read"
+  }
+}
+
+resource "aws_iam_role_policy_attachment" "ec2_role_ebs_attachment" {
+  role       = aws_iam_role.ec2_role.name
+  policy_arn = aws_iam_policy.ebs_management_policy.arn
+}
+
+resource "aws_iam_role_policy_attachment" "ec2_role_ecr_attachment" {
+  role       = aws_iam_role.ec2_role.name
+  policy_arn = aws_iam_policy.ecr_read_policy.arn
+}
+
+resource "aws_iam_instance_profile" "ec2_instance_profile" {
+  name = "${var.env}-ec2-instance-profile" # e.g., shared-ec2-instance-profile
+  role = aws_iam_role.ec2_role.name
+
+  tags = {
+    Name        = "${var.env}-ec2-instance-profile"
+    Environment = var.env
+    Component   = "ec2"
+  }
+}
