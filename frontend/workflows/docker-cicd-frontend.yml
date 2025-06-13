@@ -264,7 +264,7 @@ jobs:
 
           cat 01-deployment.auto.tfvars.json
 
-          terraform apply -auto-approve
+          terraform apply -auto-approve -target=module.frontend_ig
 
       - name: Check MIG Health (Dev)
         if: env.ENV == 'DEV'
