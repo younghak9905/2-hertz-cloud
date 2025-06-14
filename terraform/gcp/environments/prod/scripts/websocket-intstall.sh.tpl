@@ -103,10 +103,6 @@ echo "[INFO] Docker Hub 이미지 사용: $IMAGE"
 %{ endif }
 
 
-export IMAGE=$(echo "$IMAGE" | tr -d '[:space:]')
-echo "[INFO] 최종 Docker 이미지: $IMAGE
-
-
 # 기존 컨테이너 정리
 echo "[INFO] 기존 '${container_name}' 컨테이너 정리 중..."
 docker rm -f ${container_name} 2>/dev/null || true
