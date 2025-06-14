@@ -59,7 +59,7 @@ resource "google_compute_region_instance_group_manager" "this" {
     max_unavailable_fixed = 3
     
     # Dev 환경에서는 교체 속도를 빠르게
-    replacement_method = var.is_dev_env ? "SUBSTITUTE" : "RECREATE"
+    replacement_method = "SUBSTITUTE"
   }
 }
 
