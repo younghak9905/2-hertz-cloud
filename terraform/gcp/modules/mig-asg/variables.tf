@@ -90,3 +90,9 @@ variable "deploy_ssh_public_key" {
   default = ""
   
 }
+
+variable "is_dev_env" {
+  description = "개발 환경 여부 (true면 완전 교체 배포)"
+  type        = bool
+  default     = false
+}

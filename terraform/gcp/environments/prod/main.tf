@@ -100,6 +100,8 @@ module "backend_internal_asg_blue" {
   min        = var.blue_instance_count_backend.min
   max        = var.blue_instance_count_backend.max
   cpu_target = 0.8
+  is_dev_env  = false  # 완전 교체 배포 활성화
+
 
   startup_tpl = join("\n", [
     # 기존 템플릿 파일 호출
@@ -141,6 +143,7 @@ module "backend_internal_asg_green" {
   min        = var.green_instance_count_backend.min
   max        = var.green_instance_count_backend.max
   cpu_target = 0.8
+  is_dev_env  = false  # 완전 교체 배포 활성화
 
   startup_tpl = join("\n", [
     templatefile("${path.module}/scripts/backend-install.sh.tpl", {
@@ -222,6 +225,7 @@ module "frontend_asg_blue" {
   min        = var.blue_instance_count_frontend.min
   max        = var.blue_instance_count_frontend.max
   cpu_target = 0.8
+  is_dev_env  = false  # 완전 교체 배포 활성화
 
   startup_tpl = join("\n", [
        templatefile("${path.module}/scripts/frontend-install.sh.tpl", {
@@ -258,6 +262,7 @@ module "frontend_asg_green" {
   min        = var.green_instance_count_frontend.min
   max        = var.green_instance_count_frontend.max
   cpu_target = 0.8
+  is_dev_env  = false  # 완전 교체 배포 활성화
 
   startup_tpl = join("\n", [
        templatefile("${path.module}/scripts/frontend-install.sh.tpl", {
@@ -297,6 +302,7 @@ module "websocket_ig" {
   min        = 1
   max        = 2
   cpu_target = 0.8
+  is_dev_env  = false  # 완전 교체 배포 활성화
 
   # startup script: WebSocket 서버 실행용 템플릿
   # scripts/websocket-install.sh.tpl 파일을 하나 만들어두고,
