@@ -50,8 +50,16 @@ resource "google_compute_region_instance_group_manager" "this" {
 
    update_policy {
     type                         = "PROACTIVE"
-    minimal_action               = "REPLACE"
+    instance_redistribution_type = "PROACTIVE"
+    minimal_action              = "REPLACE"
     most_disruptive_allowed_action = "REPLACE"
+    
+    # Dev 환경: 빠른 완전 교체
+    max_surge_fixed = 3
+    max_unavailable_fixed = 3
+    
+    # Dev 환경에서는 교체 속도를 빠르게
+    replacement_method = var.is_dev_env ? "SUBSTITUTE" : "RECREATE"
   }
 }
 
@@ -65,5 +73,16 @@ resource "google_compute_region_autoscaler" "this" {
     max_replicas    = var.max
     cpu_utilization { target = var.cpu_target }
     cooldown_period = 300
+    dynamic "scale_in_control" {
+      for_each = var.is_dev_env ? [] : [1]
+      content {
+        max_scaled_in_replicas {
+          fixed = 1
+        }
+        time_window_sec = 300
+      }
+    }
   }
+
+  
 }
