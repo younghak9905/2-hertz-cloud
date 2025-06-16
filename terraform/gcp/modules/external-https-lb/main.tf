@@ -27,7 +27,7 @@ resource "google_compute_url_map" "this" {
 
     path_rule {
       paths   = ["/ws/*"]
-      service = var.websocket_service  # WebSocket 서비스
+      service = var.backend_service  # WebSocket 서비스
     }
     # --- Spring Boot API(기존) ---
     path_rule {

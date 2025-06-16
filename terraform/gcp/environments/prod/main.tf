@@ -124,7 +124,7 @@ module "backend_internal_asg_blue" {
   ])
   
   health_check = local.hc_backend
-  tags         = ["backend", "backend-hc", "allow-vpn-ssh"]
+  tags         = ["backend", "backend-hc", "allow-vpn-ssh", "websocket"]
   port_http    = 8080
 }
 
@@ -165,7 +165,7 @@ module "backend_internal_asg_green" {
   ])
   
   health_check = local.hc_backend
-  tags         = ["backend", "backend-hc", "allow-vpn-ssh"]
+  tags         = ["backend", "backend-hc", "allow-vpn-ssh","websocket"]
   port_http    = 8080
 }
 
@@ -285,7 +285,7 @@ module "frontend_asg_green" {
   health_check = local.hc_frontend
   tags         = ["frontend", "allow-ssh-http", "allow-vpn-ssh"]
 }
-
+/*
 module "websocket_ig" {
   source           = "../../modules/mig-asg"
   project_id       = var.dev_gcp_project_id
@@ -334,7 +334,7 @@ module "websocket_ig" {
 
   # 내부적으로 Nginx → Netty 로 가정할 때, 포트 HTTP 모드로 9092 바인딩
   port_http = 9092
-}
+}*/
 
 
 ############################################################
@@ -387,6 +387,7 @@ module "frontend_tg" {
     }
   ]
 }
+/*
 module "websocket_tg" {
   source       = "../../modules/target-group"
   name         = "${var.env}-ws-tg"
@@ -404,7 +405,7 @@ module "websocket_tg" {
   session_affinity        = "GENERATED_COOKIE"
   affinity_cookie_ttl_sec = 0
   
-}
+}*/
 
 ############################################################
 # 외부 HTTPS LB + URL Map (프론트엔드 기본, /api/* 백엔드)
@@ -416,7 +417,7 @@ module "external_lb" {
   domains          = [var.domain_frontend]
   backend_service  = module.backend_tg.backend_service_self_link
   frontend_service = module.frontend_tg.backend_service_self_link
-  websocket_service = module.websocket_tg.backend_service_self_link
+  //websocket_service = module.websocket_tg.backend_service_self_link
   lb_ip = {
     address     = local.external_lb_ip
     self_link   = local.external_lb_ip_self_link
