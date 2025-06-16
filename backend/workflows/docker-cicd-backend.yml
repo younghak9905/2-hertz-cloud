@@ -17,7 +17,8 @@ on:
         default: "브랜치를 확인해주세요!"
         type: choice
         options:
-          - "브랜치를 확인해주세요!"
+          - main
+          - develop
 
 jobs:
   backend-ci:
@@ -74,7 +75,64 @@ jobs:
 
           echo "::add-mask::${{ env.IMAGE_TAG }}"
           echo "::add-mask::${{ env.ENV_TAG }}"
+      
+      - name: Fetch Environment Variables from SSM
+        id: fetch-ssm-params
+        run: |
+            ENV_PATH=""
+            if [ "${{ env.BRANCH }}" = "main" ]; then
+              ENV_PATH="/global/springboot/prod/"
+            else
+              ENV_PATH="/global/springboot/dev/"
+            fi
+  
+            echo "🛠️ SSM에서 환경 변수 가져오는 중: $ENV_PATH"
+  
+            # SSM 파라미터 가져오기 및 파싱
+            # `jq`는 JSON 파싱을 위해 필요합니다. `ubuntu-latest`에는 기본 설치되어 있습니다.
+            # 각 파라미터의 값을 명시적으로 마스킹 처리하고,
+            # Spring Boot 환경 변수 명명 규칙에 맞게 키를 변환하여 GITHUB_ENV에 추가합니다.
+            aws ssm get-parameters-by-path \
+              --path "$ENV_PATH" \
+              --recursive \
+              --with-decryption \
+              --query 'Parameters[*].{Name: Name, Value: Value}' | \
+              jq -r '.[] | (.Name | split("/") | last | gsub("[.-]";"_") | ascii_upcase) + "=" + .Value' > .env_temp
+  
+            echo "📋 다음 환경 변수들을 테스트에 적용합니다:"
+            # .env_temp 파일의 각 라인을 읽어 환경 변수로 로드하고 마스킹 처리
+            while IFS='=' read -r key value; do
+              if [[ -n "$key" ]]; then
+                echo "::add-mask::$value" # 민감한 값은 로그에 마스킹 처리
+                echo "$key=$value" >> $GITHUB_ENV # 환경 변수로 설정
+                echo "$key=(masked)" # 로그에 설정된 변수 이름만 표시
+              fi
+            done < .env_temp
+            rm .env_temp # 임시 파일 삭제
+        working-directory: hertz-be/ # 프로젝트의 루트 디렉토리가 아닌 경우 설정
+  
+      - name: Run All Tests (Unit and Integration)
+        run: |
+          echo "🛠️ 디버깅: 현재 환경 변수 확인..."
+          # WARNING: 이 명령은 민감한 정보를 포함할 수 있습니다.
+          # 테스트 완료 후에는 반드시 이 라인을 삭제하세요.
+          env | grep -E 'SPRING_|DB_|REDIS_|URL_|SECRET_|KEY_' || true
+          echo "🧪 모든 테스트 실행 중 (단위 및 통합, SSM 환경 변수 사용)..."
+          # Testcontainers를 사용하는 통합 테스트도 이 스텝에서 실행됩니다.
+          # SSM에서 가져온 환경 변수는 자동으로 이 스텝에 적용됩니다.
+          ./gradlew test --info # --info 옵션으로 더 자세한 로그 확인 가능
+        working-directory: hertz-be/ # 프로젝트의 루트 디렉토리가 아닌 경우 설정
+        continue-on-error: true # 테스트 실패 시에도 다음 스텝으로 진행하도록 허용
 
+
+      - name: Upload Test Report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+            name: test-report-${{ github.sha }}
+            path: hertz-be/build/reports/tests/test/index.html # 실제 보고서 경로로 변경 필요
+            retention-days: 7 # 보고서 보관 기간 (선택 사항)
+            
       # 5. Docker 빌드 및 푸시
       - name: Build and push Docker image
         run: |
@@ -127,7 +185,7 @@ jobs:
     env:
       BRANCH: ${{ needs.backend-ci.outputs.BRANCH }}
       SHORT_SHA: ${{ needs.backend-ci.outputs.SHORT_SHA }}
-      IMAGE: ${{ needs.backend-ci.outputs.FULL_IMAGE }}
+      #IMAGE: ${{ needs.backend-ci.outputs.FULL_IMAGE }}
     outputs:
       BRANCH: ${{ env.BRANCH }}
       ACTIVE: ${{ steps.active.outputs.active }}
@@ -177,7 +235,7 @@ jobs:
           load_param "/global/TFC_TOKEN" TF_TOKEN_app_terraform_io
           
           ECR_REGISTRY=${{ steps.login-ecr.outputs.registry }}
-          REPOSITORY=tuning-nextjs
+          REPOSITORY=tuning-springboot
           IMAGE_TAG="${BRANCH}-${SHORT_SHA}"
           echo "IMAGE=${ECR_REGISTRY}/${REPOSITORY}:${IMAGE_TAG}" >> $GITHUB_ENV
 
@@ -203,10 +261,13 @@ jobs:
       - name: Setup gcloud CLI
         uses: google-github-actions/setup-gcloud@v1
     
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v2
-        with:
-          terraform_version: 1.6.6   # <-- 본인 terraform 버전에 맞게 작성
+      - name: Install Terraform CLI manually
+        run: |
+          curl -fsSL -o terraform.zip https://releases.hashicorp.com/terraform/1.6.6/terraform_1.6.6_linux_amd64.zip
+          unzip terraform.zip
+          sudo mv terraform /usr/local/bin/
+          terraform -version
+
 
       - name: Deploy to Dev Environment
         if: env.ENV == 'DEV'
@@ -222,7 +283,9 @@ jobs:
 
           cat 01-deployment.auto.tfvars.json
 
-          terraform apply -auto-approve -target=module.backend_ig
+          terraform apply -auto-approve \ 
+            -target=module.backend_ig \
+            -target=module.backend_tg 
 
       - name: Check MIG Health (Dev)
         if: env.ENV == 'DEV'
@@ -232,6 +295,9 @@ jobs:
           MIG_NAME="dev-be-ig-a" # DEV MIG 이름으로 수정
           RETRY=10
           SLEEP_SEC=30
+          echo "⏱ 60초 대기 중... 인스턴스 초기화 및 헬스체크 준비"
+          sleep 60
+
 
           echo "🩺 $MIG_NAME 인스턴스 헬스체크 시작..."
           sleep 60 # Wait for instances to initialize
@@ -301,24 +367,28 @@ jobs:
           ACTIVE=${{ steps.active.outputs.active }}
           TARGET=${{ steps.color.outputs.target }}
 
-          BLUE_WEIGHT_FRONTEND=$(jq '.traffic_weight_blue_frontend.value' outputs.json)
-          GREEN_WEIGHT_FRONTEND=$(jq '.traffic_weight_green_frontend.value' outputs.json)
-          BLUE_COUNT_FRONTEND=$(jq -c '.blue_instance_count_frontend.value' outputs.json)
-          GREEN_COUNT_FRONTEND=$(jq -c '.green_instance_count_frontend.value' outputs.json)
+          #BLUE_WEIGHT_FRONTEND=$(jq '.traffic_weight_blue_frontend.value' outputs.json)
+          #GREEN_WEIGHT_FRONTEND=$(jq '.traffic_weight_green_frontend.value' outputs.json)
+          #BLUE_COUNT_FRONTEND=$(jq -c '.blue_instance_count_frontend.value' outputs.json)
+          #GREEN_COUNT_FRONTEND=$(jq -c '.green_instance_count_frontend.value' outputs.json)
 
           echo "{" > 01-deployment.auto.tfvars.json
           echo "  \"traffic_weight_${ACTIVE}_backend\": 100," >> 01-deployment.auto.tfvars.json
           echo "  \"traffic_weight_${TARGET}_backend\": 0," >> 01-deployment.auto.tfvars.json
           echo "  \"docker_image_back_${TARGET}\": \"${{ env.IMAGE }}\"," >> 01-deployment.auto.tfvars.json
           echo "  \"${ACTIVE}_instance_count_backend\": {\"min\": 1, \"max\": 2}," >> 01-deployment.auto.tfvars.json
-          echo "  \"${TARGET}_instance_count_backend\": {\"min\": 1, \"max\": 2}," >> 01-deployment.auto.tfvars.json
-          echo "  \"traffic_weight_blue_frontend\": ${BLUE_WEIGHT_FRONTEND}," >> 01-deployment.auto.tfvars.json
-          echo "  \"traffic_weight_green_frontend\": ${GREEN_WEIGHT_FRONTEND}," >> 01-deployment.auto.tfvars.json
-          echo "  \"blue_instance_count_frontend\": ${BLUE_COUNT_FRONTEND}," >> 01-deployment.auto.tfvars.json
-          echo "  \"green_instance_count_frontend\": ${GREEN_COUNT_FRONTEND}" >> 01-deployment.auto.tfvars.json
+          echo "  \"${TARGET}_instance_count_backend\": {\"min\": 1, \"max\": 2}" >> 01-deployment.auto.tfvars.json
+          #echo "  \"traffic_weight_blue_frontend\": ${BLUE_WEIGHT_FRONTEND}," >> 01-deployment.auto.tfvars.json
+          #echo "  \"traffic_weight_green_frontend\": ${GREEN_WEIGHT_FRONTEND}," >> 01-deployment.auto.tfvars.json
+          #echo "  \"blue_instance_count_frontend\": ${BLUE_COUNT_FRONTEND}," >> 01-deployment.auto.tfvars.json
+          #echo "  \"green_instance_count_frontend\": ${GREEN_COUNT_FRONTEND}" >> 01-deployment.auto.tfvars.json
           echo "}" >> 01-deployment.auto.tfvars.json
-
-          terraform apply -auto-approve -target=module.backend_ig
+          
+          cat 01-deployment.auto.tfvars.json
+          terraform apply -auto-approve \
+            -target=module.backend_tg \
+            -target=module.backend_asg_blue \
+            -target=module.backend_asg_green
 
       - name: Wait before health check
         if: env.ENV == 'PROD'
@@ -373,7 +443,10 @@ jobs:
           echo "  \"traffic_weight_${ACTIVE}_backend\": 50," >> 02-shift-half.auto.tfvars.json
           echo "  \"traffic_weight_${TARGET}_backend\": 50" >> 02-shift-half.auto.tfvars.json
           echo "}" >> 02-shift-half.auto.tfvars.json
-          terraform apply -auto-approve -target=module.backend_ig
+          terraform apply -auto-approve \
+            -target=module.backend_tg \
+            -target=module.backend_asg_blue \
+            -target=module.backend_asg_green
 
       - name: Write tfvars for shift traffic (full)
         if: env.ENV == 'PROD'
@@ -385,7 +458,10 @@ jobs:
           echo "  \"traffic_weight_${ACTIVE}_backend\": 0," >> 03-shift-full.auto.tfvars.json
           echo "  \"traffic_weight_${TARGET}_backend\": 100" >> 03-shift-full.auto.tfvars.json
           echo "}" >> 03-shift-full.auto.tfvars.json
-          terraform apply -auto-approve -target=module.backend_ig
+          terraform apply -auto-approve \
+            -target=module.backend_tg \
+            -target=module.backend_asg_blue \
+            -target=module.backend_asg_green
 
       - name: Scale Down Previous Environment
         if: env.ENV == 'PROD'
@@ -395,7 +471,10 @@ jobs:
           echo "{" > 04-scale-down.auto.tfvars.json
           echo "  \"${ACTIVE}_instance_count_backend\": {\"min\":0, \"max\":0}" >> 04-scale-down.auto.tfvars.json
           echo "}" >> 04-scale-down.auto.tfvars.json
-          terraform apply -auto-approve -target=module.backend_ig
+          terraform apply -auto-approve \
+            -target=module.backend_tg \
+            -target=module.backend_asg_blue \
+            -target=module.backend_asg_green
 
       - name: Notify Discord on Success
         if: success()
@@ -514,23 +593,26 @@ jobs:
           ACTIVE=${{ env.ACTIVE }}
           TARGET=${{ env.TARGET }}
 
-          BLUE_WEIGHT_FRONTEND=$(jq '.traffic_weight_blue_frontend.value' outputs.json)
-          GREEN_WEIGHT_FRONTEND=$(jq '.traffic_weight_green_frontend.value' outputs.json)
-          BLUE_COUNT_FRONTEND=$(jq -c '.blue_instance_count_frontend.value' outputs.json)
-          GREEN_COUNT_FRONTEND=$(jq -c '.green_instance_count_frontend.value' outputs.json)
+          #BLUE_WEIGHT_FRONTEND=$(jq '.traffic_weight_blue_frontend.value' outputs.json)
+          #GREEN_WEIGHT_FRONTEND=$(jq '.traffic_weight_green_frontend.value' outputs.json)
+          #BLUE_COUNT_FRONTEND=$(jq -c '.blue_instance_count_frontend.value' outputs.json)
+          #GREEN_COUNT_FRONTEND=$(jq -c '.green_instance_count_frontend.value' outputs.json)
 
           echo "{" > 999-rollback.auto.tfvars.json
           echo "  \"traffic_weight_${ACTIVE}_backend\": 100," >> 999-rollback.auto.tfvars.json
           echo "  \"traffic_weight_${TARGET}_backend\": 0," >> 999-rollback.auto.tfvars.json
           echo "  \"${ACTIVE}_instance_count_backend\": {\"min\": 1, \"max\": 2}," >> 999-rollback.auto.tfvars.json
           echo "  \"${TARGET}_instance_count_backend\": {\"min\": 0, \"max\": 0}" >> 999-rollback.auto.tfvars.json
-          echo "  \"traffic_weight_blue_frontend\": ${BLUE_WEIGHT_FRONTEND}," >> 999-rollback.auto.tfvars.json
-          echo "  \"traffic_weight_green_frontend\": ${GREEN_WEIGHT_FRONTEND}," >> 999-rollback.auto.tfvars.json
-          echo "  \"blue_instance_count_frontend\": ${BLUE_COUNT_FRONTEND}," >> 999-rollback.auto.tfvars.json
-          echo "  \"green_instance_count_frontend\": ${GREEN_COUNT_FRONTEND}" >> 999-rollback.auto.tfvars.json
+          #echo "  \"traffic_weight_blue_frontend\": ${BLUE_WEIGHT_FRONTEND}," >> 999-rollback.auto.tfvars.json
+          #echo "  \"traffic_weight_green_frontend\": ${GREEN_WEIGHT_FRONTEND}," >> 999-rollback.auto.tfvars.json
+          #echo "  \"blue_instance_count_frontend\": ${BLUE_COUNT_FRONTEND}," >> 999-rollback.auto.tfvars.json
+          #echo "  \"green_instance_count_frontend\": ${GREEN_COUNT_FRONTEND}" >> 999-rollback.auto.tfvars.json
           echo "}" >> 999-rollback.auto.tfvars.json
 
-          terraform apply -auto-approve -target=module.backend_ig
+          terraform apply -auto-approve \
+            -target=module.backend_tg \
+            -target=module.backend_asg_blue \
+            -target=module.backend_asg_green
 
       - name: Send success notification
         if: success() && env.ENV == 'PROD'

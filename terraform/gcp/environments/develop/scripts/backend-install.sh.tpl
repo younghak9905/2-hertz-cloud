@@ -123,6 +123,7 @@ if [ $? -eq 0 ]; then
         --restart always \
         --env-file $ENV_FILE \
         -p ${host_port}:${container_port} \
+        -p 9092:9092 \
         "$IMAGE"
     
     if [ $? -eq 0 ]; then
