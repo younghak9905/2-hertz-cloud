@@ -266,7 +266,7 @@ jobs:
 
           cat 01-deployment.auto.tfvars.json
 
-          terraform apply -auto-approvet -target=module.frontend_ig
+          terraform apply -auto-approve -target=module.frontend_ig
 
           echo "💾 Output 적용 중 ..."
           terraform apply -refresh-only -auto-approve
