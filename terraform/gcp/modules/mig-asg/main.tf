@@ -6,7 +6,8 @@ resource "google_compute_instance_template" "this" {
     boot         = true
     source_image = "projects/${var.project_id}/global/images/base-vm-template"
     disk_size_gb = var.disk_size_gb              # 필요시 조정
-    type         = "pd-balanced"
+    type         = "PERSISTENT"
+    disk_type    = "pd-balanced"
   }
   network_interface {
     subnetwork = var.subnet_self_link
