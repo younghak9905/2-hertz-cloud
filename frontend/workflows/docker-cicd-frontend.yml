@@ -17,7 +17,8 @@ on:
         default: "브랜치를 확인해주세요!"
         type: choice
         options:
-          - "브랜치를 확인해주세요!"
+          - main
+          - develop
 
 jobs:
   frontend-ci:
@@ -84,12 +85,11 @@ jobs:
           SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
           IMAGE_TAG="${BRANCH}-${SHORT_SHA}"
 
-          # if [ "$BRANCH" = "main" ]; then
-          #   ENV_TAG="main-latest"
-          # else
-          #   ENV_TAG="develop-latest"
-          # fi
-          ENV_TAG="develop-latest"
+          if [ "$BRANCH" = "main" ]; then
+            ENV_TAG="main-latest"
+          else
+            ENV_TAG="develop-latest"
+          fi
 
           echo "BRANCH=$BRANCH" >> $GITHUB_ENV
           echo "SHORT_SHA=$SHORT_SHA" >> $GITHUB_ENV
@@ -153,7 +153,7 @@ jobs:
     env:
       BRANCH: ${{ needs.frontend-ci.outputs.BRANCH }}
       SHORT_SHA: ${{ needs.frontend-ci.outputs.SHORT_SHA }}
-      IMAGE: ${{ needs.frontend-ci.outputs.FULL_IMAGE }}
+      # IMAGE: ${{ needs.frontend-ci.outputs.FULL_IMAGE }}
     outputs:
       BRANCH: ${{ env.BRANCH }}
       ACTIVE: ${{ steps.active.outputs.active }}
@@ -230,10 +230,17 @@ jobs:
       - name: Setup gcloud CLI
         uses: google-github-actions/setup-gcloud@v1
 
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v2
-        with:
-          terraform_version: 1.6.6   # <-- 본인 terraform 버전에 맞게 작성
+      - name: Install Terraform CLI manually
+        run: |
+          curl -fsSL -o terraform.zip https://releases.hashicorp.com/terraform/1.6.6/terraform_1.6.6_linux_amd64.zip
+          unzip terraform.zip
+          sudo mv terraform /usr/local/bin/
+          terraform -version
+
+      # - name: Setup Terraform
+      #   uses: hashicorp/setup-terraform@v2
+      #   with:
+      #     terraform_version: 1.6.6   # <-- 본인 terraform 버전에 맞게 작성
 
       - name: Deploy to Dev Environment
         if: env.ENV == 'DEV'
@@ -247,7 +254,7 @@ jobs:
 
           cat 01-deployment.auto.tfvars.json
 
-          terraform apply -auto-approve -target=module.frontend_ig
+          terraform apply -auto-approvet-target=module.frontend_ig
 
       - name: Check MIG Health (Dev)
         if: env.ENV == 'DEV'
@@ -258,9 +265,10 @@ jobs:
           RETRY=10
           SLEEP_SEC=30
 
-          echo "🩺 $MIG_NAME 인스턴스 헬스체크 시작..."
-          sleep 60 # Wait for instances to initialize
+          echo "⏱ 60초 대기 중... 인스턴스 초기화 및 헬스체크 준비"
+          sleep 60
 
+          echo "🩺 $MIG_NAME 인스턴스 헬스체크 시작..."
           for i in $(seq 1 $RETRY); do
             echo "[$i/$RETRY] $MIG_NAME 인스턴스 상태 확인 중..."
             gcloud compute instance-groups managed list-instances "$MIG_NAME" --region="$REGION" --format="value(status,version.instanceTemplate,instanceHealth[0].detailedHealthState)" > states.txt
@@ -343,7 +351,7 @@ jobs:
           echo "}" >> 01-deployment.auto.tfvars.json
 
           cat 01-deployment.auto.tfvars.json
-          terraform apply -auto-approve -target=module.frontend_ig
+          terraform apply -auto-approve -target=module.frontend_tg
 
       - name: Wait before health check
         if: env.ENV == 'PROD'
@@ -398,7 +406,7 @@ jobs:
           echo "  \"traffic_weight_${ACTIVE}_frontend\": 50," >> 02-shift-half.auto.tfvars.json
           echo "  \"traffic_weight_${TARGET}_frontend\": 50" >> 02-shift-half.auto.tfvars.json
           echo "}" >> 02-shift-half.auto.tfvars.json
-          terraform apply -auto-approve -target=module.frontend_ig
+          terraform apply -auto-approve-target=module.frontend_tg
 
       - name: Write tfvars for shift traffic (full)
         if: env.ENV == 'PROD'
@@ -410,7 +418,7 @@ jobs:
           echo "  \"traffic_weight_${ACTIVE}_frontend\": 0," >> 03-shift-full.auto.tfvars.json
           echo "  \"traffic_weight_${TARGET}_frontend\": 100" >> 03-shift-full.auto.tfvars.json
           echo "}" >> 03-shift-full.auto.tfvars.json
-          terraform apply -auto-approve -target=module.frontend_ig
+          terraform apply -auto-approve-target=module.frontend_tg
 
       - name: Scale Down Previous Environment
         if: env.ENV == 'PROD'
@@ -420,7 +428,7 @@ jobs:
           echo "{" > 04-scale-down.auto.tfvars.json
           echo "  \"${ACTIVE}_instance_count_frontend\": {\"min\":0, \"max\":0}" >> 04-scale-down.auto.tfvars.json
           echo "}" >> 04-scale-down.auto.tfvars.json
-          terraform apply -auto-approve -target=module.frontend_ig
+          terraform apply -auto-approve-target=module.frontend_tg
 
       - name: Notify Discord on Success
         if: success()
@@ -486,12 +494,6 @@ jobs:
 
           load_param "/global/GITHUB_TOKEN" GITHUB_TOKEN
           load_param "/global/TFC_TOKEN" TF_TOKEN_app_terraform_io
-
-          if [ ${{ env.BRANCH }} = main ]; then
-            echo "ENV=PROD" >> $GITHUB_ENV
-          else
-            echo "ENV=DEV" >> $GITHUB_ENV
-          fi
 
       - name: Notify for Dev Rollback
         if: env.ENV == 'DEV'
@@ -562,7 +564,7 @@ jobs:
           echo "  \"green_instance_count_backend\": ${GREEN_COUNT_BACKEND}" >> 999-rollback.auto.tfvars.json
           echo "}" >> 999-rollback.auto.tfvars.json
 
-          terraform apply -auto-approve -target=module.frontend_ig
+          terraform apply -auto-approve-target=module.frontend_tg
 
       - name: Send success notification
         if: success() && env.ENV == 'PROD'
