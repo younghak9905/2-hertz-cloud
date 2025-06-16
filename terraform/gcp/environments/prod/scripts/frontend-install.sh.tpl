@@ -6,9 +6,7 @@ exec > >(tee -a /var/log/base-init.log) 2>&1
 
 echo "========== 기본 초기화 시작 =========="
 
-
 # deploy 사용자 생성 및 SSH 키 등록
-
 if id "deploy" &>/dev/null; then
   echo "[INFO] deploy 사용자 이미 존재함"
 else
@@ -29,7 +27,6 @@ fi
 usermod -aG docker deploy
 
 echo "[INFO] 기본 초기화 완료"
-───────────────────────────────────────
 
 %{ if use_ecr == "true" }
 echo "[INFO] ECR 로그인 설정 중..."
@@ -105,9 +102,9 @@ export IMAGE="${docker_image}"
 echo "[INFO] Docker Hub 이미지 사용: $IMAGE"
 %{ endif }
 
-export IMAGE=$(echo "$IMAGE" | tr -d '[:space:]')
-echo "[INFO] 최종 Docker 이미지: $IMAGE
 
+export IMAGE=$(echo "$IMAGE" | tr -d '[:space:]')
+echo "[INFO] 최종 Docker 이미지: $IMAGE"
 
 # 기존 컨테이너 정리
 echo "[INFO] 기존 '${container_name}' 컨테이너 정리 중..."

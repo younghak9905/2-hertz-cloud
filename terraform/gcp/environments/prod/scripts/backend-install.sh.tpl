@@ -6,7 +6,8 @@ exec > >(tee -a /var/log/base-init.log) 2>&1
 
 echo "========== 기본 초기화 시작 =========="
 
-# deploy 사용자 생성 및 SSH 키 등록# deploy 사용자 생성 및 SSH 키 등록
+
+
 if id "deploy" &>/dev/null; then
   echo "[INFO] deploy 사용자 이미 존재함"
 else
@@ -27,6 +28,7 @@ fi
 usermod -aG docker deploy
 
 echo "[INFO] 기본 초기화 완료"
+
 
 %{ if use_ecr == "true" }
 echo "[INFO] ECR 로그인 설정 중..."
@@ -149,6 +151,8 @@ else
     systemctl status docker --no-pager -l
     exit 1
 fi
+
+
 
 echo "======================================================"
 echo "[SUCCESS] 모든 초기화 작업 완료"
