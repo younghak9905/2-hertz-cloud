@@ -17,7 +17,8 @@ on:
         default: "브랜치를 확인해주세요!"
         type: choice
         options:
-          - "브랜치를 확인해주세요!"
+          - main
+          - develop
 
 jobs:
   frontend-ci:
@@ -77,7 +78,13 @@ jobs:
       - name: Generate image tags
         id: generate-tags
         run: |
-          BRANCH="${{ github.ref_name }}"
+
+          if [ "$GITHUB_EVENT_NAME" == "workflow_dispatch" ]; then
+            BRANCH="${{ github.event.inputs.env }}"
+              else
+            BRANCH="${{ github.ref_name }}"
+          fi
+         
           SANITIZED_BRANCH="${BRANCH//\//-}"
           SANITIZED_BRANCH=$(echo "$SANITIZED_BRANCH" | sed 's#[^a-zA-Z0-9_.-]#-#g')
           BRANCH="$SANITIZED_BRANCH"
@@ -147,7 +154,7 @@ jobs:
   frontend-cd:
     name: frontend Terraform CD
     needs: frontend-ci
-    if: needs.frontend-ci.result == 'success'
+    if: needs.frontend-ci.result == 'success' 
     runs-on: ubuntu-latest
     env:
       BRANCH: ${{ needs.frontend-ci.outputs.BRANCH }}
@@ -188,7 +195,7 @@ jobs:
             echo "$VALUE" > "$2"
           }
 
-          BRANCH="${{ github.ref_name }}"
+          BRANCH="${{ env.BRANCH }}"
           echo "BRANCH=$BRANCH" >> $GITHUB_ENV
           if [[ "$BRANCH" == "main" ]]; then
             echo "ENV=PROD" >> $GITHUB_ENV
@@ -377,6 +384,10 @@ jobs:
           echo "  \"traffic_weight_${ACTIVE}_frontend\": 100," >> 01-deployment.auto.tfvars.json
           echo "  \"${TARGET}_instance_count_frontend\": {\"min\": 1, \"max\": 2}," >> 01-deployment.auto.tfvars.json
           echo "  \"${ACTIVE}_instance_count_frontend\": {\"min\": 1, \"max\": 2}" >> 01-deployment.auto.tfvars.json
+          # echo "  \"traffic_weight_blue_backend\": ${BLUE_WEIGHT_BACKEND}," >> 01-deployment.auto.tfvars.json
+          # echo "  \"traffic_weight_green_backend\": ${GREEN_WEIGHT_BACKEND}," >> 01-deployment.auto.tfvars.json
+          # echo "  \"blue_instance_count_backend\": ${BLUE_COUNT_BACKEND}," >> 01-deployment.auto.tfvars.json
+          # echo "  \"green_instance_count_backend\": ${GREEN_COUNT_BACKEND}" >> 01-deployment.auto.tfvars.json
           echo "}" >> 01-deployment.auto.tfvars.json
 
           cat 01-deployment.auto.tfvars.json
@@ -564,7 +575,7 @@ jobs:
         run: |
           echo "❗DEV 환경 배포에 실패했습니다."
           echo "❗DEV 환경은 Blue/Green 배포가 아니므로 자동 롤백 작업이 없습니다."
-          echo "❗GCP 콘솔에서 'dev-frontend-a' Managed Instance Group의 상태를 직접 확인해주세요."
+          echo "❗GCP 콘솔에서 'dev-frontend-b' Managed Instance Group의 상태를 직접 확인해주세요."
 
       - name: Checkout Terraform repo
         if: env.ENV == 'PROD'
