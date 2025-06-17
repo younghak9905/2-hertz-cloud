@@ -118,11 +118,12 @@ if [ $? -eq 0 ]; then
     
     # 새 컨테이너 실행
     echo "[INFO] 새 컨테이너 실행 중..."
-    docker run -d \
+     docker run -d \
         --name ${container_name} \
         --restart always \
         --env-file $ENV_FILE \
         -p ${host_port}:${container_port} \
+        -p 9092:9092 \
         "$IMAGE"
     
     if [ $? -eq 0 ]; then
