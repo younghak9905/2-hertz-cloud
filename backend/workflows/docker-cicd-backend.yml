@@ -53,7 +53,13 @@ jobs:
       - name: Generate image tags
         id: generate-tags
         run: |
-          BRANCH="${{ github.ref_name }}"
+
+          if [ "$GITHUB_EVENT_NAME" == "workflow_dispatch" ]; then
+            BRANCH="${{ github.event.inputs.env }}"
+              else
+            BRANCH="${{ github.ref_name }}"
+          fi
+
           SANITIZED_BRANCH="${BRANCH//\//-}"
           SANITIZED_BRANCH=$(echo "$SANITIZED_BRANCH" | sed 's#[^a-zA-Z0-9_.-]#-#g')
           BRANCH="$SANITIZED_BRANCH"
@@ -221,7 +227,7 @@ jobs:
             echo "$VALUE" > "$2"
           }
 
-          BRANCH="${{ github.ref_name }}"
+          BRANCH="${{ env.BRANCH }}"
           echo "BRANCH=$BRANCH" >> $GITHUB_ENV
           if [[ "$BRANCH" == "main" ]]; then
             echo "ENV=PROD" >> $GITHUB_ENV
@@ -300,7 +306,7 @@ jobs:
 
           cat 01-deployment.auto.tfvars.json
 
-          terraform apply -auto-approvet -target=module.backend_ig
+          terraform apply -auto-approve -target=module.backend_ig
 
           echo "💾 Output 적용 중 ..."
           terraform apply -refresh-only -auto-approve
