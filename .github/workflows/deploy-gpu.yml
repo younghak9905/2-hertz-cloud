@@ -106,7 +106,9 @@ jobs:
           username: ${{ env.SSH_USERNAME }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
-            cd /home/deploy
+            cd /home/deploy/2-hertz-ai
+            source .venv/bin/activate
+            cd ../
             chmod +x ai_deploy.sh
             ./ai_deploy.sh --branch ${{ env.BRANCH }}
 
