@@ -23,7 +23,6 @@ jobs:
       ZONE: ${{ steps.ssm.outputs.ZONE }}
       SSH_USERNAME: ${{ steps.ssm.outputs.SSH_USERNAME }}
     steps:
-
       # 1. AWS 인증 (ECR 및 SSM 접근)
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v2
@@ -31,7 +30,7 @@ jobs:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_REGION }}
-      
+
       - name: Set environment variables from SSM
         id: ssm
         run: |
@@ -116,26 +115,26 @@ jobs:
         run: |
           echo "🕒 FastAPI 서버 기동 대기 중..."
           sleep 60
-      
+
       - name: Health check with retries vllm
         run: |
-                  echo "🔍 AI 서버 헬스체크 시작 ... 최대 3회 시도합니다."
-                  for i in {1..5}; do
-                    echo "⏱️ 시도 $i: http://${{ env.HOST }}:8001/ping"
-                    if curl -sf http://${{ env.HOST }}:8001/ping; then
-                      echo "✅ 헬스체크 성공 🎉"
-                      exit 0
-                    else
-                      echo "⚠️ 헬스체크 실패. 60초 후 재시도..."
-                      sleep 60
-                    fi
-                  done
-        
-                  echo "::error::❌ 5회 헬스체크 실패 - 서버가 정상 기동되지 않음"
-                  exit 1
+          echo "🔍 AI 서버 헬스체크 시작 ... 최대 10회 시도합니다."
+          for i in {1..10}; do
+            echo "⏱️ 시도 $i: http://${{ env.HOST }}:8001/ping"
+            if curl -sf http://${{ env.HOST }}:8001/ping; then
+              echo "✅ 헬스체크 성공 🎉"
+              exit 0
+            else
+              echo "⚠️ 헬스체크 실패. 60초 후 재시도..."
+              sleep 60
+            fi
+          done
+
+          echo "::error::❌ 10회 헬스체크 실패 - 서버가 정상 기동되지 않음"
+          exit 1
       - name: Health check with retries
         run: |
-          echo "🔍 AI 서버 헬스체크 시작 (FastAPI docs)... 최대 3회 시도합니다."
+          echo "🔍 AI 서버 헬스체크 시작 (FastAPI docs)... 최대 10회 시도합니다."
           for i in {1..10}; do
             echo "⏱️ 시도 $i: http://${{ env.HOST }}:8000/docs"
             if curl -sf http://${{ env.HOST }}:8000/docs; then
@@ -147,7 +146,7 @@ jobs:
             fi
           done
 
-          echo "::error::❌ 5회 헬스체크 실패 - 서버가 정상 기동되지 않음"
+          echo "::error::❌ 10회 헬스체크 실패 - 서버가 정상 기동되지 않음"
           exit 1
 
       - name: Send failure notification
@@ -172,15 +171,14 @@ jobs:
     if: always() && needs.ai-cd.result != 'success'
     runs-on: ubuntu-latest
     steps:
-
-    # 1. AWS 인증 (ECR 및 SSM 접근)
+      # 1. AWS 인증 (ECR 및 SSM 접근)
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v2
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_REGION }}
-      
+
       - name: Set environment variables from SSM
         id: ssm
         run: |
@@ -227,7 +225,6 @@ jobs:
           else
             echo "ENVIRONMENT=develop" >> $GITHUB_ENV
           fi
-        
 
       - name: Authenticate to GCP
         uses: google-github-actions/auth@v1
@@ -254,42 +251,42 @@ jobs:
       - name: Wait for FastAPI to start
         if: steps.check_instance.outputs.continue == 'true'
         run: |
-              echo "🕒 FastAPI 서버 기동 대기 중..."
-              sleep 60
-      
+          echo "🕒 FastAPI 서버 기동 대기 중..."
+          sleep 60
+
       - name: Health check with retries vllm
         run: |
-                echo "🔍 AI 서버 헬스체크 시작 ... 최대 3회 시도합니다."
-                for i in {1..5}; do
-                  echo "⏱️ 시도 $i: http://${{ env.HOST }}:8001/ping"
-                  if curl -sf http://${{ env.HOST }}:8001/ping; then
-                    echo "✅ 헬스체크 성공 🎉"
-                    exit 0
-                  else
-                    echo "⚠️ 헬스체크 실패. 60초 후 재시도..."
-                    sleep 60
-                  fi
-                done
-      
-                echo "::error::❌ 5회 헬스체크 실패 - 서버가 정상 기동되지 않음"
-                exit 1
+          echo "🔍 AI 서버 헬스체크 시작 ... 최대 10회 시도합니다."
+          for i in {1..10}; do
+            echo "⏱️ 시도 $i: http://${{ env.HOST }}:8001/ping"
+            if curl -sf http://${{ env.HOST }}:8001/ping; then
+              echo "✅ 헬스체크 성공 🎉"
+              exit 0
+            else
+              echo "⚠️ 헬스체크 실패. 60초 후 재시도..."
+              sleep 60
+            fi
+          done
+
+          echo "::error::❌ 10회 헬스체크 실패 - 서버가 정상 기동되지 않음"
+          exit 1
 
       - name: Health check with retries
         run: |
-            echo "🔍 AI 서버 헬스체크 시작 (FastAPI docs)... 최대 3회 시도합니다."
-            for i in {1..10}; do
-                echo "⏱️ 시도 $i: http://${{ env.HOST }}:8000/docs"
-                if curl -sf http://${{ env.HOST }}:8000/docs; then
-                echo "✅ 헬스체크 성공 🎉"
-                exit 0
-                else
-                echo "⚠️ 헬스체크 실패. 10초 후 재시도..."
-                sleep 10
-                fi
-            done
-    
-            echo "::error::❌ 5회 헬스체크 실패 - 서버가 정상 기동되지 않음"
-            exit 1
+          echo "🔍 AI 서버 헬스체크 시작 (FastAPI docs)... 최대 10회 시도합니다."
+          for i in {1..10}; do
+              echo "⏱️ 시도 $i: http://${{ env.HOST }}:8000/docs"
+              if curl -sf http://${{ env.HOST }}:8000/docs; then
+              echo "✅ 헬스체크 성공 🎉"
+              exit 0
+              else
+              echo "⚠️ 헬스체크 실패. 10초 후 재시도..."
+              sleep 10
+              fi
+          done
+
+          echo "::error::❌ 10회 헬스체크 실패 - 서버가 정상 기동되지 않음"
+          exit 1
 
       - name: Send success notification
         if: success()
