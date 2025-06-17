@@ -175,7 +175,7 @@ module "backend_internal_asg_green" {
 ############################################################
 
 
-
+/*
 module "internal_lb" {
   source                 = "../../modules/internal-http-lb"
   region                 = var.region
@@ -203,7 +203,7 @@ module "internal_lb" {
   health_check_path   = "/api/ping"
   port                = "8080"
   ip_prefix_length    = 28
-}
+}*/
 
 
 ############################################################
