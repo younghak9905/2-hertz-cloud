@@ -49,7 +49,7 @@ variable "timeout_sec" {
 
 variable "connection_draining_sec" {
   type    = number
-  default = 0
+  default = 300
 }
 
 variable "session_affinity" {

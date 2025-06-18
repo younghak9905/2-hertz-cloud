@@ -314,15 +314,40 @@ module "hc_websocket" {
 }
 
 resource "google_compute_disk" "mysql_data" {
-  name  = "${var.env}-mysql-data-disk-a"
+  name  = "${var.env}-mysql-data-disk-dev"
   type  = "pd-ssd"          # 성능을 위해 SSD(‘pd-ssd’)를 사용합니다. 필요에 따라 'pd-standard'로 변경 가능.
   zone  = "${var.region}-a" # MySQL 인스턴스가 위치한 zone과 동일해야 합니다.
   size  = 30               # GB 단위. 원하는 크기로 조정하세요.
 }
 
 resource "google_compute_disk" "mysql_data_prod" {
-  name  = "${var.env}-mysql-data-disk-b"
+  name  = "${var.env}-mysql-data-disk-prod"
   type  = "pd-ssd"          # 성능을 위해 SSD(‘pd-ssd’)를 사용합니다. 필요에 따라 'pd-standard'로 변경 가능.
   zone  = "${var.region}-b" # MySQL 인스턴스가 위치한 zone과 동일해야 합니다.
   size  = 30               # GB 단위. 원하는 크기로 조정하세요.
+}
+
+resource "google_compute_resource_policy" "snapshot_policy" {
+  name   = "${var.env}-mysql-snapshot-policy"
+  region = var.region
+
+  snapshot_schedule_policy {
+    schedule {
+      hourly_schedule {
+        hours_in_cycle = 8
+        start_time     = "04:00"  # UTC 기준
+      }
+    }
+
+    retention_policy {
+      max_retention_days    = 30
+      on_source_disk_delete = "KEEP_AUTO_SNAPSHOTS"
+    }
+  }
+}
+
+resource "google_compute_disk_resource_policy_attachment" "attach_snapshot_policy" {
+  name = google_compute_resource_policy.snapshot_policy.name
+  disk = google_compute_disk.mysql_data_prod.name
+  zone = google_compute_disk.mysql_data_prod.zone
 }
