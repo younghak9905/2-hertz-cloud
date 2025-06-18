@@ -14,10 +14,9 @@ on:
       redirect_url:
         description: "(DEV일 때만 선택!) Redirect URL"
         required: true
-        default: "None"
+        default: "dev"
         type: choice
         options:
-          - None
           - local
           - dev
 
