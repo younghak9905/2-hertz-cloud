@@ -19,6 +19,7 @@ on:
         options:
           - local
           - dev
+          - app
 
 jobs:
   backend-ci:
@@ -284,6 +285,8 @@ jobs:
             REDIRECT_URL="${{ secrets.REDIRECT_URL_LOCAL }}"
           elif [[ "${{ github.event.inputs.redirect_url }}" == "dev" ]]; then
             REDIRECT_URL="${{ secrets.REDIRECT_URL_DEV }}"
+          elif [[ "${{ github.event.inputs.redirect_url }}" == "app" ]]; then
+            REDIRECT_URL="${{ secrets.REDIRECT_URL_APP }}"
           else
             echo "[ERROR]Redirect URL을 선택해주세요."
             exit 1

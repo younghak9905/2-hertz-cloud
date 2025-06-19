@@ -4,3 +4,5 @@ image:
 
 ingress:
   host: dev-alb-external-2a-1092857731.ap-northeast-2.elb.amazonaws.com
+  
+  namespace: hertz-tuning-dev

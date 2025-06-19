@@ -4,3 +4,5 @@ image:
 
 ingress:
   host: www.my-production-domain.com
+
+namespace: hertz-tuning-prod
