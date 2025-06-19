@@ -1,0 +1,23 @@
+replicaCount: 1
+
+image:
+  repository: 969400486509.dkr.ecr.ap-northeast-2.amazonaws.com/tuning-springboot
+  tag: develop-latest
+
+imagePullSecret: ecr-regcred
+
+resources:
+  requests:
+    cpu: 500m
+    memory: 512Mi
+  limits:
+    cpu: 1
+    memory: 1Gi
+
+secret:
+  path: /global/springboot/dev/
+
+global:
+  createClusterSecretStore: false
+  awsSecretName: aws-credentials
+  secretNamespace: external-secrets
