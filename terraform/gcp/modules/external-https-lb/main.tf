@@ -67,18 +67,17 @@ resource "google_compute_url_map" "this" {
   }
 }
 
-resource "google_compute_target_https_proxy" "this" {
+resource "google_compute_target_https_proxy" "https_proxy" {
   name             = "${var.name}-https-proxy-${var.env}"
-  url_map          = google_compute_url_map.this.self_link
+  url_map          = google_compute_url_map.https_url_map.self_link
   ssl_certificates = [google_compute_managed_ssl_certificate.this.self_link]
 }
-
 
 resource "google_compute_global_forwarding_rule" "https_fr" {
   name                  = "${var.name}-https-fr-${var.env}"
   load_balancing_scheme = "EXTERNAL"
   port_range            = "443"
-  target                = google_compute_target_https_proxy.this.self_link
+  target                = google_compute_target_https_proxy.https_proxy.self_link
   ip_address            = var.lb_ip.address
 }
 
