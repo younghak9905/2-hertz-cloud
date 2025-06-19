@@ -55,7 +55,7 @@ resource "google_compute_url_map" "this" {
       service = var.backend_service
     }
   }
-
+  default_service = var.frontend_service
 
 }
 
