@@ -56,17 +56,18 @@ resource "google_compute_url_map" "this" {
     }
   }
 
-  # 3) default_service: 위의 어떤 경로에도 걸리지 않으면 frontend로 처리
-  default_service = var.frontend_service
 
-  # Add this block for HTTP to HTTPS redirection
-  default_url_redirect {
-    https_redirect         = true
-    strip_query            = false # Keep query parameters during redirection
-    redirect_response_code = "MOVED_PERMANENTLY_DEFAULT" # 301 redirect
-  }
 }
 
+resource "google_compute_url_map" "http_redirect_url_map" {
+  name = "${var.name}-http-redirect-url-map-${var.env}"
+
+  default_url_redirect {
+    https_redirect         = true
+    strip_query            = false
+    redirect_response_code = "MOVED_PERMANENTLY_DEFAULT"
+  }
+}
 resource "google_compute_target_https_proxy" "https_proxy" {
   name             = "${var.name}-https-proxy-${var.env}"
   url_map          = google_compute_url_map.https_url_map.self_link
@@ -85,10 +86,9 @@ resource "google_compute_global_forwarding_rule" "https_fr" {
 # HTTP Proxy for redirection
 resource "google_compute_target_http_proxy" "http_proxy" {
   name    = "${var.name}-http-proxy-${var.env}"
-  url_map = google_compute_url_map.this.self_link
+  url_map = google_compute_url_map.http_redirect_url_map.self_link
 }
 
-# HTTP Global Forwarding Rule for redirection
 resource "google_compute_global_forwarding_rule" "http_fr" {
   name                  = "${var.name}-http-fr-${var.env}"
   load_balancing_scheme = "EXTERNAL"
