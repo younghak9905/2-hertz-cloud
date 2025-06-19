@@ -70,7 +70,7 @@ resource "google_compute_url_map" "http_redirect_url_map" {
 }
 resource "google_compute_target_https_proxy" "https_proxy" {
   name             = "${var.name}-https-proxy-${var.env}"
-  url_map          = google_compute_url_map.https_url_map.self_link
+  url_map          = google_compute_url_map.this.self_link
   ssl_certificates = [google_compute_managed_ssl_certificate.this.self_link]
 }
 
@@ -84,7 +84,7 @@ resource "google_compute_global_forwarding_rule" "https_fr" {
 
 
 # HTTP Proxy for redirection
-resource "google_compute_target_http_proxy" "http_proxy" {
+resource "google_compute_target_http_proxy" "this" {
   name    = "${var.name}-http-proxy-${var.env}"
   url_map = google_compute_url_map.http_redirect_url_map.self_link
 }
@@ -93,6 +93,6 @@ resource "google_compute_global_forwarding_rule" "http_fr" {
   name                  = "${var.name}-http-fr-${var.env}"
   load_balancing_scheme = "EXTERNAL"
   port_range            = "80"
-  target                = google_compute_target_http_proxy.http_proxy.self_link
+  target                = google_compute_target_http_proxy.this.self_link
   ip_address            = var.lb_ip.address
 }
