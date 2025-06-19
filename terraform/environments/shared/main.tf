@@ -110,7 +110,7 @@ module "ec2-openvpn" {
   })
   
 }
-
+/*
 module "ec2" {
   source         = "../../modules/ec2"
   name           = "default"
@@ -133,7 +133,7 @@ module "ec2" {
     "nextjs" = templatefile("${path.module}/scripts/nextjs-init.sh.tpl", {
       ecr_repo_url = module.ecr_nextjs.repository_url
       ecr_repo_name = module.ecr_nextjs.repository_name
-      */
+      
   }
 })
 
@@ -154,10 +154,9 @@ module "ec2" {
       description = "MySQL from VPN"
     }
     # 필요 시 추가 가능
-  ]*/
+  ]
   
-}
-
+}*/
 
 # IAM Role and Instance Profile for EC2
 resource "aws_iam_role" "ec2_role" {

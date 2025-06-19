@@ -1,0 +1,6 @@
+image:
+  repository: 969400486509.dkr.ecr.ap-northeast-2.amazonaws.com/tuning-nextjs
+  tag: dev-latest
+
+ingress:
+  host: dev-alb-external-2a-1092857731.ap-northeast-2.elb.amazonaws.com
