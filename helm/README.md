@@ -47,3 +47,12 @@ helm upgrade --install nextjs-fe helm/nextjs-fe \
   -f helm/nextjs-fe/values.yaml \
   -f helm/nextjs-fe/values-prod.yaml \
   --set imagePullSecret=ecr-regcred
+
+
+  # 개발 환경
+helm upgrade --install springboot-be helm/springboot-be \
+  -f helm/springboot-be/values.yaml \
+  -f helm/springboot-be/values-dev.yaml \
+  --namespace hertz-tuning-dev \
+  --create-namespace \
+  --set imagePullSecret=ecr-regcred
