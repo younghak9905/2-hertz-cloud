@@ -55,17 +55,24 @@ resource "google_compute_url_map" "this" {
       service = var.backend_service
     }
   }
-
-  # 3) default_service: 위의 어떤 경로에도 걸리지 않으면 frontend로 처리
   default_service = var.frontend_service
+
 }
 
+resource "google_compute_url_map" "http_redirect_url_map" {
+  name = "${var.name}-http-redirect-url-map-${var.env}"
+
+  default_url_redirect {
+    https_redirect         = true
+    strip_query            = false
+    redirect_response_code = "MOVED_PERMANENTLY_DEFAULT"
+  }
+}
 resource "google_compute_target_https_proxy" "this" {
   name             = "${var.name}-https-proxy-${var.env}"
   url_map          = google_compute_url_map.this.self_link
   ssl_certificates = [google_compute_managed_ssl_certificate.this.self_link]
 }
-
 
 resource "google_compute_global_forwarding_rule" "https_fr" {
   name                  = "${var.name}-https-fr-${var.env}"
@@ -76,7 +83,16 @@ resource "google_compute_global_forwarding_rule" "https_fr" {
 }
 
 
+# HTTP Proxy for redirection
+resource "google_compute_target_http_proxy" "this" {
+  name    = "${var.name}-http-proxy-${var.env}"
+  url_map = google_compute_url_map.http_redirect_url_map.self_link
+}
 
-
-
-
+resource "google_compute_global_forwarding_rule" "http_fr" {
+  name                  = "${var.name}-http-fr-${var.env}"
+  load_balancing_scheme = "EXTERNAL"
+  port_range            = "80"
+  target                = google_compute_target_http_proxy.this.self_link
+  ip_address            = var.lb_ip.address
+}

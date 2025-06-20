@@ -562,16 +562,16 @@ locals {
       protocol     = "tcp"
       ports        = ["3306"]
     },
-    {
-      name         = "${var.env}-fw-backend-to-backend"
-      direction    = "INGRESS"
-      priority     = 1000
-      description  = "Allow backend to access Redis"
-      source_tags  = ["backend"]
-      target_tags  = ["websocket"]
-      protocol     = "tcp"
-      ports        = ["9093"]
-    },
+    # {
+    #   name         = "${var.env}-fw-backend-to-backend"
+    #   direction    = "INGRESS"
+    #   priority     = 1000
+    #   description  = "Allow backend to access Redis"
+    #   source_tags  = ["backend"]
+    #   target_tags  = ["websocket"]
+    #   protocol     = "tcp"
+    #   ports        = ["9093"]
+    # },
     {
       name         = "${var.env}-fw-befe-to-websocket"
       direction    = "INGRESS"

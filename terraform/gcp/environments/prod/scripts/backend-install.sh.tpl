@@ -92,8 +92,7 @@ echo "$PARAM_JSON" | jq -r '.Parameters[] | "\(.Name | ltrimstr("'"$SSM_PATH"'")
 
 
 echo "✅ SSM 파라미터를 $ENV_FILE 파일로 저장 완료"
-LOCAL_DB_HOST="${db_host}"
-echo "DB_HOST=$LOCAL_DB_HOST" >> "$ENV_FILE"
+
 
 # 이미지 변수 설정 (ECR 이미지)
 export IMAGE="${docker_image}"

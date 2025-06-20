@@ -24,7 +24,7 @@ resource "aws_subnet" "private_subnet" {
     Component = "private-subnet"
   }
 }
-
+/*
 resource "aws_subnet" "nat_subnet" {
   count = length(var.azs)
 
@@ -34,6 +34,19 @@ resource "aws_subnet" "nat_subnet" {
 
   tags = {
     Name      = "${var.env}-nat-subnet-${var.azs[count.index]}"
+    Component = "nat-subnet"
+  }
+}*/
+
+resource "aws_subnet" "nat_subnet" {
+  count = 1
+
+  vpc_id            = var.vpc_id
+  cidr_block        = var.nat_subnet_cidrs[0]
+  availability_zone = var.azs[0]
+
+  tags = {
+    Name      = "${var.env}-nat-subnet-${var.azs[0]}"
     Component = "nat-subnet"
   }
 }

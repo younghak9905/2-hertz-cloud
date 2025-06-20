@@ -1,0 +1,8 @@
+image:
+  repository: 969400486509.dkr.ecr.ap-northeast-2.amazonaws.com/tuning-nextjs
+  tag: main-latest
+
+ingress:
+  host: www.my-production-domain.com
+
+namespace: hertz-tuning-prod

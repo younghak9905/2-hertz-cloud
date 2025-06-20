@@ -1,0 +1,18 @@
+apiVersion: v2
+name: nextjs-fe
+description: A Helm chart for deploying the Next.js front-end application
+type: application
+version: 0.1.0
+appVersion: "15.3.0"
+home: https://github.com/your-org/your-repo
+sources:
+  - https://github.com/your-org/your-repo
+keywords:
+  - nextjs
+  - frontend
+  - react
+  - web
+maintainers:
+  - name: Your Name
+    email: your.email@example.com
+icon: https://raw.githubusercontent.com/your-org/your-repo/main/logo.png

@@ -113,25 +113,26 @@ jobs:
 
       - name: Wait for FastAPI to start
         run: |
-          echo "🕒 FastAPI 서버 기동 대기 중..."
+          echo "🕒 FastAPI 서버 기동 대기 중...(60초)"
           sleep 60
 
       - name: Health check with retries vllm
         run: |
-          echo "🔍 AI 서버 헬스체크 시작 ... 최대 10회 시도합니다."
+          echo "🔍 AI 서버 헬스체크 시작 ... 최대 20회 시도합니다."
           for i in {1..10}; do
             echo "⏱️ 시도 $i: http://${{ env.HOST }}:8001/ping"
             if curl -sf http://${{ env.HOST }}:8001/ping; then
               echo "✅ 헬스체크 성공 🎉"
               exit 0
             else
-              echo "⚠️ 헬스체크 실패. 60초 후 재시도..."
-              sleep 60
+              echo "⚠️ 헬스체크 실패. 30초 후 재시도..."
+              sleep 30
             fi
           done
 
-          echo "::error::❌ 10회 헬스체크 실패 - 서버가 정상 기동되지 않음"
+          echo "::error::❌ 20회 헬스체크 실패 - 서버가 정상 기동되지 않음"
           exit 1
+
       - name: Health check with retries
         run: |
           echo "🔍 AI 서버 헬스체크 시작 (FastAPI docs)... 최대 10회 시도합니다."
@@ -263,8 +264,8 @@ jobs:
               echo "✅ 헬스체크 성공 🎉"
               exit 0
             else
-              echo "⚠️ 헬스체크 실패. 60초 후 재시도..."
-              sleep 60
+              echo "⚠️ 헬스체크 실패. 30초 후 재시도..."
+              sleep 30
             fi
           done
 

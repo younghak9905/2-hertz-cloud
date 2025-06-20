@@ -1,0 +1,17 @@
+# 차트 종속성, 패키지
+charts/
+*.tgz
+*.tar.gz
+
+# 사용자 문서
+README.md
+
+# 로컬·환경별 오버라이드 파일 (원한다면 패키징에서 뺄 수 있음)
+values-dev.yaml
+values-prod.yaml
+
+# OS/IDE
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
