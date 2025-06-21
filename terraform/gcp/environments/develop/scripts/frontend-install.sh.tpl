@@ -4,6 +4,9 @@ set -e
 # 로그 기록
 exec > >(tee -a /var/log/base-init.log) 2>&1
 
+timedatectl set-timezone Asia/Seoul
+timedatectl set-ntp true
+
 echo "========== 기본 초기화 시작 =========="
 
 # deploy 사용자 생성 및 SSH 키 등록
