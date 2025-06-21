@@ -6,7 +6,8 @@ exec > >(tee -a /var/log/base-init.log) 2>&1
 
 echo "========== 기본 초기화 시작 =========="
 
-
+timedatectl set-timezone Asia/Seoul
+timedatectl set-ntp true
 
 if id "deploy" &>/dev/null; then
   echo "[INFO] deploy 사용자 이미 존재함"
@@ -93,6 +94,7 @@ echo "$PARAM_JSON" | jq -r '.Parameters[] | "\(.Name | ltrimstr("'"$SSM_PATH"'")
 
 echo "✅ SSM 파라미터를 $ENV_FILE 파일로 저장 완료"
 
+
 # 이미지 변수 설정 (ECR 이미지)
 export IMAGE="${docker_image}"
 echo "[INFO] ECR 이미지 사용: $IMAGE"
@@ -116,7 +118,9 @@ if [ $? -eq 0 ]; then
     
     # 새 컨테이너 실행
     echo "[INFO] 새 컨테이너 실행 중..."
-    docker run -d \
+     docker run -d \
+        -v /etc/localtime:/etc/localtime:ro \
+        -v /etc/timezone:/etc/timezone:ro \
         --name ${container_name} \
         --restart always \
         --env-file $ENV_FILE \
