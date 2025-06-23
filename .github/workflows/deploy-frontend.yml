@@ -24,6 +24,8 @@ jobs:
           echo "ZONE=${{ secrets.GCP_ZONE }}" >> $GITHUB_ENV
 
           if [[ "$BRANCH" == "main" ]]; then
+            echo "⚠️ 해당 스크립트에서 사용하는 PROD는 SSH 서버로 더 이상 사용하지 않습니다."
+            exit 1
             echo "ENV=PROD" >> $GITHUB_ENV
             echo "HOST=${{ secrets.PROD_GCP_HOST }}" >> $GITHUB_ENV
             echo "INSTANCE=${{ secrets.PROD_GCP_INSTANCE }}" >> $GITHUB_ENV
