@@ -23,12 +23,12 @@ jobs:
           echo "ZONE=${{ secrets.GCP_ZONE }}" >> $GITHUB_ENV
 
           if [[ "$BRANCH" == "main" ]]; then
-            echo "ENV=production" >> $GITHUB_ENV
+            echo "ENV=PROD" >> $GITHUB_ENV
             echo "HOST=${{ secrets.PROD_GCP_HOST }}" >> $GITHUB_ENV
             echo "INSTANCE=${{ secrets.PROD_GCP_INSTANCE }}" >> $GITHUB_ENV
             echo "PROJECT_ID=${{ secrets.PROD_GCP_PROJECT_ID }}" >> $GITHUB_ENV
           else
-            echo "ENV=stage" >> $GITHUB_ENV
+            echo "ENV=STAGE" >> $GITHUB_ENV
             echo "HOST=${{ secrets.DEV_GCP_HOST }}" >> $GITHUB_ENV
             echo "INSTANCE=${{ secrets.DEV_GCP_INSTANCE }}" >> $GITHUB_ENV
             echo "PROJECT_ID=${{ secrets.DEV_GCP_PROJECT_ID }}" >> $GITHUB_ENV
@@ -40,9 +40,9 @@ jobs:
       - name: Set deploy message
         run: |
           if [[ "${{ github.event.inputs.rollback }}" == "true" ]]; then
-            echo "DEPLOY_MESSAGE=🚨 [BE 롤백 배포 완료]" >> $GITHUB_ENV
+            echo "DEPLOY_MESSAGE=🚨 **[${{ env.ENV }} 환경]** BE 롤백 완료" >> $GITHUB_ENV
           else
-            echo "DEPLOY_MESSAGE=🚀 [BE 배포 완료]" >> $GITHUB_ENV
+            echo "DEPLOY_MESSAGE=🚀 **[${{ env.ENV }} 환경]** BE 배포 완료" >> $GITHUB_ENV
           fi
 
       - name: Authenticate to GCP
@@ -129,7 +129,7 @@ jobs:
         run: |
           curl -H "Content-Type: application/json" \
                -X POST \
-               -d "{\"content\": \"${{ env.DEPLOY_MESSAGE }} **${{ env.ENV }}** Backend 서버 (브랜치: \`${{ env.BRANCH }}\`)\\n🔖 Commit: ${{ env.COMMIT_HASH }}\"}" \
+               -d "{\"content\": \"${{ env.DEPLOY_MESSAGE }}\\n> Branch: \`${{ env.BRANCH }}\`\\n> Commit: ${{ env.COMMIT_HASH }}\"}" \
                ${{ secrets.DISCORD_WEBHOOK_CICD_URL }}
 
       - name: Send failure notification
@@ -137,6 +137,6 @@ jobs:
         run: |
           WORKFLOW_URL="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
           curl -H "Content-Type: application/json" \
-              -X POST \
-              -d "{\"content\": \"❌ [BE 배포 실패] **${{ env.ENV }}** Backend 서버 (브랜치: \`${{ env.BRANCH }}\`)\\n🔖 Commit: ${{ env.COMMIT_HASH }}\\n⚠️ [워크플로우 로그 보기]($WORKFLOW_URL)\"}" \
-              ${{ secrets.DISCORD_WEBHOOK_CICD_URL }}
+               -X POST \
+               -d "{\"content\": \"❌ **[${{ env.ENV }} 환경]** BE 배포 실패\\n> Branch: \`${{ env.BRANCH }}\`\\n> Commit: ${{ env.COMMIT_HASH }}\\n> [워크플로우 로그 보기]($WORKFLOW_URL)\"}" \
+               ${{ secrets.DISCORD_WEBHOOK_CICD_URL }}
