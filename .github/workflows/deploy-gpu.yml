@@ -48,11 +48,11 @@ jobs:
           BRANCH="${{ github.ref_name }}"
           echo "BRANCH=$BRANCH" >> $GITHUB_ENV
           if [[ "$BRANCH" == "main" ]]; then
-            echo "ENV=production" >> $GITHUB_ENV
+            echo "ENV=PROD" >> $GITHUB_ENV
           elif [[ "$BRANCH" == "develop" ]]; then
-            echo "ENV=develop" >> $GITHUB_ENV
+            echo "ENV=DEV" >> $GITHUB_ENV
           else
-            echo "ENV=develop" >> $GITHUB_ENV
+            echo "ENV=DEV" >> $GITHUB_ENV
           fi
           load_param "/global/gcp/DISCORD_WEBHOOK_CICD_URL" DISCORD_WEBHOOK_CICD_URL
           load_param "/global/gcp/GPU_HOST" HOST
@@ -156,7 +156,7 @@ jobs:
           WORKFLOW_URL="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
           curl -H "Content-Type: application/json" \
               -X POST \
-              -d "{\"content\": \"❌ [GPU 배포 실패] **${{ env.ENV }}** GPU 서버 (브랜치: \`${{ env.BRANCH }}\`)\\n🔖 Commit: ${{ env.COMMIT_HASH }}\\n⚠️ [워크플로우 로그 보기]($WORKFLOW_URL)\"}" \
+              -d "{\"content\": \"❌ **[${{ env.ENV }} 환경]** AI-GPU 배포 실패\\n> Branch: \`${{ env.BRANCH }}\`)\\n> Commit: ${{ env.COMMIT_HASH }}\\n> [워크플로우 로그 보기]($WORKFLOW_URL)\"}" \
               ${{ secrets.DISCORD_WEBHOOK_CICD_URL }}
 
       - name: Send success notification
@@ -164,7 +164,7 @@ jobs:
         run: |
           curl -H "Content-Type: application/json" \
                -X POST \
-               -d "{\"content\": \"🚀 [GPU 배포 완료] **${{ env.ENV }}** GPU 서버 (브랜치: \`${{ env.BRANCH }}\`)\\n🔖 Commit: ${{ env.COMMIT_HASH }}\"}" \
+               -d "{\"content\": \"🚀 **[${{ env.ENV }} 환경]** AI-GPU 배포 성공\\n> Branch: \`${{ env.BRANCH }}\`)\\n> Commit: ${{ env.COMMIT_HASH }}\"}" \
                 ${{ secrets.DISCORD_WEBHOOK_CICD_URL }}
 
   rollback:
@@ -197,11 +197,11 @@ jobs:
           BRANCH="${{ github.ref_name }}"
           echo "BRANCH=$BRANCH" >> $GITHUB_ENV
           if [[ "$BRANCH" == "main" ]]; then
-            echo "ENV=production" >> $GITHUB_ENV
+            echo "ENV=PROD" >> $GITHUB_ENV
           elif [[ "$BRANCH" == "develop" ]]; then
-            echo "ENV=develop" >> $GITHUB_ENV
+            echo "ENV=DEV" >> $GITHUB_ENV
           else
-            echo "ENV=develop" >> $GITHUB_ENV
+            echo "ENV=DEV" >> $GITHUB_ENV
           fi
           load_param "/global/gcp/DISCORD_WEBHOOK_CICD_URL" DISCORD_WEBHOOK_CICD_URL
           load_param "/global/gcp/GPU_HOST" HOST
@@ -236,8 +236,8 @@ jobs:
         run: |
           curl -H "Content-Type: application/json" \
             -X POST \
-            -d "{\"content\": \"🔄 [AI 롤백 시작] \`${{ env.ENVIRONMENT }}\` 환경에서 롤백을 실행합니다.\"}" \
-            ${{ env.DISCORD_WEBHOOK_CICD_URL }}
+            -d "{\"content\": \"🔄 **[${{ env.ENV }} 환경]** AI-GPU 롤백을 실행합니다.\"}" \
+            ${{ secrets.DISCORD_WEBHOOK_CICD_URL }}
 
       - name: SSH into server and rollback
         uses: appleboy/ssh-action@master
@@ -294,12 +294,12 @@ jobs:
         run: |
           curl -H "Content-Type: application/json" \
             -X POST \
-            -d "{\"content\": \"✅ [GPU 롤백 완료] \`${{ env.ENVIRONMENT }}\` 환경\"}" \
+            -d "{\"content\": \"✅ **[${{ env.ENV }} 환경]** AI-GPU 롤백 완료\"}" \
             ${{ secrets.DISCORD_WEBHOOK_CICD_URL }}
       - name: Send failure notification
         if: failure()
         run: |
           curl -H "Content-Type: application/json" \
             -X POST \
-            -d "{\"content\": \"❌ [GPU 롤백 실패] \`${{ env.ENVIRONMENT }}\` 환경\"}" \
+            -d "{\"content\": \"❌ **[${{ env.ENV }} 환경]** AI-GPU 롤백 실패\"}" \
             ${{ secrets.DISCORD_WEBHOOK_CICD_URL }}
