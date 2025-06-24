@@ -66,7 +66,7 @@ variable "affinity_cookie_ttl_sec" {
 
 variable "log_enable" {
   type    = bool
-  default = false
+  default = true
 }
 
 variable "log_sample_rate" {
