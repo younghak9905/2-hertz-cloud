@@ -266,7 +266,7 @@ module "websocket_tg" {
   port_name = "ws"
   backends = [
     {
-      instance_group  = module.module.backend_ig.instance_group
+      instance_group  = module.backend_ig.instance_group
       #weight          = 100
       balancing_mode  = "UTILIZATION"
       capacity_scaler = 1.0
