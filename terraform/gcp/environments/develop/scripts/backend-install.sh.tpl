@@ -91,25 +91,26 @@ PARAM_JSON=$(aws ssm get-parameters-by-path \
   --output json)
 echo "$PARAM_JSON" | jq -r '.Parameters[] | "\(.Name | ltrimstr("'"$SSM_PATH"'"))=\(.Value)"' >> "$ENV_FILE"
 
-
 echo "✅ SSM 파라미터를 $ENV_FILE 파일로 저장 완료"
 
 echo "========== SigNoz Agent 세팅 시작 =========="
-
 # agent용 docker-compose가 있는 디렉터리로 이동
-git clone -b main https://github.com/SigNoz/signoz.git && cd deploy/docker/generator/infra
-
+cd /home/deploy
+git clone -b main https://github.com/SigNoz/signoz.git
+cd /home/deploy/signoz/deploy/docker/generator/infra
 # `signoz-net` 네트워크 생성하기
 docker network create --driver bridge signoz-net
 
-SIGNOZ_ENDPOINT=$(grep '^SIGNOZ_URL=' "$ENV_FILE" | cut -d '=' -f2)
-NEW_ATTRS="host.name=$(hostname),os.type=linux"
+# docker-compose 파일에서
 sed -i.bak \
-  -e "s|SIGNOZ_COLLECTOR_ENDPOINT=.*|SIGNOZ_COLLECTOR_ENDPOINT=${SIGNOZ_ENDPOINT}    # In case of external SigNoz or cloud, update the endpoint and access token|" \
-  -e "s|OTEL_RESOURCE_ATTRIBUTES=.*|OTEL_RESOURCE_ATTRIBUTES=${NEW_ATTRS}  # Replace signoz-host with the actual hostname|" \
+  -e "s|SIGNOZ_COLLECTOR_ENDPOINT=.*|SIGNOZ_COLLECTOR_ENDPOINT=$(grep '^SIGNOZ_URL=' "$ENV_FILE" | cut -d '=' -f2)    # In case of external SigNoz or cloud, update the endpoint and access token|" \
+  -e "s|OTEL_RESOURCE_ATTRIBUTES=.*|OTEL_RESOURCE_ATTRIBUTES=service.name=stage-springboot,host.name=$(hostname),os.type=linux  # Replace signoz-host with the actual hostname|" \
   docker-compose.yaml
+
 docker compose up -d
 docker ps
+
+echo "✅ SigNoz 세팅 완료"
 
 # 이미지 변수 설정 (ECR 이미지)
 export IMAGE="${docker_image}"
