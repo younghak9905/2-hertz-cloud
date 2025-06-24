@@ -25,9 +25,15 @@ resource "google_compute_url_map" "this" {
     name            = "main-matcher"
     default_service = var.frontend_service  # "/" 이하 기본은 프론트엔드 서비스로
 
-    path_rule {
+     path_rule {
       paths   = ["/ws/*"]
-      service = var.backend_service  # WebSocket 서비스
+      route_action {
+        url_rewrite {
+          # /ws/foo/bar → /socket.io/foo/bar
+          path_prefix_rewrite = "/socket.io"
+        }
+      }
+      service = var.websocket_service
     }
     # --- Spring Boot API(기존) ---
     path_rule {
