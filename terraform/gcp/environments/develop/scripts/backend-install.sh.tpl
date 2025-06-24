@@ -96,6 +96,7 @@ echo "✅ SSM 파라미터를 $ENV_FILE 파일로 저장 완료"
 echo "========== SigNoz Agent 세팅 시작 =========="
 # agent용 docker-compose가 있는 디렉터리로 이동
 cd /home/deploy
+wget https://github.com/open-telemetry/opentelemetry-java-instrumentation/releases/latest/download/opentelemetry-javaagent.jar
 git clone -b main https://github.com/SigNoz/signoz.git
 cd /home/deploy/signoz/deploy/docker/generator/infra
 # `signoz-net` 네트워크 생성하기
@@ -138,6 +139,7 @@ if [ $? -eq 0 ]; then
     docker run -d \
         -v /etc/localtime:/etc/localtime:ro \
         -v /etc/timezone:/etc/timezone:ro \
+        -v /home/deploy/opentelemetry-javaagent.jar:/otel/opentelemetry-javaagent.jar \
         --name $(hostname) \
         --restart always \
         --env-file $ENV_FILE \
@@ -147,6 +149,10 @@ if [ $? -eq 0 ]; then
         --label signoz.io/scrape=true \
         --label signoz.io/port=8000 \
         --label signoz.io/path=/metrics \
+        -e JAVA_TOOL_OPTIONS="-javaagent:/otel/opentelemetry-javaagent.jar" \
+        -e OTEL_EXPORTER_OTLP_ENDPOINT=$(grep '^SIGNOZ_URL=' "$ENV_FILE" | cut -d '=' -f2) \
+        -e OTEL_EXPORTER_OTLP_PROTOCOL=grpc \
+        -e OTEL_RESOURCE_ATTRIBUTES=service.name=stage-springboot,host.name=$(hostname),os.type=linux \
         "$IMAGE"
     
     if [ $? -eq 0 ]; then
