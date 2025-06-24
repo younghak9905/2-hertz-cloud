@@ -105,7 +105,7 @@ docker network create --driver bridge signoz-net
 # docker-compose 파일에서
 sed -i.bak \
   -e "s|SIGNOZ_COLLECTOR_ENDPOINT=.*|SIGNOZ_COLLECTOR_ENDPOINT=$(grep '^SIGNOZ_URL=' "$ENV_FILE" | cut -d '=' -f2)    # In case of external SigNoz or cloud, update the endpoint and access token|" \
-  -e "s|OTEL_RESOURCE_ATTRIBUTES=.*|OTEL_RESOURCE_ATTRIBUTES=service.name=stage-springboot,host.name=$(hostname),os.type=linux  # Replace signoz-host with the actual hostname|" \
+  -e "s|OTEL_RESOURCE_ATTRIBUTES=.*|OTEL_RESOURCE_ATTRIBUTES=service.name=stage-springboot,host.name=stage-$(hostname),os.type=linux  # Replace signoz-host with the actual hostname|" \
   docker-compose.yaml
 
 docker compose up -d
