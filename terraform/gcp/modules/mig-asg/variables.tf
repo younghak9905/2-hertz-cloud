@@ -96,3 +96,9 @@ variable "is_dev_env" {
   type        = bool
   default     = false
 }
+
+variable "port_ws" {
+  description = "Port for WebSocket connections"
+  type        = number
+  default     = 9092
+}
