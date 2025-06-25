@@ -392,7 +392,7 @@ module "websocket_tg" {
   source       = "../../modules/target-group"
   name         = "${var.env}-ws-tg"
   description  = "WebSocket Target Group"
-  health_check = local.hc_backend
+  health_check = local.hc_websocket
   backends = [
     {
       instance_group  = module.backend_ig.instance_group
