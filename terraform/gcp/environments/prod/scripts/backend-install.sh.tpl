@@ -98,19 +98,19 @@ echo "========== SigNoz Agent 세팅 시작 =========="
 # agent용 docker-compose가 있는 디렉터리로 이동
 cd /home/deploy
 wget https://github.com/open-telemetry/opentelemetry-java-instrumentation/releases/latest/download/opentelemetry-javaagent.jar
-git clone -b main https://github.com/SigNoz/signoz.git
-cd /home/deploy/signoz/deploy/docker/generator/infra
-# `signoz-net` 네트워크 생성하기
-docker network create --driver bridge signoz-net
+# git clone -b main https://github.com/SigNoz/signoz.git
+# cd /home/deploy/signoz/deploy/docker/generator/infra
+# # `signoz-net` 네트워크 생성하기
+# docker network create --driver bridge signoz-net
 
-# docker-compose 파일에서
-sed -i.bak \
-  -e "s|SIGNOZ_COLLECTOR_ENDPOINT=.*|SIGNOZ_COLLECTOR_ENDPOINT=$(grep '^SIGNOZ_URL=' "$ENV_FILE" | cut -d '=' -f2)    # In case of external SigNoz or cloud, update the endpoint and access token|" \
-  -e "s|OTEL_RESOURCE_ATTRIBUTES=.*|OTEL_RESOURCE_ATTRIBUTES=service.name=prod-springboot,host.name=$(hostname),os.type=linux  # Replace signoz-host with the actual hostname|" \
-  docker-compose.yaml
+# # docker-compose 파일에서
+# sed -i.bak \
+#   -e "s|SIGNOZ_COLLECTOR_ENDPOINT=.*|SIGNOZ_COLLECTOR_ENDPOINT=$(grep '^SIGNOZ_URL=' "$ENV_FILE" | cut -d '=' -f2)    # In case of external SigNoz or cloud, update the endpoint and access token|" \
+#   -e "s|OTEL_RESOURCE_ATTRIBUTES=.*|OTEL_RESOURCE_ATTRIBUTES=service.name=prod-springboot,host.name=$(hostname),os.type=linux  # Replace signoz-host with the actual hostname|" \
+#   docker-compose.yaml
 
-docker compose up -d
-docker ps
+# docker compose up -d
+# docker ps
 
 echo "✅ SigNoz 세팅 완료"
 
