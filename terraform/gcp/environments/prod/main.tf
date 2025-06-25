@@ -395,12 +395,22 @@ module "websocket_tg" {
   
   health_check = local.hc_backend
   port_name = "ws"
-  backends = [
+   backends = [
     {
-      instance_group  = module.backend_ig.instance_group
-      #weight          = 100
+      instance_group  = module.backend_internal_asg_blue.instance_group
+      # weight          = local.normalized_blue_weight
+      # weight          = var.traffic_weight_blue
       balancing_mode  = "UTILIZATION"
-      capacity_scaler = 1.0
+      # capacity_scaler = 1.0
+      capacity_scaler = var.traffic_weight_blue_backend / 100.0
+    },
+    {
+      instance_group  = module.backend_internal_asg_green.instance_group
+      # weight          = local.normalized_green_weight
+      # weight          = var.traffic_weight_green
+      balancing_mode  = "UTILIZATION"
+      # capacity_scaler = 1.0
+      capacity_scaler = var.traffic_weight_green_backend / 100.0
     }
   ]
   timeout_sec             = 86400
