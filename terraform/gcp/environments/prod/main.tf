@@ -387,15 +387,15 @@ module "frontend_tg" {
     }
   ]
 }
-/*
+
 module "websocket_tg" {
   source       = "../../modules/target-group"
   name         = "${var.env}-ws-tg"
   description  = "WebSocket Target Group"
-  health_check = local.hc_websocket
+  health_check = local.hc_backend
   backends = [
     {
-      instance_group  = module.websocket_ig.instance_group
+      instance_group  = module.backend_ig.instance_group
       #weight          = 100
       balancing_mode  = "UTILIZATION"
       capacity_scaler = 1.0
@@ -405,7 +405,7 @@ module "websocket_tg" {
   session_affinity        = "GENERATED_COOKIE"
   affinity_cookie_ttl_sec = 0
   
-}*/
+}
 
 ############################################################
 # 외부 HTTPS LB + URL Map (프론트엔드 기본, /api/* 백엔드)
@@ -417,7 +417,7 @@ module "external_lb" {
   domains          = [var.domain_frontend]
   backend_service  = module.backend_tg.backend_service_self_link
   frontend_service = module.frontend_tg.backend_service_self_link
-  //websocket_service = module.websocket_tg.backend_service_self_link
+  websocket_service = module.websocket_tg.backend_service_self_link
   lb_ip = {
     address     = local.external_lb_ip
     self_link   = local.external_lb_ip_self_link
