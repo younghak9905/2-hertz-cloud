@@ -91,9 +91,27 @@ PARAM_JSON=$(aws ssm get-parameters-by-path \
   --output json)
 echo "$PARAM_JSON" | jq -r '.Parameters[] | "\(.Name | ltrimstr("'"$SSM_PATH"'"))=\(.Value)"' >> "$ENV_FILE"
 
-
 echo "✅ SSM 파라미터를 $ENV_FILE 파일로 저장 완료"
 
+echo "========== SigNoz Agent 세팅 시작 =========="
+# agent용 docker-compose가 있는 디렉터리로 이동
+cd /home/deploy
+wget https://github.com/open-telemetry/opentelemetry-java-instrumentation/releases/latest/download/opentelemetry-javaagent.jar
+git clone -b main https://github.com/SigNoz/signoz.git
+cd /home/deploy/signoz/deploy/docker/generator/infra
+# `signoz-net` 네트워크 생성하기
+docker network create --driver bridge signoz-net
+
+# docker-compose 파일에서
+sed -i.bak \
+  -e "s|SIGNOZ_COLLECTOR_ENDPOINT=.*|SIGNOZ_COLLECTOR_ENDPOINT=$(grep '^SIGNOZ_URL=' "$ENV_FILE" | cut -d '=' -f2)    # In case of external SigNoz or cloud, update the endpoint and access token|" \
+  -e "s|OTEL_RESOURCE_ATTRIBUTES=.*|OTEL_RESOURCE_ATTRIBUTES=service.name=stage-springboot,host.name=stage-$(hostname),os.type=linux  # Replace signoz-host with the actual hostname|" \
+  docker-compose.yaml
+
+docker compose up -d
+docker ps
+
+echo "✅ SigNoz 세팅 완료"
 
 # 이미지 변수 설정 (ECR 이미지)
 export IMAGE="${docker_image}"
@@ -106,8 +124,8 @@ echo "[INFO] Docker Hub 이미지 사용: $IMAGE"
 %{ endif }
 
 # 기존 컨테이너 정리
-echo "[INFO] 기존 '${container_name}' 컨테이너 정리 중..."
-docker rm -f ${container_name} 2>/dev/null || true
+# echo "[INFO] 기존 '${container_name}' 컨테이너 정리 중..."
+# docker rm -f ${container_name} 2>/dev/null || true
 
 # Docker 이미지 pull
 echo "[INFO] Docker 이미지 pull 시작..."
@@ -118,23 +136,32 @@ if [ $? -eq 0 ]; then
     
     # 새 컨테이너 실행
     echo "[INFO] 새 컨테이너 실행 중..."
-     docker run -d \
+    docker run -d \
         -v /etc/localtime:/etc/localtime:ro \
         -v /etc/timezone:/etc/timezone:ro \
-        --name ${container_name} \
+        -v /home/deploy/opentelemetry-javaagent.jar:/otel/opentelemetry-javaagent.jar \
+        --name $(hostname) \
         --restart always \
         --env-file $ENV_FILE \
         -p ${host_port}:${container_port} \
         -p 9092:9092 \
+        --network signoz-net \
+        --label signoz.io/scrape=true \
+        --label signoz.io/port=8000 \
+        --label signoz.io/path=/metrics \
+        -e JAVA_TOOL_OPTIONS="-javaagent:/otel/opentelemetry-javaagent.jar" \
+        -e OTEL_EXPORTER_OTLP_ENDPOINT=$(grep '^SIGNOZ_URL=' "$ENV_FILE" | cut -d '=' -f2) \
+        -e OTEL_EXPORTER_OTLP_PROTOCOL=grpc \
+        -e OTEL_RESOURCE_ATTRIBUTES=service.name=stage-springboot,host.name=$(hostname),os.type=linux \
         "$IMAGE"
     
     if [ $? -eq 0 ]; then
         echo "[SUCCESS] 컨테이너 실행 성공"
         echo "[INFO] 컨테이너 상태:"
-        docker ps | grep ${container_name}
+        docker ps | grep $(hostname)
         
         echo "[INFO] 컨테이너 로그 (최근 10줄):"
-        docker logs --tail 10 ${container_name}
+        docker logs --tail 10 $(hostname)
         
         # deploy 사용자도 Docker 명령을 사용할 수 있도록 권한 설정
         echo "[INFO] deploy 사용자 Docker 권한 설정..."
@@ -145,7 +172,7 @@ if [ $? -eq 0 ]; then
         
     else
         echo "[ERROR] 컨테이너 실행 실패"
-        docker logs ${container_name} 2>/dev/null || echo "[ERROR] 컨테이너 로그를 가져올 수 없음"
+        docker logs $(hostname) 2>/dev/null || echo "[ERROR] 컨테이너 로그를 가져올 수 없음"
         exit 1
     fi
 else

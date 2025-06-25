@@ -39,6 +39,11 @@ resource "google_compute_region_instance_group_manager" "this" {
     port = var.port_http
   }
 
+  named_port {
+    name = "ws"
+    port = var.port_ws
+  }
+
 
   version {
     instance_template  = google_compute_instance_template.this.id
