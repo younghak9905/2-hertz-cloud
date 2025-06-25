@@ -101,7 +101,7 @@ wget https://github.com/open-telemetry/opentelemetry-java-instrumentation/releas
 # git clone -b main https://github.com/SigNoz/signoz.git
 # cd /home/deploy/signoz/deploy/docker/generator/infra
 # # `signoz-net` 네트워크 생성하기
-# docker network create --driver bridge signoz-net
+docker network create --driver bridge signoz-net
 
 # # docker-compose 파일에서
 # sed -i.bak \
