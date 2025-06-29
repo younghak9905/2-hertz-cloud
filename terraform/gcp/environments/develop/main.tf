@@ -263,6 +263,7 @@ module "websocket_tg" {
   description  = "WebSocket Target Group"
   
   health_check = local.hc_backend
+  protocol = "HTTP"
   port_name = "ws"
   backends = [
     {
