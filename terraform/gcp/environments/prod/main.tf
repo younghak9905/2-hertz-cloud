@@ -392,7 +392,7 @@ module "websocket_tg" {
   source       = "../../modules/target-group"
   name         = "${var.env}-ws-tg"
   description  = "WebSocket Target Group"
-  
+  protocol = "HTTP"
   health_check = local.hc_backend
   port_name = "ws"
    backends = [
