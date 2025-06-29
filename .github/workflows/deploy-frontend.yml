@@ -31,7 +31,7 @@ jobs:
             echo "INSTANCE=${{ secrets.PROD_GCP_INSTANCE }}" >> $GITHUB_ENV
             echo "PROJECT_ID=${{ secrets.PROD_GCP_PROJECT_ID }}" >> $GITHUB_ENV
           else
-            echo "ENV=STAGE" >> $GITHUB_ENV
+            echo "ENV=DEV" >> $GITHUB_ENV
             echo "HOST=${{ secrets.DEV_GCP_HOST }}" >> $GITHUB_ENV
             echo "INSTANCE=${{ secrets.DEV_GCP_INSTANCE }}" >> $GITHUB_ENV
             echo "PROJECT_ID=${{ secrets.DEV_GCP_PROJECT_ID }}" >> $GITHUB_ENV
