@@ -239,3 +239,9 @@ variable "docker_image_websocket" {
   default     = "969400486509.dkr.ecr.ap-northeast-2.amazonaws.com/tuning-websocket:develop-latest"
   
 }
+
+variable "kafka_internal_ip" {
+  description = "Kafka 인스턴스의 내부 IP 주소"
+  type        = string
+  default     = ""
+}
