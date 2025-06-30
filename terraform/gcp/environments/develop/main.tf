@@ -362,7 +362,7 @@ resource "google_compute_instance" "mysql_vm" {
 resource "google_compute_address" "kafka_internal_ip" {
   name         = "${var.env}-kafka-internal-ip"
   address_type = "INTERNAL"
-  subnetwork   = local.private_subnet_self_link
+  subnetwork   = local.subnet_self_link
   region       = var.region
   address      = var.kafka_internal_ip 
 }
