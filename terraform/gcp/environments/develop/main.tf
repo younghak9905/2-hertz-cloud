@@ -359,6 +359,50 @@ resource "google_compute_instance" "mysql_vm" {
 }
 
 
+resource "google_compute_address" "kafka_internal_ip" {
+  name         = "${var.env}-kafka-internal-ip"
+  address_type = "INTERNAL"
+  subnetwork   = local.private_subnet_self_link
+  region       = var.region
+  address      = var.kafka_internal_ip 
+}
+
+resource "google_compute_instance" "kafka_vm" {
+  name         = "${var.env}-kafka-vm"
+  machine_type = "e2-medium"
+  zone         = "${var.region}-a"
+  tags         = ["kafka", "allow-vpn-ssh"]
+
+  boot_disk {
+    initialize_params {
+      image = "ubuntu-os-cloud/ubuntu-2204-lts"
+      size  = 30
+      type  = "pd-balanced"
+    }
+  }
+
+    metadata_startup_script =join("\n", [
+    templatefile("${path.module}/scripts/kafka-install.sh.tpl", {
+      deploy_ssh_public_key = var.ssh_private_key
+    })
+    
+  ])
+
+  network_interface {
+    network    = local.vpc_self_link
+    subnetwork = local.subnet_self_link
+    network_ip = google_compute_address.kafka_internal_ip.address
+  }
+
+  metadata = {
+    ssh-keys = "deploy:${var.deploy_ssh_public_key}"
+  }
+}
+
+
+
+
+
 
 ############################################################
 # 공통 방화벽(Firewall) 규칙
@@ -432,6 +476,40 @@ locals {
       priority     = 1000
       description  = "Allow backend to access Redis"
       source_tags  = ["backend", "websocket"]
+      target_tags  = ["redis"]
+      protocol     = "tcp"
+      ports        = ["6379"]
+    }
+    //kafka
+    ,
+    {
+      name         = "${var.env}-fw-backend-to-kafka"
+      direction    = "INGRESS"
+      priority     = 1000
+      description  = "Allow backend to access kafka"
+      source_tags  = ["backend", "websocket"]
+      target_tags  = ["kafka"]
+      protocol     = "tcp"
+      ports        = ["9092"]
+    }
+    ,
+    {
+      name         = "${var.env}-fw-kafka-to-kafka"
+      direction    = "INGRESS"
+      priority     = 1000
+      description  = "Allow kafka to access kafka"
+      source_tags  = ["kafka"]
+      target_tags  = ["kafka"]
+      protocol     = "tcp"
+      ports        = ["9092"]
+    }
+    ,
+    {
+      name         = "${var.env}-fw-kafka-to-redis"
+      direction    = "INGRESS"
+      priority     = 1000
+      description  = "Allow kafka to access redis"
+      source_tags  = ["kafka"]
       target_tags  = ["redis"]
       protocol     = "tcp"
       ports        = ["6379"]
