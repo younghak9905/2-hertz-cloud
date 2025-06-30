@@ -33,7 +33,7 @@ resource "google_compute_url_map" "this" {
     ]
       route_action {
         url_rewrite {
-          path_prefix_rewrite = "/socket.io"
+          path_prefix_rewrite = "/socket.io/"
         }
       }
       service = var.websocket_service
