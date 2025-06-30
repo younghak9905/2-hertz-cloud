@@ -358,7 +358,7 @@ resource "google_compute_instance" "mysql_vm" {
   }
 }
 
-
+/*
 resource "google_compute_address" "kafka_internal_ip" {
   name         = "${var.env}-kafka-internal-ip"
   address_type = "INTERNAL"
@@ -397,7 +397,7 @@ resource "google_compute_instance" "kafka_vm" {
   metadata = {
     ssh-keys = "deploy:${var.deploy_ssh_public_key}"
   }
-}
+}*/
 
 
 
