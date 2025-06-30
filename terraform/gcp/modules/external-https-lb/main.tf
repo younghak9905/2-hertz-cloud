@@ -26,10 +26,13 @@ resource "google_compute_url_map" "this" {
     default_service = var.frontend_service  # "/" 이하 기본은 프론트엔드 서비스로
 
      path_rule {
-      paths   = ["/ws/*"]
+       paths = [
+      "/ws",   # wss://…/ws
+      "/ws/",  # wss://…/ws/
+      "/ws/*"  # wss://…/ws/anything
+    ]
       route_action {
         url_rewrite {
-          # /ws/foo/bar → /socket.io/foo/bar
           path_prefix_rewrite = "/socket.io"
         }
       }
