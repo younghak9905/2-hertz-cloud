@@ -145,7 +145,7 @@ if [ $? -eq 0 ]; then
         --restart always \
         --env-file $ENV_FILE \
         -p ${host_port}:${container_port} \
-        -p 9092:9092 \
+        -p 9100:9100 \
         --network signoz-net \
         --label signoz.io/scrape=true \
         --label signoz.io/port=8000 \
