@@ -592,7 +592,7 @@ locals {
       source_tags  = ["backend","frontend"]
       target_tags  = ["websocket"]
       protocol     = "tcp"
-      ports        = ["9092"]
+      ports        = ["9100"]
     },
     {
       name         = "${var.env}-fw-backend-to-redis"
