@@ -381,6 +381,13 @@ resource "google_compute_instance" "kafka_vm" {
     }
   }
 
+    metadata_startup_script =join("\n", [
+    templatefile("${path.module}/scripts/kafka-install.sh.tpl", {
+      deploy_ssh_public_key = var.ssh_private_key
+    })
+    
+  ])
+
   network_interface {
     network    = local.vpc_self_link
     subnetwork = local.subnet_self_link
