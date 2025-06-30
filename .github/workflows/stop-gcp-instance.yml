@@ -12,6 +12,7 @@ on:
           - "BE"
           - "AI"
           - "GPU"
+          - "CHAT-REPORT"
 
 env:
   PROJECT_ID: ${{ secrets.PROD_GCP_PROJECT_ID }}
@@ -25,7 +26,8 @@ env:
   DEV_INSTANCE_AI: ${{ secrets.DEV_GCP_INSTANCE_AI }}
   PROD_INSTANCE_GPU: ${{ secrets.PROD_INSTANCE_GPU }}
   PROJECT_ID_GPU: ${{ secrets.PROJECT_ID_GPU }}
- 
+  PROJECT_ID_CHAT_REPORT: ${{ secrets.PROD_GCP_PROJECT_ID }}
+  PROD_INSTANCE_CHAT_REPORT: ${{ secrets.PROD_INSTANCE_CHAT_REPORT }}
 
   
 
@@ -51,6 +53,10 @@ jobs:
               echo "PROJECT_ID=${{ env.PROJECT_ID_GPU }}" >> $GITHUB_ENV
               echo "INSTANCE=${{ env.PROD_INSTANCE_GPU }}" >> $GITHUB_ENV
               echo "ZONE=${{ env.ZONE }}" >> $GITHUB_ENV
+            elif "$TARGET" == "CHAT-REPORT" ]]; then
+              echo "PROJECT_ID=${{ env.PROJECT_ID_CHAT_REPORT }}" >> $GITHUB_ENV
+              echo "INSTANCE=${{ env.PROD_INSTANCE_CHAT_REPORT }}" >> $GITHUB_ENV
+              echo "ZONE=${{ env.ZONE }}" >> $GITHUB_ENV
             else
               echo "INSTANCE=${{ env.PROD_INSTANCE }}" >> $GITHUB_ENV
               echo "ZONE=${{ env.ZONE }}" >> $GITHUB_ENV
@@ -64,6 +70,10 @@ jobs:
             elif [[ "$TARGET" == "GPU" ]]; then
               echo "PROJECT_ID=${{ env.PROJECT_ID_GPU }}" >> $GITHUB_ENV
               echo "INSTANCE=${{ env.PROD_INSTANCE_GPU }}" >> $GITHUB_ENV
+              echo "ZONE=${{ env.ZONE }}" >> $GITHUB_ENV
+            elif "$TARGET" == "CHAT-REPORT" ]]; then
+              echo "PROJECT_ID=${{ env.PROJECT_ID_CHAT_REPORT }}" >> $GITHUB_ENV
+              echo "INSTANCE=${{ env.PROD_INSTANCE_CHAT_REPORT }}" >> $GITHUB_ENV
               echo "ZONE=${{ env.ZONE }}" >> $GITHUB_ENV
             else
               echo "INSTANCE=${{ env.DEV_INSTANCE }}" >> $GITHUB_ENV
@@ -88,6 +98,14 @@ jobs:
         uses: google-github-actions/auth@v1
         with:
           credentials_json: ${{ secrets.PROD_GPU_SA_KEY }}
+      
+      - name: Authenticate to GCP CHAT-REPORT
+        if: github.event.inputs.target == 'CHAT-REPORT'
+        uses: google-github-actions/auth@v1
+        with:
+            credentials_json: ${{ secrets.PROD_GCP_SA_KEY }}
+
+
 
       - name: Setup gcloud CLI
         uses: google-github-actions/setup-gcloud@v1

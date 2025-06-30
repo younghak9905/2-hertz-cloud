@@ -2,6 +2,14 @@ name: Deploy AI (SSH)
 on:
   workflow_dispatch:
     inputs:
+      service:
+        description: "tuning-api, chat-report"
+        required: true
+        default: "tuning-api"
+        type: choice
+        options:
+          - "tuning-api"
+          - "chat-report"
       rollback:
         description: "롤백 배포를 수행할까요?"
         required: false
@@ -27,16 +35,23 @@ jobs:
       - name: Set environment
         run: |
           BRANCH="${{ github.ref_name }}"
+          SERVICE="${{ github.event.inputs.service }}"
           echo "BRANCH=$BRANCH" >> $GITHUB_ENV
+          echo "SERVICE=$SERVICE" >> $GITHUB_ENV
 
 
-          if [[ "$BRANCH" == "main" ]]; then
+          if [[ "$BRANCH" == "main" && "$SERVICE" == "tuning-api" ]]; then
             echo "ENV=PROD" >> $GITHUB_ENV
             echo "HOST=${{ secrets.PROD_GCP_HOST_AI }}" >> $GITHUB_ENV
             echo "INSTANCE=${{ secrets.PROD_GCP_INSTANCE_AI }}" >> $GITHUB_ENV
             echo "PROJECT_ID=${{ secrets.PROD_GCP_PROJECT_ID }}" >> $GITHUB_ENV
             echo "ZONE=${{ secrets.PROD_GCP_ZONE_AI }}" >> $GITHUB_ENV
-
+          elif [[ "$BRANCH" == "main" && "$SERVICE" == "CHAT-REPORT" ]]; then
+            echo "ENV=DEV" >> $GITHUB_ENV
+            echo "HOST=${{ secrets.PROD_GCP_CHAT_REPORT }}" >> $GITHUB_ENV
+            echo "INSTANCE=${{ secrets.PROD_INSTANCE_CHAT_REPORT }}" >> $GITHUB_ENV
+            echo "PROJECT_ID=${{ secrets.PROD_GCP_PROJECT_ID }}" >> $GITHUB_ENV
+            echo "ZONE=${{ secrets.PROD_GCP_ZONE_AI }}" >> $GITHUB_ENV
           else
             echo "ENV=DEV" >> $GITHUB_ENV
             echo "HOST=${{ secrets.DEV_GCP_HOST_AI }}" >> $GITHUB_ENV
@@ -53,21 +68,30 @@ jobs:
         run: |
           if [[ "${{ github.event.inputs.rollback }}" == "true" ]]; then
             echo "DEPLOY_MESSAGE=🚨 **[${{ env.ENV }} 환경]** AI-CPU 롤백 완료(수동)" >> $GITHUB_ENV
+          elif [[ "${{ env.SERVICE }}" == "chat-report" ]]; then
+            echo "DEPLOY_MESSAGE=🚀 **[${{ env.ENV }} 환경]** AI-CHAT-REPORT 배포 완료(수동)" >> $GITHUB_ENV
           else
             echo "DEPLOY_MESSAGE=🚀 **[${{ env.ENV }} 환경]** AI-CPU 배포 완료(수동)" >> $GITHUB_ENV
           fi
 
       - name: Authenticate to GCP
-        if: github.ref_name == 'main'
+        if: github.ref_name == 'main' && env.SERVICE == 'tuning-api'
         uses: google-github-actions/auth@v1
         with:
           credentials_json: ${{ secrets.PROD_GCP_SA_KEY }}
 
       - name: Authenticate to GCP (Stage)
-        if: github.ref_name != 'main'
+        if: github.ref_name != 'main' && env.SERVICE == 'tuning-api'
         uses: google-github-actions/auth@v1
         with:
           credentials_json: ${{ secrets.DEV_GCP_SA_KEY }}
+      
+      - name: Authenticate to GCP (chat-report)
+        if: env.SERVICE != 'tuning-api'
+        uses: google-github-actions/auth@v1
+        with:
+            credentials_json: ${{ secrets.PROD_GCP_SA_KEY }}
+
 
       - name: Setup gcloud CLI
         uses: google-github-actions/setup-gcloud@v1
@@ -94,7 +118,7 @@ jobs:
 
         # 2. AWS 인증
       - name: Configure AWS credentials
-        if: env.DEPLOY_TYPE == 'docker'
+        if: env.DEPLOY_TYPE == 'docker' && env.SERVICE == 'tuning-api'
         uses: aws-actions/configure-aws-credentials@v1
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
@@ -103,12 +127,12 @@ jobs:
 
       # 3. ECR 로그인
       - name: Login to Amazon ECR
-        if: env.DEPLOY_TYPE == 'docker'
+        if: env.DEPLOY_TYPE == 'docker' && env.SERVICE == 'tuning-api'
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v1
 
       - name: Set registry
-        if: env.DEPLOY_TYPE == 'docker'
+        if: env.DEPLOY_TYPE == 'docker' && env.SERVICE == 'tuning-api'
         run: echo "ECR_REGISTRY=${{ steps.login-ecr.outputs.registry }}" >> $GITHUB_ENV
 
       - name: Deploy via SSH
@@ -121,7 +145,7 @@ jobs:
 
           script: |
 
-            if [[ "${{ env.DEPLOY_TYPE }}" == "docker" ]]; then
+            if [[ "${{ env.DEPLOY_TYPE }}" == "docker" && ${{ env.SERVICE }} == 'tuning-api' ]]; then
 
               echo "🚀 Docker 배포 시작..."
               cd /home/deploy
@@ -130,7 +154,12 @@ jobs:
               sleep 5
 
               docker compose --env-file .env up -d
-            else
+            elif [[ "${{ env.SERVICE }}" == "chat-report" ]]; then
+              echo "🚀 Docker 배포 시작..."
+              cd /home/deploy
+              ./ai_deploy.sh
+              sleep 5
+            else 
               echo "🚀 PM2 배포 시작..."
               cd /home/deploy
               docker compose --env-file .env stop || true
@@ -152,18 +181,32 @@ jobs:
       - name: Health check AI server
         run: |
           echo "🔍 AI 서버 헬스체크 시작 (FastAPI Swagger docs)... 최대 5회 시도합니다."
-          for i in {1..5}; do
-            echo "⏱️ 시도 $i: http://${{ env.HOST }}:8000/api/v1/health/chromadb"
-            if curl -sf http://${{ env.HOST }}:8000/api/v1/health/chromadb; then
-              echo "✅ 헬스체크 성공 🎉"
-              exit 0
-            else
-              echo "⚠️ 헬스체크 실패. 15초 후 재시도..."
-              sleep 15
-            fi
+          if [[ "${{ env.SERVICE }}" == "tuning-api"]]; then
+              echo "🚀 Docker 배포 시작..."
+              for i in {1..5}; do
+              echo "⏱️ 시도 $i: http://${{ env.HOST }}:8000/api/v1/health/chromadb"
+                if curl -sf http://${{ env.HOST }}:8000/api/v1/health/chromadb; then
+                  echo "✅ 헬스체크 성공 🎉"
+                  exit 0
+                else
+                  echo "⚠️ 헬스체크 실패. 15초 후 재시도..."
+                  sleep 15
+                fi
+          else
+              for i in {1..5}; do
+              echo "⏱️ 시도 $i: http://${{ env.HOST }}:8000/docs
+                if curl -sf http://${{ env.HOST }}:8000/docs; then
+                  echo "✅ 헬스체크 성공 🎉"
+                  exit 0
+                else
+                  echo "⚠️ 헬스체크 실패. 15초 후 재시도..."
+                  sleep 
+                fi
+            
+          fi
           done
 
-          echo "❌ 3회 헬스체크 실패 - AI 서버가 정상 기동되지 않음"
+          echo "❌ 5회 헬스체크 실패 - AI 서버가 정상 기동되지 않음"
           exit 1
 
       - name: Send success notification
