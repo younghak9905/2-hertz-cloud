@@ -51,7 +51,7 @@ jobs:
             echo "HOST=${{ secrets.PROD_GCP_CHAT_REPORT }}" >> $GITHUB_ENV
             echo "INSTANCE=${{ secrets.PROD_INSTANCE_CHAT_REPORT }}" >> $GITHUB_ENV
             echo "PROJECT_ID=${{ secrets.PROD_GCP_PROJECT_ID }}" >> $GITHUB_ENV
-            echo "ZONE=${{ secrets.GCP_ZONE }} }}" >> $GITHUB_ENV
+            echo "ZONE=${{ secrets.GCP_ZONE }}" >> $GITHUB_ENV
           else
             echo "ENV=DEV" >> $GITHUB_ENV
             echo "HOST=${{ secrets.DEV_GCP_HOST_AI }}" >> $GITHUB_ENV
