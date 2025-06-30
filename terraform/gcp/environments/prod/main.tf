@@ -392,7 +392,7 @@ module "websocket_tg" {
   source       = "../../modules/target-group"
   name         = "${var.env}-ws-tg"
   description  = "WebSocket Target Group"
-  
+  protocol = "HTTP"
   health_check = local.hc_backend
   port_name = "ws"
    backends = [
@@ -603,7 +603,29 @@ locals {
       target_tags  = ["redis"]
       protocol     = "tcp"
       ports        = ["6379"]
+    },
+      {
+      name         = "${var.env}-fw-kafka-to-kafka"
+      direction    = "INGRESS"
+      priority     = 1000
+      description  = "Allow kafka to access kafka"
+      source_tags  = ["kafka"]
+      target_tags  = ["kafka"]
+      protocol     = "tcp"
+      ports        = ["9092"]
     }
+    ,
+    {
+      name         = "${var.env}-fw-kafka-to-redis"
+      direction    = "INGRESS"
+      priority     = 1000
+      description  = "Allow kafka to access redis"
+      source_tags  = ["kafka"]
+      target_tags  = ["redis"]
+      protocol     = "tcp"
+      ports        = ["6379"]
+    }
+   
    
   ]
 
