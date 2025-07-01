@@ -614,6 +614,7 @@ locals {
       source_ranges = var.kafka_source_ranges
       # 태그가 kafka 인 인스턴스에만 적용
       target_tags   = ["backend","frontend"]
+      protocol      = "tcp"    
       ports    = ["9092-9094"]
     },
     {
