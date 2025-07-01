@@ -604,18 +604,8 @@ locals {
       protocol     = "tcp"
       ports        = ["6379"]
     },
-      {
-      name         = "${var.env}-fw-kafka-to-kafka"
-      direction    = "INGRESS"
-      priority     = 1000
-      description  = "Allow kafka to access kafka"
-      source_tags  = ["kafka"]
-      target_tags  = ["kafka"]
-      protocol     = "tcp"
-      ports        = ["9092"]
-    },
 
-{
+    {
       name        = "${var.env}-fw-kafka-to-kafka"
       direction   = "INGRESS"
       priority    = 1000
