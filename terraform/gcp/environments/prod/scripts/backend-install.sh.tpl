@@ -146,7 +146,7 @@ if [ $? -eq 0 ]; then
         --env-file $ENV_FILE \
         -p ${host_port}:${container_port} \
         -p 9100:9100 \
-        --network signoz-net \
+        --network host \
         --label signoz.io/scrape=true \
         --label signoz.io/port=8000 \
         --label signoz.io/path=/metrics \
