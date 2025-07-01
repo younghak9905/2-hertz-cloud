@@ -624,6 +624,20 @@ locals {
       target_tags  = ["redis"]
       protocol     = "tcp"
       ports        = ["6379"]
+    },
+
+    {
+      name          = "${var.vpc_name}-fw-to-websocket"
+      direction     = "INGRESS"
+      priority      = 1000
+      description   = "Allow GCP Health Checks (130.211.0.0/22, 35.191.0.0/16) to websocket on TCP:9100"
+      source_ranges = [
+        "130.211.0.0/22",
+        "35.191.0.0/16",
+      ]
+      target_tags   = ["websocket","backend"]
+      protocol      = "tcp"
+      ports         = ["9100"]
     }
    
    
