@@ -266,3 +266,8 @@ variable "docker_image_websocket" {
   default     = "969400486509.dkr.ecr.ap-northeast-2.amazonaws.com/tuning-websocket:main-latest"
   
 }
+variable "kafka_source_ranges" {
+  description = "Kafka 브로커에 접근할 수 있는 IP 주소 범위 (예:"
+  type        = list(string)
+  default     = [""]
+}

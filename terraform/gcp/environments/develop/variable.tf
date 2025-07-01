@@ -245,3 +245,9 @@ variable "kafka_internal_ip" {
   type        = string
   default     = ""
 }
+
+variable "kafka_source_ranges" {
+  description = "Kafka 브로커로의 인바운드 트래픽을 허용할 source CIDR 리스트"
+  type        = list(string)
+  default     = [""]
+}
