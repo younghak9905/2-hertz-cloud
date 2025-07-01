@@ -627,7 +627,7 @@ locals {
     },
 
     {
-      name          = "${var.vpc_name}-fw-to-websocket"
+      name          = "${var.env}-fw-to-websocket"
       direction     = "INGRESS"
       priority      = 1000
       description   = "Allow GCP Health Checks (130.211.0.0/22, 35.191.0.0/16) to websocket on TCP:9100"
