@@ -28,14 +28,14 @@ spec:
             httpGet:
               path: /api/ping
               port: 8080
-            initialDelaySeconds: 20
+            initialDelaySeconds: 40
             periodSeconds: 10
             failureThreshold: 6
           livenessProbe:
             httpGet:
               path: /api/ping
               port: 8080
-            initialDelaySeconds: 30
+            initialDelaySeconds: 40
             periodSeconds: 30
           resources:
             requests:
