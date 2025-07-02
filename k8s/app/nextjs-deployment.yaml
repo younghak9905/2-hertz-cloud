@@ -1,0 +1,50 @@
+# nextjs-deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: nextjs-fe
+  namespace: hertz-tuning-dev
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: nextjs-fe
+  template:
+    metadata:
+      labels:
+        app: nextjs-fe
+    spec:
+      serviceAccountName: ecr-access-sa # IRSA Service Account 사용
+      containers:
+        - name: nextjs-fe
+          image: 969400486509.dkr.ecr.ap-northeast-2.amazonaws.com/tuning-nextjs:k8s-develop-0702
+          # image: 969400486509.dkr.ecr.ap-northeast-2.amazonaws.com/tuning-nextjs:k8s-develop-latest
+          ports:
+            - containerPort: 3000
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 3000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: 300m
+              memory: 200Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: nextjs-fe-svc
+  namespace: hertz-tuning-dev
+spec:
+  type: ClusterIP
+  selector:
+    app: nextjs-fe
+  ports:
+    - name: http
+      port: 80
+      targetPort: 3000
