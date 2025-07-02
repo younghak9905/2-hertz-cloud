@@ -29,10 +29,7 @@ resource "google_compute_url_map" "this" {
        paths = [
       "/ws",   # wss://…/ws
       "/ws/",  # wss://…/ws/
-      "/ws/*",  # wss://…/ws/anything
-      "/socket.io",   # wss://…/socket.io
-      "/socket.io/",  # wss://…/socket.io/
-      "/socket.io/*"  # wss://…/socket.io/anything
+      "/ws/*"
     ]
       route_action {
         url_rewrite {
