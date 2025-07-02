@@ -1,0 +1,10 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: hertz-tuning-dev
+  labels:
+    name: hertz-tuning-dev
+    environment: dev
+    project: hertz-tuning
+  annotations:
+    description: "Hertz Tuning Development Environment"

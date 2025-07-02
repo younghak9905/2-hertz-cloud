@@ -1,0 +1,46 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: springboot-be
+  namespace: hertz-tuning-dev
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: springboot-be
+  template:
+    metadata:
+      labels:
+        app: springboot-be
+    spec:
+      serviceAccountName: ecr-access-sa # IRSA Service Account 사용
+      containers:
+        - name: springboot-be
+          image: 969400486509.dkr.ecr.ap-northeast-2.amazonaws.com/tuning-springboot:develop-latest
+          #args: ["--spring.mvc.async.request-timeout=-1"]
+          envFrom:
+            - secretRef:
+                name: springboot-secrets
+          ports:
+            - containerPort: 8080
+            - containerPort: 9100 # 웹소켓 포트 추가
+          readinessProbe:
+            httpGet:
+              path: /api/ping
+              port: 8080
+            initialDelaySeconds: 20
+            periodSeconds: 10
+            failureThreshold: 6
+          livenessProbe:
+            httpGet:
+              path: /api/ping
+              port: 8080
+            initialDelaySeconds: 30
+            periodSeconds: 30
+          resources:
+            requests:
+              cpu: 500m
+              memory: 512Mi
+            limits:
+              cpu: 1
+              memory: 1Gi

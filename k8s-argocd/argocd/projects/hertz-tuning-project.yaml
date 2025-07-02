@@ -1,0 +1,30 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: hertz-tuning
+  namespace: argocd
+spec:
+  description: "Hertz Tuning Project"
+  sourceRepos:
+  - '*'
+  destinations:
+  - namespace: hertz-tuning-dev
+    server: https://kubernetes.default.svc
+  - namespace: hertz-tuning-prod
+    server: https://kubernetes.default.svc
+  - namespace: argocd
+    server: https://kubernetes.default.svc
+  clusterResourceWhitelist:
+  - group: ''
+    kind: Namespace
+  - group: 'networking.k8s.io'
+    kind: Ingress
+  - group: 'storage.k8s.io'
+    kind: StorageClass
+  namespaceResourceWhitelist:
+  - group: ''
+    kind: '*'
+  - group: 'apps'
+    kind: '*'
+  - group: 'networking.k8s.io'
+    kind: '*'
