@@ -14,25 +14,26 @@ spec:
       labels:
         app: nextjs-fe
     spec:
-      serviceAccountName: ecr-access-sa  # IRSA Service Account 사용
+      serviceAccountName: ecr-access-sa # IRSA Service Account 사용
       containers:
-      - name: nextjs-fe
-        image: 969400486509.dkr.ecr.ap-northeast-2.amazonaws.com/tuning-nextjs:develop-latest
-        ports:
-        - containerPort: 3000
-        readinessProbe:
-          httpGet:
-            path: /
-            port: 3000
-          initialDelaySeconds: 5
-          periodSeconds: 10
-        resources:
-          requests:
-            cpu:    300m
-            memory: 200Mi
-          limits:
-            cpu:    500m
-            memory: 512Mi
+        - name: nextjs-fe
+          image: 969400486509.dkr.ecr.ap-northeast-2.amazonaws.com/tuning-nextjs:k8s-develop-0702
+          # image: 969400486509.dkr.ecr.ap-northeast-2.amazonaws.com/tuning-nextjs:k8s-develop-latest
+          ports:
+            - containerPort: 3000
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 3000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: 300m
+              memory: 200Mi
+            limits:
+              cpu: 500m
+              memory: 512Mi
 ---
 apiVersion: v1
 kind: Service
@@ -47,4 +48,3 @@ spec:
     - name: http
       port: 80
       targetPort: 3000
-
