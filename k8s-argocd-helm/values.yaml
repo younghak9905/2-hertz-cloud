@@ -56,8 +56,8 @@ backend:
       memory: 1Gi
   hpa:
     enabled: true
-    minReplicas: 2
-    maxReplicas: 10
+    minReplicas: 1
+    maxReplicas: 3
     targetCPU: 70
     targetMemory: 80
     scaleUp:
@@ -97,8 +97,8 @@ frontend:
       memory: 512Mi
   hpa:
     enabled: true
-    minReplicas: 2
-    maxReplicas: 8
+    minReplicas: 1
+    maxReplicas: 3
     targetCPU: 60
     targetMemory: 70
     scaleUp:
