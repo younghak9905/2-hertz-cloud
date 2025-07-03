@@ -1,0 +1,74 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ .Values.app.name }}
+  namespace: {{ .Values.global.namespace }}
+spec:
+  serviceName: {{ .Values.app.name }}
+  replicas: 1
+  selector:
+    matchLabels:
+      app: {{ .Values.app.name }}
+  template:
+    metadata:
+      labels:
+        app: {{ .Values.app.name }}
+    spec:
+      containers:
+      - name: {{ .Values.app.name }}
+        image: {{ .Values.image.repository }}:{{ .Values.image.tag }}
+        env:
+        - name: MYSQL_ROOT_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Values.secrets.name }}
+              key: {{ .Values.secrets.keys.rootPassword }}
+        - name: MYSQL_DATABASE
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Values.secrets.name }}
+              key: {{ .Values.secrets.keys.database }}
+        - name: MYSQL_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Values.secrets.name }}
+              key: {{ .Values.secrets.keys.password }}
+        - name: MYSQL_USER
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Values.secrets.name }}
+              key: {{ .Values.secrets.keys.username }}
+        volumeMounts:
+        - name: mysql-storage
+          mountPath: /var/lib/mysql
+        ports:
+        - containerPort: {{ .Values.app.port }}
+        resources:
+          requests:
+            cpu: {{ .Values.resources.requests.cpu }}
+            memory: {{ .Values.resources.requests.memory }}
+          limits:
+            cpu: {{ .Values.resources.limits.cpu }}
+            memory: {{ .Values.resources.limits.memory }}
+  volumeClaimTemplates:
+  - metadata:
+      name: mysql-storage
+    spec:
+      accessModes: ["ReadWriteOnce"]
+      storageClassName: {{ .Values.storage.storageClass }}
+      resources:
+        requests:
+          storage: {{ .Values.storage.size }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Values.app.name }}
+  namespace: {{ .Values.global.namespace }}
+spec:
+  ports:
+    - port: {{ .Values.app.port }}
+      name: mysql
+  selector:
+    app: {{ .Values.app.name }}
+  type: ClusterIP

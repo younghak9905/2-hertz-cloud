@@ -1,0 +1,13 @@
+apiVersion: v2
+name: kafka
+description: Apache Kafka Cluster Helm Chart
+type: application
+version: 0.1.0
+appVersion: "2.8.0"
+keywords:
+  - kafka
+  - streaming
+  - messaging
+  - zookeeper
+maintainers:
+  - name: hertz-team

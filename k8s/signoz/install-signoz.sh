@@ -1,21 +1,27 @@
 #!/bin/bash
+set -euo pipefail
 
-# SigNoz 설치 스크립트
+echo "▶ SigNoz 설치 시작…"
 
-echo "SigNoz 설치 시작..."
+# 1) namespace 생성 (이미 있으면 무시)
+kubectl create namespace observability --dry-run=client -o yaml | kubectl apply -f -
 
-# 네임스페이스 생성
-kubectl apply -f namespace.yaml
-
-# SigNoz Helm 레포지토리 추가
-helm repo add signoz https://charts.signoz.io
+# 2) Helm 레포 업데이트
+helm repo add signoz https://charts.signoz.io || helm repo update
 helm repo update
 
-# SigNoz 설치
+# 3) SigNoz 코어 컴포넌트 설치
 helm install signoz signoz/signoz \
   --namespace observability \
-  --values signoz-values.yaml \
-  --create-namespace
+  --create-namespace \
+  -f signoz-values.yaml \
+  --wait --timeout 10m
 
-echo "SigNoz 설치 완료!"
-echo "포트 포워딩으로 접속: kubectl port-forward -n observability svc/signoz-frontend 3301:3301"
+# 4) k8s-infra (Host & Kubelet Metrics) 설치
+helm install signoz-infra signoz/k8s-infra \
+  --namespace observability \
+  -f override-values.yaml \
+  --wait --timeout 5m
+
+echo "✅ SigNoz 설치 완료!"
+echo "포트포워딩: kubectl port-forward -n observability svc/signoz 3301:8080"

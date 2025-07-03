@@ -1,0 +1,64 @@
+
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: signoz-install
+  namespace: {{ .Values.signoz.namespace }}
+  annotations:
+    "helm.sh/hook": post-install,post-upgrade
+    "helm.sh/hook-weight": "1"
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+spec:
+  template:
+    spec:
+      serviceAccountName: signoz-installer
+      containers:
+      - name: helm-install
+        image: alpine/helm:3.12.0
+        command:
+        - /bin/sh
+        - -c
+        - |
+          helm repo add signoz https://charts.signoz.io
+          helm repo update
+          helm upgrade --install signoz signoz/signoz \
+            --namespace {{ .Values.signoz.namespace }} \
+            --values /config/values.yaml \
+            --wait --timeout=10m
+        volumeMounts:
+        - name: values-config
+          mountPath: /config
+      volumes:
+      - name: values-config
+        configMap:
+          name: signoz-values
+      restartPolicy: OnFailure
+  backoffLimit: 3
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: signoz-installer
+  namespace: {{ .Values.signoz.namespace }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: signoz-installer
+rules:
+- apiGroups: ["*"]
+  resources: ["*"]
+  verbs: ["*"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: signoz-installer
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: signoz-installer
+subjects:
+- kind: ServiceAccount
+  name: signoz-installer
+  namespace: {{ .Values.signoz.namespace }}

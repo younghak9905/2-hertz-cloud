@@ -1,0 +1,12 @@
+apiVersion: v2
+name: signoz
+description: SigNoz Observability Helm Chart
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+keywords:
+  - signoz
+  - observability
+  - monitoring
+maintainers:
+  - name: hertz-team

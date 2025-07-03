@@ -5,7 +5,6 @@ metadata:
   name: nextjs-fe
   namespace: hertz-tuning-dev
 spec:
-  replicas: 1
   selector:
     matchLabels:
       app: nextjs-fe

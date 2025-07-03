@@ -1,0 +1,12 @@
+apiVersion: v2
+name: alb
+description: AWS Load Balancer Controller Ingress Helm Chart
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+keywords:
+  - alb
+  - ingress
+  - aws
+maintainers:
+  - name: hertz-team

@@ -1,0 +1,42 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: zookeeper
+  namespace: {{ .Values.global.namespace }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: zookeeper
+  template:
+    metadata:
+      labels:
+        app: zookeeper
+    spec:
+      containers:
+        - name: zookeeper
+          image: {{ .Values.zookeeper.image.repository }}:{{ .Values.zookeeper.image.tag }}
+          ports:
+            - containerPort: {{ .Values.zookeeper.port }}
+          envFrom:
+            - configMapRef:
+                name: kafka-config
+          resources:
+            requests:
+              cpu: {{ .Values.zookeeper.resources.requests.cpu }}
+              memory: {{ .Values.zookeeper.resources.requests.memory }}
+            limits:
+              cpu: {{ .Values.zookeeper.resources.limits.cpu }}
+              memory: {{ .Values.zookeeper.resources.limits.memory }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: zookeeper
+  namespace: {{ .Values.global.namespace }}
+spec:
+  selector:
+    app: zookeeper
+  ports:
+  - port: {{ .Values.zookeeper.port }}
+    targetPort: {{ .Values.zookeeper.port }}

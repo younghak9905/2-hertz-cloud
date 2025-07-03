@@ -1,9 +1,0 @@
-apiVersion: v2
-name: springboot-be
-description: A Helm chart for deploying Spring Boot Backend with External Secrets integration
-type: application
-version: 0.1.0              # Helm chart 버전
-appVersion: "1.0.0"         # 실제 앱(스프링 부트)의 버전
-maintainers:
-  - name: Lee Yeonghak
-    email: your.email@example.com

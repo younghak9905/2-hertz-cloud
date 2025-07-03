@@ -1,0 +1,51 @@
+# Global settings
+global:
+  namespace: hertz-tuning-dev
+  region: ap-northeast-2
+  accountId: "969400486509"
+  environment: dev
+
+# Image settings
+image:
+  repository: 969400486509.dkr.ecr.ap-northeast-2.amazonaws.com
+  name: tuning-nextjs
+  tag: k8s-develop-latest
+
+# Service Account
+serviceAccount:
+  ecrAccess: ecr-access-sa
+
+# Application settings
+app:
+  name: nextjs-fe
+  port: 3000
+
+# Resources
+resources:
+  requests:
+    cpu: 300m
+    memory: 200Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+# HPA settings
+hpa:
+  enabled: true
+  minReplicas: 1
+  maxReplicas: 3
+  targetCPU: 60
+  targetMemory: 70
+  scaleUp:
+    stabilizationWindowSeconds: 30
+    percent: 100
+    periodSeconds: 15
+  scaleDown:
+    stabilizationWindowSeconds: 180
+    percent: 20
+    periodSeconds: 60
+
+# Observability
+observability:
+  signoz:
+    endpoint: "http://signoz-otel-collector.observability.svc.cluster.local:4318"
