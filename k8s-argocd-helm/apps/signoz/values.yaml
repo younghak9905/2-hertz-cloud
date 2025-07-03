@@ -1,60 +1,32 @@
-{{- if .Values.apps.signoz.enabled }}
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: signoz-values
-  namespace: {{ .Values.signoz.namespace }}
-data:
-  values.yaml: |
-    global:
-      storageClass: {{ .Values.signoz.storageClass }}
-      cloud: others
-      clusterName: {{ .Values.global.namespace }}
-      deploymentEnvironment: {{ .Values.global.environment }}
-    
-    clickhouse:
-      installCustomStorageClass: false
-      persistence:
-        enabled: true
-        storageClass: {{ .Values.signoz.storageClass }}
-        size: {{ .Values.signoz.clickhouse.storage.size }}
-      resources:
-        requests:
-          memory: {{ .Values.signoz.clickhouse.resources.requests.memory }}
-          cpu: {{ .Values.signoz.clickhouse.resources.requests.cpu }}
-        limits:
-          memory: {{ .Values.signoz.clickhouse.resources.limits.memory }}
-          cpu: {{ .Values.signoz.clickhouse.resources.limits.cpu }}
-    
-    zookeeper:
-      persistence:
-        enabled: true
-        storageClass: {{ .Values.signoz.storageClass }}
-        size: {{ .Values.signoz.zookeeper.storage.size }}
-      resources:
-        requests:
-          memory: {{ .Values.signoz.zookeeper.resources.requests.memory }}
-          cpu: {{ .Values.signoz.zookeeper.resources.requests.cpu }}
-        limits:
-          memory: {{ .Values.signoz.zookeeper.resources.limits.memory }}
-          cpu: {{ .Values.signoz.zookeeper.resources.limits.cpu }}
-    
-    kafka:
-      persistence:
-        enabled: true
-        storageClass: {{ .Values.signoz.storageClass }}
-        size: {{ .Values.signoz.kafka.storage.size }}
-    
-    otelCollectorEndpoint: signoz-otel-collector.{{ .Values.signoz.namespace }}.svc.cluster.local:4317
-    otelInsecure: true
-    
-    presets:
-      hostMetrics:
-        enabled: true
-      kubeletMetrics:
-        enabled: true
-      clusterMetrics:
-        enabled: true
-      logsCollection:
-        enabled: true
-{{- end }}
+# Global settings
+global:
+  namespace: hertz-tuning-dev
+  environment: dev
+
+# SigNoz settings
+signoz:
+  namespace: observability
+  storageClass: mysql-ebs
+  clickhouse:
+    storage:
+      size: 12Gi
+    resources:
+      requests:
+        memory: "4Gi"
+        cpu: "1000m"
+      limits:
+        memory: "8Gi"
+        cpu: "2000m"
+  zookeeper:
+    storage:
+      size: 6Gi
+    resources:
+      requests:
+        memory: "2Gi"
+        cpu: "500m"
+      limits:
+        memory: "4Gi"
+        cpu: "1000m"
+  kafka:
+    storage:
+      size: 6Gi

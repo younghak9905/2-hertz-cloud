@@ -1,4 +1,4 @@
-{{- if .Values.apps.signoz.enabled }}
+
 apiVersion: batch/v1
 kind: Job
 metadata:
@@ -62,4 +62,3 @@ subjects:
 - kind: ServiceAccount
   name: signoz-installer
   namespace: {{ .Values.signoz.namespace }}
-{{- end }}

@@ -1,8 +1,7 @@
-{{- if .Values.apps.signoz.enabled }}
+
 apiVersion: v1
 kind: Namespace
 metadata:
   name: {{ .Values.signoz.namespace }}
   labels:
     name: {{ .Values.signoz.namespace }}
-{{- end }}
