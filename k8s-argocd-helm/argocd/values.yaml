@@ -61,3 +61,25 @@ configs:
       username: AWS
       password: |
         aws ecr get-login-password --region ap-northeast-2
+
+## Image Updater
+imageUpdater:
+  enabled: true
+  serviceAccount:
+    create: true
+    annotations:
+      eks.amazonaws.com/role-arn: "arn:aws:iam::969400486509:role/argocd-ecr-access-role"
+  config:
+    registries:
+      - name: ecr
+        api_url: https://969400486509.dkr.ecr.ap-northeast-2.amazonaws.com
+        prefix: 969400486509.dkr.ecr.ap-northeast-2.amazonaws.com
+        ping: yes
+        credentials: ext:/scripts/auth1.sh
+        credsexpire: 10h
+  authScripts:
+    enabled: true
+    scripts:
+      auth1.sh: |
+        #!/bin/sh
+        aws ecr get-login-password --region ap-northeast-2

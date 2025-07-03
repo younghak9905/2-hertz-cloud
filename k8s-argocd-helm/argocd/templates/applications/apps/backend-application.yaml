@@ -6,11 +6,16 @@ metadata:
   annotations:
     "helm.sh/hook": post-install,post-upgrade
     argocd.argoproj.io/sync-wave: "2"
+    argocd-image-updater.argoproj.io/image-list: backend=969400486509.dkr.ecr.ap-northeast-2.amazonaws.com/tuning-springboot
+    argocd-image-updater.argoproj.io/backend.update-strategy: latest
+    argocd-image-updater.argoproj.io/backend.allow-tags: regexp:^k8s-develop-.*$
+    argocd-image-updater.argoproj.io/write-back-method: git
+    argocd-image-updater.argoproj.io/git-branch: develop
 spec:
   project: tuning-dev
   source:
     repoURL: https://github.com/100-hours-a-week/2-hertz-cloud.git
-    targetRevision: feat/argocd-helm
+    targetRevision: develop
     path: k8s-argocd-helm/apps/backend
   destination:
     server: https://kubernetes.default.svc
