@@ -1,8 +1,7 @@
-{{- if .Values.apps.mysql.enabled }}
 apiVersion: storage.k8s.io/v1
 kind: StorageClass
 metadata:
-  name: {{ .Values.mysql.storage.storageClass }}
+  name: {{ .Values.storage.storageClass }}
 provisioner: ebs.csi.aws.com
 parameters:
   type: gp3
@@ -10,4 +9,3 @@ parameters:
   encrypted: "true"
 volumeBindingMode: WaitForFirstConsumer
 allowVolumeExpansion: true
-{{- end }}

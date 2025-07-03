@@ -1,0 +1,38 @@
+# Global settings
+global:
+  namespace: hertz-tuning-dev
+  region: ap-northeast-2
+  environment: dev
+
+# Image settings
+image:
+  repository: mysql
+  tag: "8.0"
+
+# Application settings
+app:
+  name: mysql
+  port: 3306
+
+# Resources
+resources:
+  requests:
+    cpu: 500m
+    memory: 1Gi
+  limits:
+    cpu: 1
+    memory: 2Gi
+
+# Storage
+storage:
+  storageClass: mysql-ebs
+  size: 20Gi
+
+# Database credentials (from secrets)
+secrets:
+  name: springboot-secrets
+  keys:
+    rootPassword: DB_PASSWORD
+    database: DB_NAME
+    username: DB_USERNAME
+    password: DB_PASSWORD
