@@ -10,7 +10,7 @@ spec:
   project: tuning-dev
   source:
     repoURL: https://github.com/100-hours-a-week/2-hertz-cloud.git
-    targetRevision: feat/argocd-helm
+    targetRevision: develop
     path: k8s-argocd-helm/apps/signoz
   destination:
     server: https://kubernetes.default.svc
