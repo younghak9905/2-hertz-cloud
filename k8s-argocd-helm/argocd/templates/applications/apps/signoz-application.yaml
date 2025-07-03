@@ -1,7 +1,7 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: alb
+  name: signoz
   namespace: argocd
   annotations:
     "helm.sh/hook": post-install,post-upgrade
@@ -11,7 +11,7 @@ spec:
   source:
     repoURL: https://github.com/100-hours-a-week/2-hertz-cloud.git
     targetRevision: feat/argocd-helm
-    path: k8s-argocd-helm/infrastructure/alb
+    path: k8s-argocd-helm/apps/signoz
   destination:
     server: https://kubernetes.default.svc
     namespace: hertz-tuning-dev
