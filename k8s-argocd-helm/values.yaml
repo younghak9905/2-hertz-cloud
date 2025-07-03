@@ -1,0 +1,189 @@
+# Global settings
+global:
+  namespace: hertz-tuning-dev
+  region: ap-northeast-2
+  accountId: "<AWS_ACCOUNT_ID>"
+  environment: dev
+
+# Image settings
+image:
+  repository: "<ECR_REPOSITORY_URL>"
+  springboot:
+    name: tuning-springboot
+    tag: k8s-develop-latest
+  nextjs:
+    name: tuning-nextjs
+    tag: k8s-develop-latest
+
+# Service Account
+serviceAccount:
+  ecrAccess: ecr-access-sa
+
+# Apps
+apps:
+  backend:
+    enabled: true
+  frontend:
+    enabled: true
+  kafka:
+    enabled: true
+  mysql:
+    enabled: true
+  redis:
+    enabled: true
+
+# Infrastructure
+infrastructure:
+  alb:
+    enabled: true
+  network:
+    enabled: true
+  secrets:
+    enabled: true
+
+# SpringBoot Backend
+springboot:
+  name: springboot-be
+  ports:
+    http: 8080
+    websocket: 9100
+  resources:
+    requests:
+      cpu: 500m
+      memory: 512Mi
+    limits:
+      cpu: 1
+      memory: 1Gi
+  hpa:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 3
+    targetCPU: 70
+    targetMemory: 80
+    scaleUp:
+      stabilizationWindowSeconds: 60
+      percent: 100
+      periodSeconds: 15
+    scaleDown:
+      stabilizationWindowSeconds: 300
+      percent: 10
+      periodSeconds: 60
+
+# Next.js Frontend
+nextjs:
+  name: nextjs-fe
+  port: 3000
+  resources:
+    requests:
+      cpu: 300m
+      memory: 200Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+  hpa:
+    enabled: true
+    minReplicas: 1
+    maxReplicas: 2
+    targetCPU: 60
+    targetMemory: 70
+    scaleUp:
+      stabilizationWindowSeconds: 30
+      percent: 100
+      periodSeconds: 15
+    scaleDown:
+      stabilizationWindowSeconds: 180
+      percent: 20
+      periodSeconds: 60
+
+# Redis
+redis:
+  name: redis
+  image: redis:7.2.4
+  port: 6379
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
+
+# MySQL
+mysql:
+  name: mysql
+  image: mysql:8.0
+  port: 3306
+  storage:
+    size: 50Gi
+    storageClass: mysql-ebs
+  resources:
+    requests:
+      cpu: 500m
+      memory: 1Gi
+    limits:
+      cpu: 1
+      memory: 2Gi
+
+# Kafka
+kafka:
+  replicas: 3
+  image: confluentinc/cp-kafka:7.6.0
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.6.0
+    port: 2181
+  storage:
+    size: 10Gi
+    storageClass: mysql-ebs
+  resources:
+    requests:
+      cpu: 500m
+      memory: 1Gi
+    limits:
+      cpu: 1
+      memory: 2Gi
+
+# Ingress
+ingress:
+  className: alb
+  certificateArn: "<ACM_CERTIFICATE_ARN>"
+
+# External Secrets
+externalSecrets:
+  secretStore:
+    name: aws-ssm-store
+    region: ap-northeast-2
+    path: "<SSM_PARAMETER_STORE_PATH>"
+
+# SigNoz Observability
+signoz:
+  enabled: true
+  global:
+    storageClass: mysql-ebs
+  clickhouse:
+    installCustomStorageClass: false
+    persistence:
+      enabled: true
+      storageClass: mysql-ebs
+      size: 12Gi
+  zookeeper:
+    persistence:
+      enabled: true
+      storageClass: mysql-ebs
+      size: 6Gi
+  kafka:
+    persistence:
+      enabled: true
+      storageClass: mysql-ebs
+      size: 6Gi
+  frontend:
+    service:
+      type: ClusterIP
+      port: 3301
+  otelCollector:
+    service:
+      type: ClusterIP
+
+# Observability
+observability:
+  signoz:
+    endpoint: "http://hertz-tuning-signoz-otel-collector.hertz-tuning-dev.svc.cluster.local:4318"
