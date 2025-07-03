@@ -1,0 +1,21 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: frontend
+  namespace: argocd
+  annotations:
+    "helm.sh/hook": post-install,post-upgrade
+    argocd.argoproj.io/sync-wave: "3"
+spec:
+  project: tuning-dev
+  source:
+    repoURL: https://github.com/100-hours-a-week/2-hertz-cloud.git
+    targetRevision: feat/argocd
+    path: k8s-argocd/apps/frontend
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: hertz-tuning-dev
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
