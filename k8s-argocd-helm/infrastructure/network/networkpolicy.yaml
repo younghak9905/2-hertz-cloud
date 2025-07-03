@@ -1,0 +1,43 @@
+{{- if .Values.infrastructure.network.enabled }}
+# MySQL NetworkPolicy
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-backend-to-mysql
+  namespace: {{ .Values.global.namespace }}
+spec:
+  podSelector:
+    matchLabels:
+      app: {{ .Values.mysql.name }}
+  policyTypes:
+  - Ingress
+  ingress:
+  - from:
+    - podSelector:
+        matchLabels:
+          app: {{ .Values.springboot.name }}
+    ports:
+    - protocol: TCP
+      port: {{ .Values.mysql.port }}
+---
+# Redis NetworkPolicy
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-backend-to-redis
+  namespace: {{ .Values.global.namespace }}
+spec:
+  podSelector:
+    matchLabels:
+      app: {{ .Values.redis.name }}
+  policyTypes:
+  - Ingress
+  ingress:
+  - from:
+    - podSelector:
+        matchLabels:
+          app: {{ .Values.springboot.name }}
+    ports:
+    - protocol: TCP
+      port: {{ .Values.redis.port }}
+{{- end }}

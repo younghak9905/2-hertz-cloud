@@ -1,0 +1,18 @@
+{{- if .Values.apps.backend.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Values.springboot.name }}-svc
+  namespace: {{ .Values.global.namespace }}
+spec:
+  type: ClusterIP
+  selector:
+    app: {{ .Values.springboot.name }}
+  ports:
+    - name: http
+      port: 80
+      targetPort: {{ .Values.springboot.ports.http }}
+    - name: websocket
+      port: {{ .Values.springboot.ports.websocket }}
+      targetPort: {{ .Values.springboot.ports.websocket }}
+{{- end }}

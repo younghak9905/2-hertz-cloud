@@ -1,0 +1,44 @@
+{{- if .Values.apps.kafka.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: zookeeper
+  namespace: {{ .Values.global.namespace }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: zookeeper
+  template:
+    metadata:
+      labels:
+        app: zookeeper
+    spec:
+      containers:
+        - name: zookeeper
+          image: {{ .Values.kafka.zookeeper.image }}
+          ports:
+            - containerPort: {{ .Values.kafka.zookeeper.port }}
+          envFrom:
+            - configMapRef:
+                name: kafka-config
+          resources:
+            requests:
+              cpu: 200m
+              memory: 512Mi
+            limits:
+              cpu: 500m
+              memory: 1Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: zookeeper
+  namespace: {{ .Values.global.namespace }}
+spec:
+  selector:
+    app: zookeeper
+  ports:
+  - port: {{ .Values.kafka.zookeeper.port }}
+    targetPort: {{ .Values.kafka.zookeeper.port }}
+{{- end }}

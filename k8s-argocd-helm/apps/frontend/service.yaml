@@ -1,0 +1,15 @@
+{{- if .Values.apps.frontend.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Values.nextjs.name }}-svc
+  namespace: {{ .Values.global.namespace }}
+spec:
+  type: ClusterIP
+  selector:
+    app: {{ .Values.nextjs.name }}
+  ports:
+    - name: http
+      port: 80
+      targetPort: {{ .Values.nextjs.port }}
+{{- end }}

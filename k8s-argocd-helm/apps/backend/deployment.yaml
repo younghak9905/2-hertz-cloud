@@ -1,0 +1,61 @@
+{{- if .Values.apps.backend.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Values.springboot.name }}
+  namespace: {{ .Values.global.namespace }}
+spec:
+  selector:
+    matchLabels:
+      app: {{ .Values.springboot.name }}
+  template:
+    metadata:
+      labels:
+        app: {{ .Values.springboot.name }}
+    spec:
+      serviceAccountName: {{ .Values.serviceAccount.ecrAccess }}
+      containers:
+        - name: {{ .Values.springboot.name }}
+          image: {{ .Values.image.repository }}/{{ .Values.image.springboot.name }}:{{ .Values.image.springboot.tag }}
+          envFrom:
+            - secretRef:
+                name: springboot-secrets
+          env:
+            - name: OTEL_SERVICE_NAME
+              value: "{{ .Values.springboot.name }}"
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: "{{ .Values.observability.signoz.endpoint }}"
+            - name: OTEL_EXPORTER_OTLP_PROTOCOL
+              value: "http/protobuf"
+            - name: OTEL_LOGS_EXPORTER
+              value: "otlp"
+            - name: OTEL_METRICS_EXPORTER
+              value: "otlp"
+            - name: OTEL_TRACES_EXPORTER
+              value: "otlp"
+            - name: OTEL_RESOURCE_ATTRIBUTES
+              value: "service.name={{ .Values.springboot.name }},service.version={{ .Values.image.springboot.tag }},deployment.environment={{ .Values.global.environment }}"
+          ports:
+            - containerPort: {{ .Values.springboot.ports.http }}
+            - containerPort: {{ .Values.springboot.ports.websocket }}
+          readinessProbe:
+            httpGet:
+              path: /api/ping
+              port: {{ .Values.springboot.ports.http }}
+            initialDelaySeconds: 20
+            periodSeconds: 10
+            failureThreshold: 6
+          livenessProbe:
+            httpGet:
+              path: /api/ping
+              port: {{ .Values.springboot.ports.http }}
+            initialDelaySeconds: 30
+            periodSeconds: 30
+          resources:
+            requests:
+              cpu: {{ .Values.springboot.resources.requests.cpu }}
+              memory: {{ .Values.springboot.resources.requests.memory }}
+            limits:
+              cpu: {{ .Values.springboot.resources.limits.cpu }}
+              memory: {{ .Values.springboot.resources.limits.memory }}
+{{- end }}

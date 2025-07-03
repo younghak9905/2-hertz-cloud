@@ -1,0 +1,52 @@
+{{- if .Values.apps.frontend.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Values.nextjs.name }}
+  namespace: {{ .Values.global.namespace }}
+spec:
+  selector:
+    matchLabels:
+      app: {{ .Values.nextjs.name }}
+  template:
+    metadata:
+      labels:
+        app: {{ .Values.nextjs.name }}
+    spec:
+      serviceAccountName: {{ .Values.serviceAccount.ecrAccess }}
+      containers:
+        - name: {{ .Values.nextjs.name }}
+          image: {{ .Values.image.repository }}/{{ .Values.image.nextjs.name }}:{{ .Values.image.nextjs.tag }}
+          env:
+            - name: OTEL_SERVICE_NAME
+              value: "{{ .Values.nextjs.name }}"
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: "{{ .Values.observability.signoz.endpoint }}"
+            - name: OTEL_EXPORTER_OTLP_PROTOCOL
+              value: "http/protobuf"
+            - name: OTEL_LOGS_EXPORTER
+              value: "otlp"
+            - name: OTEL_METRICS_EXPORTER
+              value: "otlp"
+            - name: OTEL_TRACES_EXPORTER
+              value: "otlp"
+            - name: OTEL_RESOURCE_ATTRIBUTES
+              value: "service.name={{ .Values.nextjs.name }},service.version={{ .Values.image.nextjs.tag }},deployment.environment={{ .Values.global.environment }}"
+            - name: NEXT_TELEMETRY_DISABLED
+              value: "1"
+          ports:
+            - containerPort: {{ .Values.nextjs.port }}
+          readinessProbe:
+            httpGet:
+              path: /
+              port: {{ .Values.nextjs.port }}
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: {{ .Values.nextjs.resources.requests.cpu }}
+              memory: {{ .Values.nextjs.resources.requests.memory }}
+            limits:
+              cpu: {{ .Values.nextjs.resources.limits.cpu }}
+              memory: {{ .Values.nextjs.resources.limits.memory }}
+{{- end }}

@@ -1,0 +1,88 @@
+{{- if .Values.apps.kafka.enabled }}
+{{- range $i := until (.Values.kafka.replicas | int) }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: kafka{{ add $i 1 }}-pvc
+  namespace: {{ $.Values.global.namespace }}
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: {{ $.Values.kafka.storage.storageClass }}
+  resources:
+    requests:
+      storage: {{ $.Values.kafka.storage.size }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kafka{{ add $i 1 }}
+  namespace: {{ $.Values.global.namespace }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kafka{{ add $i 1 }}
+  template:
+    metadata:
+      labels:
+        app: kafka{{ add $i 1 }}
+    spec:
+      initContainers:
+      - name: fix-permissions
+        image: busybox
+        command: ['sh', '-c', 'rm -rf /var/lib/kafka/data/lost+found && chown -R 1000:1000 /var/lib/kafka/data']
+        volumeMounts:
+        - name: kafka-data
+          mountPath: /var/lib/kafka/data
+        securityContext:
+          runAsUser: 0
+      containers:
+      - name: kafka{{ add $i 1 }}
+        image: {{ $.Values.kafka.image }}
+        ports:
+        - containerPort: {{ add 9092 $i }}
+        - containerPort: {{ add 29092 $i }}
+        envFrom:
+        - configMapRef:
+            name: kafka-config
+        env:
+        - name: KAFKA_BROKER_ID
+          value: "{{ add $i 1 }}"
+        - name: KAFKA_ADVERTISED_LISTENERS
+          value: "INTERNAL://kafka{{ add $i 1 }}:{{ add 29092 $i }},EXTERNAL://kafka{{ add $i 1 }}:{{ add 9092 $i }}"
+        - name: KAFKA_LISTENERS
+          value: "INTERNAL://0.0.0.0:{{ add 29092 $i }},EXTERNAL://0.0.0.0:{{ add 9092 $i }}"
+        volumeMounts:
+        - name: kafka-data
+          mountPath: /var/lib/kafka/data
+        resources:
+          requests:
+            cpu: {{ $.Values.kafka.resources.requests.cpu }}
+            memory: {{ $.Values.kafka.resources.requests.memory }}
+          limits:
+            cpu: {{ $.Values.kafka.resources.limits.cpu }}
+            memory: {{ $.Values.kafka.resources.limits.memory }}
+      volumes:
+      - name: kafka-data
+        persistentVolumeClaim:
+          claimName: kafka{{ add $i 1 }}-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: kafka{{ add $i 1 }}
+  namespace: {{ $.Values.global.namespace }}
+spec:
+  selector:
+    app: kafka{{ add $i 1 }}
+  ports:
+  - name: external
+    port: {{ add 9092 $i }}
+    targetPort: {{ add 9092 $i }}
+  - name: internal
+    port: {{ add 29092 $i }}
+    targetPort: {{ add 29092 $i }}
+---
+{{- end }}
+{{- end }}
