@@ -1,25 +1,24 @@
-{{- if .Values.apps.frontend.enabled }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ .Values.nextjs.name }}
+  name: {{ .Values.app.name }}
   namespace: {{ .Values.global.namespace }}
 spec:
   selector:
     matchLabels:
-      app: {{ .Values.nextjs.name }}
+      app: {{ .Values.app.name }}
   template:
     metadata:
       labels:
-        app: {{ .Values.nextjs.name }}
+        app: {{ .Values.app.name }}
     spec:
       serviceAccountName: {{ .Values.serviceAccount.ecrAccess }}
       containers:
-        - name: {{ .Values.nextjs.name }}
-          image: {{ .Values.image.repository }}/{{ .Values.image.nextjs.name }}:{{ .Values.image.nextjs.tag }}
+        - name: {{ .Values.app.name }}
+          image: {{ .Values.image.repository }}/{{ .Values.image.name }}:{{ .Values.image.tag }}
           env:
             - name: OTEL_SERVICE_NAME
-              value: "{{ .Values.nextjs.name }}"
+              value: "{{ .Values.app.name }}"
             - name: OTEL_EXPORTER_OTLP_ENDPOINT
               value: "{{ .Values.observability.signoz.endpoint }}"
             - name: OTEL_EXPORTER_OTLP_PROTOCOL
@@ -31,22 +30,21 @@ spec:
             - name: OTEL_TRACES_EXPORTER
               value: "otlp"
             - name: OTEL_RESOURCE_ATTRIBUTES
-              value: "service.name={{ .Values.nextjs.name }},service.version={{ .Values.image.nextjs.tag }},deployment.environment={{ .Values.global.environment }}"
+              value: "service.name={{ .Values.app.name }},service.version={{ .Values.image.tag }},deployment.environment={{ .Values.global.environment }}"
             - name: NEXT_TELEMETRY_DISABLED
               value: "1"
           ports:
-            - containerPort: {{ .Values.nextjs.port }}
+            - containerPort: {{ .Values.app.port }}
           readinessProbe:
             httpGet:
               path: /
-              port: {{ .Values.nextjs.port }}
+              port: {{ .Values.app.port }}
             initialDelaySeconds: 5
             periodSeconds: 10
           resources:
             requests:
-              cpu: {{ .Values.nextjs.resources.requests.cpu }}
-              memory: {{ .Values.nextjs.resources.requests.memory }}
+              cpu: {{ .Values.resources.requests.cpu }}
+              memory: {{ .Values.resources.requests.memory }}
             limits:
-              cpu: {{ .Values.nextjs.resources.limits.cpu }}
-              memory: {{ .Values.nextjs.resources.limits.memory }}
-{{- end }}
+              cpu: {{ .Values.resources.limits.cpu }}
+              memory: {{ .Values.resources.limits.memory }}
