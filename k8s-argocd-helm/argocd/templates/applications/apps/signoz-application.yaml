@@ -14,7 +14,7 @@ spec:
     path: k8s-argocd-helm/apps/signoz
   destination:
     server: https://kubernetes.default.svc
-    namespace: hertz-tuning-dev
+    namespace: observability
   syncPolicy:
     automated:
       prune: true
