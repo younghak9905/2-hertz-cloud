@@ -3,30 +3,63 @@ global:
   namespace: hertz-tuning-dev
   environment: dev
 
-# SigNoz settings
+# SigNoz Chart Values (경량화)
 signoz:
-  namespace: observability
-  storageClass: mysql-ebs
+  global:
+    storageClass: mysql-ebs
+    cloud: others
+    clusterName: hertz-tuning-dev
+    deploymentEnvironment: dev
+  
   clickhouse:
-    storage:
-      size: 12Gi
+    installCustomStorageClass: false
+    persistence:
+      enabled: true
+      storageClass: mysql-ebs
+      size: 8Gi
     resources:
       requests:
-        memory: "4Gi"
-        cpu: "1000m"
-      limits:
-        memory: "8Gi"
-        cpu: "2000m"
-  zookeeper:
-    storage:
-      size: 6Gi
-    resources:
-      requests:
-        memory: "2Gi"
+        memory: "1Gi"
         cpu: "500m"
       limits:
-        memory: "4Gi"
+        memory: "2Gi"
         cpu: "1000m"
+  
+  zookeeper:
+    persistence:
+      enabled: true
+      storageClass: mysql-ebs
+      size: 4Gi
+    resources:
+      requests:
+        memory: "512Mi"
+        cpu: "250m"
+      limits:
+        memory: "1Gi"
+        cpu: "500m"
+  
   kafka:
-    storage:
-      size: 6Gi
+    persistence:
+      enabled: true
+      storageClass: mysql-ebs
+      size: 4Gi
+    resources:
+      requests:
+        memory: "512Mi"
+        cpu: "250m"
+      limits:
+        memory: "1Gi"
+        cpu: "500m"
+  
+  otelCollectorEndpoint: signoz-otel-collector.observability.svc.cluster.local:4317
+  otelInsecure: true
+  
+  presets:
+    hostMetrics:
+      enabled: false
+    kubeletMetrics:
+      enabled: false
+    clusterMetrics:
+      enabled: false
+    logsCollection:
+      enabled: false
