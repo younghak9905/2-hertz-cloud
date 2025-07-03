@@ -5,7 +5,6 @@ metadata:
   name: springboot-be
   namespace: hertz-tuning-dev
 spec:
-  replicas: 1
   selector:
     matchLabels:
       app: springboot-be
@@ -17,11 +16,26 @@ spec:
       serviceAccountName: ecr-access-sa # IRSA Service Account 사용
       containers:
         - name: springboot-be
-          image: 969400486509.dkr.ecr.ap-northeast-2.amazonaws.com/tuning-springboot:develop-latest
-          #args: ["--spring.mvc.async.request-timeout=-1"]
+          image: 969400486509.dkr.ecr.ap-northeast-2.amazonaws.com/tuning-springboot:k8s-develop-latest
           envFrom:
             - secretRef:
                 name: springboot-secrets
+          env:
+            # SigNoz OpenTelemetry 설정
+            - name: OTEL_SERVICE_NAME
+              value: "springboot-service"
+            - name: OTEL_EXPORTER_OTLP_ENDPOINT
+              value: "http://signoz-otel-collector.observability.svc.cluster.local:4318"
+            - name: OTEL_EXPORTER_OTLP_PROTOCOL
+              value: "http/protobuf"
+            - name: OTEL_LOGS_EXPORTER
+              value: "otlp"
+            - name: OTEL_METRICS_EXPORTER
+              value: "otlp"
+            - name: OTEL_TRACES_EXPORTER
+              value: "otlp"
+            - name: OTEL_RESOURCE_ATTRIBUTES
+              value: "service.name=springboot-service,service.version=1.0.0,deployment.environment=dev"
           ports:
             - containerPort: 8080
             - containerPort: 9100 # 웹소켓 포트 추가
