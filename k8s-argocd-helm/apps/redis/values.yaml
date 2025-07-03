@@ -1,0 +1,29 @@
+# Global settings
+global:
+  namespace: hertz-tuning-dev
+  region: ap-northeast-2
+  environment: dev
+
+# Image settings
+image:
+  repository: redis
+  tag: "7.0-alpine"
+
+# Application settings
+app:
+  name: redis
+  port: 6379
+
+# Resources
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+# Redis credentials (from secrets)
+secrets:
+  name: springboot-secrets
+  passwordKey: REDIS_PASSWORD
