@@ -88,7 +88,10 @@ crash.log
 terraform.rc
 
 .secrets
+
+# Shell scripts
+*.sh
+
 #######################################
 # Ignore EKS setting
-set-eks.sh
 **/cluster-config.yaml
