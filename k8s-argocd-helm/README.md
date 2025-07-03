@@ -1,35 +1,59 @@
 k8s-argocd-helm/
-├── Chart.yaml
-├── values.yaml
 ├── apps/
 │   ├── backend/
+│   │   ├── Chart.yaml
+│   │   ├── values.yaml
+│   │   └── templates/
 │   ├── frontend/
-│   ├── mysql/
-│   ├── kafka/
-│   ├── redis/
+│   │   ├── Chart.yaml
+│   │   ├── values.yaml
+│   │   └── templates/
 │   └── signoz/
+│       ├── Chart.yaml
+│       ├── values.yaml
+│       └── templates/
 ├── infrastructure/
 │   ├── alb/
+│   │   ├── Chart.yaml
+│   │   ├── values.yaml
+│   │   └── templates/
 │   ├── network/
+│   │   ├── Chart.yaml
+│   │   ├── values.yaml
+│   │   └── templates/
 │   └── secrets/
+│       ├── Chart.yaml
+│       ├── values.yaml
+│       └── templates/
 ├── argocd/
-│   ├── Chart.yaml
-│   ├── values.yaml
-│   ├── charts/
-│   └── templates/
-└── aws-iam/                    # 정적 IAM 정책 파일들
-    ├── alb_controller_iam_policy.json
-    └── ssm-parameter-policy.json
+└── aws-iam/
 
 
-#### 전체 스택 배포
+
+#### Infrastructure
+helm upgrade --install alb ./k8s-argocd-helm/infrastructure/alb -n hertz-tuning-dev
+helm upgrade --install network ./k8s-argocd-helm/infrastructure/network -n hertz-tuning-dev
+helm upgrade --install secrets ./k8s-argocd-helm/infrastructure/secrets -n hertz-tuning-dev
+
+#### DB
+helm upgrade --install mysql ./k8s-argocd-helm/apps/mysql -n hertz-tuning-dev
+helm upgrade --install redis ./k8s-argocd-helm/apps/redis -n hertz-tuning-dev
+helm upgrade --install kafka ./k8s-argocd-helm/apps/kafka -n hertz-tuning-dev
+
+#### Applications
+helm upgrade --install backend ./k8s-argocd-helm/apps/backend -n hertz-tuning-dev
+helm upgrade --install frontend ./k8s-argocd-helm/apps/frontend -n hertz-tuning-dev
+
+#### Monitoring
+helm upgrade --install signoz ./k8s-argocd-helm/apps/signoz -n observability
+
+#### Ubrella 전체 스택 배포
+# 의존성 관리와 순서를 자동으로 처리
+helm dependency update ./k8s-argocd-helm
 helm upgrade --install hertz-tuning ./k8s-argocd-helm \
   --namespace hertz-tuning-dev \
-  --create-namespace \
-  --set global.accountId=$AWS_ACCOUNT_ID \
-  --set image.repository=$ECR_REPOSITORY_URL \
-  --set ingress.certificateArn=$ACM_CERTIFICATE_ARN \
-  --set externalSecrets.secretStore.path=$SSM_PARAMETER_STORE_PATH
+  --create-namespace
+
 
 
 #### 파드 상태 확인
@@ -46,3 +70,5 @@ kubectl get ingress -n hertz-tuning-dev
 
 #### SigNoz 확인
 kubectl get pods -n observability
+
+

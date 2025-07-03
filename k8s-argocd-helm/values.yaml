@@ -1,38 +1,26 @@
-# Global settings
+# Global settings shared across all charts
 global:
   namespace: hertz-tuning-dev
   region: ap-northeast-2
-  accountId: "<AWS_ACCOUNT_ID>"
+  accountId: "969400486509"
   environment: dev
 
-# Image settings
-image:
-  repository: "<ECR_REPOSITORY_URL>"
-  springboot:
-    name: tuning-springboot
-    tag: k8s-develop-latest
-  nextjs:
-    name: tuning-nextjs
-    tag: k8s-develop-latest
-
-# Service Account
-serviceAccount:
-  ecrAccess: ecr-access-sa
-
-# Apps
+# Apps enablement
 apps:
   backend:
     enabled: true
   frontend:
     enabled: true
-  kafka:
-    enabled: true
   mysql:
+    enabled: true
+  kafka:
     enabled: true
   redis:
     enabled: true
+  signoz:
+    enabled: true
 
-# Infrastructure
+# Infrastructure enablement
 infrastructure:
   alb:
     enabled: true
@@ -41,12 +29,24 @@ infrastructure:
   secrets:
     enabled: true
 
-# SpringBoot Backend
-springboot:
-  name: springboot-be
-  ports:
-    http: 8080
-    websocket: 9100
+# Backend chart values
+backend:
+  global:
+    namespace: hertz-tuning-dev
+    region: ap-northeast-2
+    accountId: "969400486509"
+    environment: dev
+  image:
+    repository: 969400486509.dkr.ecr.ap-northeast-2.amazonaws.com
+    name: tuning-springboot
+    tag: k8s-develop-latest
+  serviceAccount:
+    ecrAccess: ecr-access-sa
+  app:
+    name: springboot-be
+    ports:
+      http: 8080
+      websocket: 9100
   resources:
     requests:
       cpu: 500m
@@ -57,7 +57,7 @@ springboot:
   hpa:
     enabled: true
     minReplicas: 2
-    maxReplicas: 3
+    maxReplicas: 10
     targetCPU: 70
     targetMemory: 80
     scaleUp:
@@ -68,11 +68,26 @@ springboot:
       stabilizationWindowSeconds: 300
       percent: 10
       periodSeconds: 60
+  observability:
+    signoz:
+      endpoint: "http://signoz-otel-collector.observability.svc.cluster.local:4318"
 
-# Next.js Frontend
-nextjs:
-  name: nextjs-fe
-  port: 3000
+# Frontend chart values
+frontend:
+  global:
+    namespace: hertz-tuning-dev
+    region: ap-northeast-2
+    accountId: "969400486509"
+    environment: dev
+  image:
+    repository: 969400486509.dkr.ecr.ap-northeast-2.amazonaws.com
+    name: tuning-nextjs
+    tag: k8s-develop-latest
+  serviceAccount:
+    ecrAccess: ecr-access-sa
+  app:
+    name: nextjs-fe
+    port: 3000
   resources:
     requests:
       cpu: 300m
@@ -82,8 +97,8 @@ nextjs:
       memory: 512Mi
   hpa:
     enabled: true
-    minReplicas: 1
-    maxReplicas: 2
+    minReplicas: 2
+    maxReplicas: 8
     targetCPU: 60
     targetMemory: 70
     scaleUp:
@@ -94,96 +109,72 @@ nextjs:
       stabilizationWindowSeconds: 180
       percent: 20
       periodSeconds: 60
+  observability:
+    signoz:
+      endpoint: "http://signoz-otel-collector.observability.svc.cluster.local:4318"
 
-# Redis
-redis:
-  name: redis
-  image: redis:7.2.4
-  port: 6379
-  resources:
-    requests:
-      cpu: 100m
-      memory: 128Mi
-    limits:
-      cpu: 200m
-      memory: 256Mi
-
-# MySQL
-mysql:
-  name: mysql
-  image: mysql:8.0
-  port: 3306
-  storage:
-    size: 50Gi
-    storageClass: mysql-ebs
-  resources:
-    requests:
-      cpu: 500m
-      memory: 1Gi
-    limits:
-      cpu: 1
-      memory: 2Gi
-
-# Kafka
-kafka:
-  replicas: 3
-  image: confluentinc/cp-kafka:7.6.0
-  zookeeper:
-    image: confluentinc/cp-zookeeper:7.6.0
-    port: 2181
-  storage:
-    size: 10Gi
-    storageClass: mysql-ebs
-  resources:
-    requests:
-      cpu: 500m
-      memory: 1Gi
-    limits:
-      cpu: 1
-      memory: 2Gi
-
-# Ingress
-ingress:
-  className: alb
-  certificateArn: "<ACM_CERTIFICATE_ARN>"
-
-# External Secrets
-externalSecrets:
-  secretStore:
-    name: aws-ssm-store
-    region: ap-northeast-2
-    path: "<SSM_PARAMETER_STORE_PATH>"
-
-# SigNoz Observability
+# SigNoz chart values
 signoz:
-  enabled: true
   global:
-    storageClass: mysql-ebs
-  clickhouse:
-    installCustomStorageClass: false
-    persistence:
-      enabled: true
-      storageClass: mysql-ebs
-      size: 12Gi
-  zookeeper:
-    persistence:
-      enabled: true
-      storageClass: mysql-ebs
-      size: 6Gi
-  kafka:
-    persistence:
-      enabled: true
-      storageClass: mysql-ebs
-      size: 6Gi
-  frontend:
-    service:
-      type: ClusterIP
-      port: 3301
-  otelCollector:
-    service:
-      type: ClusterIP
-
-# Observability
-observability:
+    namespace: hertz-tuning-dev
+    environment: dev
   signoz:
-    endpoint: "http://hertz-tuning-signoz-otel-collector.hertz-tuning-dev.svc.cluster.local:4318"
+    namespace: observability
+    storageClass: mysql-ebs
+    clickhouse:
+      storage:
+        size: 12Gi
+      resources:
+        requests:
+          memory: "4Gi"
+          cpu: "1000m"
+        limits:
+          memory: "8Gi"
+          cpu: "2000m"
+    zookeeper:
+      storage:
+        size: 6Gi
+      resources:
+        requests:
+          memory: "2Gi"
+          cpu: "500m"
+        limits:
+          memory: "4Gi"
+          cpu: "1000m"
+    kafka:
+      storage:
+        size: 6Gi
+
+# ALB chart values
+alb:
+  global:
+    namespace: hertz-tuning-dev
+  ingress:
+    className: alb
+    certificateArn: arn:aws:acm:ap-northeast-2:969400486509:certificate/0923e90f-18b8-4f6c-b33f-878e9d00cfbf
+  services:
+    backend: springboot-be-svc
+    frontend: nextjs-fe-svc
+    websocketPort: 9100
+
+# Network chart values
+network:
+  global:
+    namespace: hertz-tuning-dev
+  apps:
+    backend: springboot-be
+    mysql: mysql
+    redis: redis
+  ports:
+    mysql: 3306
+    redis: 6379
+
+# Secrets chart values
+secrets:
+  global:
+    namespace: hertz-tuning-dev
+  externalSecrets:
+    secretStore:
+      name: aws-ssm-store
+      region: ap-northeast-2
+      path: /global/k8s/springboot/dev
