@@ -1,0 +1,24 @@
+# signoz-values.yaml
+global:
+  storageClass: mysql-ebs
+
+clickhouse:
+  installCustomStorageClass: false
+  persistence:
+    enabled: true
+    storageClass: mysql-ebs
+    size: 12Gi
+
+zookeeper:
+  persistence:
+    enabled: true
+    storageClass: mysql-ebs
+    size: 6Gi
+
+kafka:
+  persistence:
+    enabled: true
+    storageClass: mysql-ebs
+    size: 6Gi
+
+
