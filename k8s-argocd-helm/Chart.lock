@@ -1,0 +1,30 @@
+dependencies:
+- name: backend
+  repository: file://apps/backend
+  version: 0.1.0
+- name: frontend
+  repository: file://apps/frontend
+  version: 0.1.0
+- name: mysql
+  repository: file://apps/mysql
+  version: 0.1.0
+- name: kafka
+  repository: file://apps/kafka
+  version: 0.1.0
+- name: redis
+  repository: file://apps/redis
+  version: 0.1.0
+- name: signoz
+  repository: file://apps/signoz
+  version: 0.1.0
+- name: alb
+  repository: file://infrastructure/alb
+  version: 0.1.0
+- name: network
+  repository: file://infrastructure/network
+  version: 0.1.0
+- name: secrets
+  repository: file://infrastructure/secrets
+  version: 0.1.0
+digest: sha256:9ebbdb74c576b8ec65d31801751d4922107fc09491e52da8569fb1ec4e95c1a9
+generated: "2025-07-03T19:30:32.90721+09:00"
