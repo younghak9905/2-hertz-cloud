@@ -47,3 +47,7 @@ dependencies:
     version: "0.1.0"
     repository: "file://infrastructure/secrets"
     condition: infrastructure.secrets.enabled
+  - name: reloader
+    version: "0.1.0"
+    repository: "file://infrastructure/reloader"
+    condition: infrastructure.reloader.enabled

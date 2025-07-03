@@ -28,6 +28,8 @@ infrastructure:
     enabled: true
   secrets:
     enabled: true
+  reloader:
+    enabled: true
 
 # Backend chart values
 backend:

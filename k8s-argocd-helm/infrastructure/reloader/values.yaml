@@ -1,0 +1,23 @@
+# Global settings
+global:
+  namespace: hertz-tuning-dev
+
+# Reloader Chart Values
+reloader:
+  reloader:
+    watchGlobally: false
+    namespaceSelector: hertz-tuning-dev
+    logLevel: info
+    ignoreSecrets: false
+    ignoreConfigMaps: false
+    reloadStrategy: annotations
+    syncAfterRestart: true
+  
+  # Resources
+  resources:
+    requests:
+      cpu: 10m
+      memory: 32Mi
+    limits:
+      cpu: 100m
+      memory: 128Mi

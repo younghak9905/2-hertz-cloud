@@ -3,6 +3,8 @@ kind: Deployment
 metadata:
   name: {{ .Values.app.name }}
   namespace: {{ .Values.global.namespace }}
+  annotations:
+    reloader.stakater.com/auto: "true"
 spec:
   selector:
     matchLabels:
@@ -34,6 +36,10 @@ spec:
               value: "otlp"
             - name: OTEL_RESOURCE_ATTRIBUTES
               value: "service.name={{ .Values.app.name }},service.version={{ .Values.image.tag }},deployment.environment={{ .Values.global.environment }}"
+            - name: LOGGING_LEVEL_ROOT
+              value: "INFO"
+            - name: LOGGING_PATTERN_CONSOLE
+              value: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
           ports:
             - containerPort: {{ .Values.app.ports.http }}
             - containerPort: {{ .Values.app.ports.websocket }}
