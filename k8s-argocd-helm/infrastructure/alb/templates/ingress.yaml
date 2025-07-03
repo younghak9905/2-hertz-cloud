@@ -1,4 +1,3 @@
-{{- if .Values.infrastructure.alb.enabled }}
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
@@ -22,28 +21,27 @@ spec:
             pathType: Prefix
             backend:
               service:
-                name: {{ .Values.nextjs.name }}-svc
+                name: {{ .Values.services.frontend }}
                 port:
                   number: 80
           - path: /api
             pathType: Prefix
             backend:
               service:
-                name: {{ .Values.springboot.name }}-svc
+                name: {{ .Values.services.backend }}
                 port:
                   number: 80
           - path: /socket.io
             pathType: Prefix
             backend:
               service:
-                name: {{ .Values.springboot.name }}-svc
+                name: {{ .Values.services.backend }}
                 port:
-                  number: {{ .Values.springboot.ports.websocket }}
+                  number: {{ .Values.services.websocketPort }}
           - path: /
             pathType: Prefix
             backend:
               service:
-                name: {{ .Values.nextjs.name }}-svc
+                name: {{ .Values.services.frontend }}
                 port:
                   number: 80
-{{- end }}

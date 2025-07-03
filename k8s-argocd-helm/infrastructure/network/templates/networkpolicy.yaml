@@ -1,4 +1,3 @@
-{{- if .Values.infrastructure.network.enabled }}
 # MySQL NetworkPolicy
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
@@ -8,17 +7,17 @@ metadata:
 spec:
   podSelector:
     matchLabels:
-      app: {{ .Values.mysql.name }}
+      app: {{ .Values.apps.mysql }}
   policyTypes:
   - Ingress
   ingress:
   - from:
     - podSelector:
         matchLabels:
-          app: {{ .Values.springboot.name }}
+          app: {{ .Values.apps.backend }}
     ports:
     - protocol: TCP
-      port: {{ .Values.mysql.port }}
+      port: {{ .Values.ports.mysql }}
 ---
 # Redis NetworkPolicy
 apiVersion: networking.k8s.io/v1
@@ -29,15 +28,14 @@ metadata:
 spec:
   podSelector:
     matchLabels:
-      app: {{ .Values.redis.name }}
+      app: {{ .Values.apps.redis }}
   policyTypes:
   - Ingress
   ingress:
   - from:
     - podSelector:
         matchLabels:
-          app: {{ .Values.springboot.name }}
+          app: {{ .Values.apps.backend }}
     ports:
     - protocol: TCP
-      port: {{ .Values.redis.port }}
-{{- end }}
+      port: {{ .Values.ports.redis }}
