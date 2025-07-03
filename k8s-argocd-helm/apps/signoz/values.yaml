@@ -1,6 +1,6 @@
 # Global settings
 global:
-  namespace: hertz-tuning-dev
+  namespace: observability
   environment: dev
 
 # SigNoz Chart Values (경량화 + k8s-infra)
@@ -23,7 +23,7 @@ signoz:
     layout:
       shardsCount: 1
       replicasCount: 1
-  
+
   # 불필요한 컴포넌트 비활성화
   zookeeper:
     enabled: false
@@ -31,7 +31,7 @@ signoz:
     enabled: false
   alertmanager:
     enabled: false
-  
+
   # Query Service
   queryService:
     enabled: true
@@ -42,7 +42,7 @@ signoz:
       limits:
         memory: "512Mi"
         cpu: "200m"
-  
+
   # Frontend
   frontend:
     enabled: true
@@ -53,7 +53,7 @@ signoz:
       limits:
         memory: "256Mi"
         cpu: "100m"
-  
+
   # OTel Collector
   otelCollector:
     enabled: true
@@ -64,7 +64,7 @@ signoz:
       limits:
         memory: "512Mi"
         cpu: "200m"
-  
+
   # 애플리케이션 메트릭 수집기 (SpringBoot, MySQL 성능)
   otelCollectorMetrics:
     enabled: true
@@ -75,12 +75,12 @@ signoz:
       limits:
         memory: "256Mi"
         cpu: "100m"
-  
+
   # 로그 수집만 활성화
   presets:
     logsCollection:
       enabled: true
-      includeNamespaces: 
+      includeNamespaces:
         - hertz-tuning-dev
     # 다른 메트릭들은 k8s-infra가 처리
     kubeletMetrics:
@@ -91,7 +91,7 @@ signoz:
       enabled: false
     kubernetesEvents:
       enabled: false
-  
+
   global:
     storageClass: mysql-ebs
     cloud: others
@@ -101,11 +101,11 @@ signoz:
 # k8s-infra Chart Values (CPU/Memory 메트릭 전용)
 k8s-infra:
   enabled: true
-  
+
   # Global 설정
   global:
     storageClass: mysql-ebs
-  
+
   # OTel Deployment (메트릭 수집기)
   otelDeployment:
     enabled: true
@@ -116,7 +116,7 @@ k8s-infra:
       limits:
         memory: "256Mi"
         cpu: "100m"
-  
+
   # OTel DaemonSet (각 노드에서 메트릭 수집)
   otelDaemonSet:
     enabled: true
@@ -127,7 +127,7 @@ k8s-infra:
       limits:
         memory: "128Mi"
         cpu: "50m"
-  
+
   # 수집할 메트릭 설정
   presets:
     # Kubelet 메트릭 (Pod CPU/Memory)
