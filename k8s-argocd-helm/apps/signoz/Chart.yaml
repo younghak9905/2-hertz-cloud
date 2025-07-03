@@ -17,4 +17,4 @@ dependencies:
   - name: k8s-infra
     version: "0.13.0"
     repository: https://charts.signoz.io
-    condition: k8sInfra.enabled
+    condition: k8s-infra.enabled
