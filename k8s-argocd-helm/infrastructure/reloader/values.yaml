@@ -6,12 +6,24 @@ global:
 reloader:
   reloader:
     watchGlobally: false
-    namespaceSelector: hertz-tuning-dev
+    namespaceSelector: ""
     logLevel: info
     ignoreSecrets: false
     ignoreConfigMaps: false
     reloadStrategy: annotations
     syncAfterRestart: true
+    enableHA: false
+    # 네임스페이스 권한 불필요하도록 설정
+    isArgoRollouts: false
+    isOpenshift: false
+  
+  # RBAC 권한 설정 (네임스페이스 레벨만)
+  rbac:
+    create: true
+    clusterRole: false
+  
+  serviceAccount:
+    create: true
   
   # Resources
   resources:
