@@ -1,4 +1,3 @@
-{{- if .Values.apps.kafka.enabled }}
 {{- range $i := until (.Values.kafka.replicas | int) }}
 apiVersion: v1
 kind: PersistentVolumeClaim
@@ -39,7 +38,7 @@ spec:
           runAsUser: 0
       containers:
       - name: kafka{{ add $i 1 }}
-        image: {{ $.Values.kafka.image }}
+        image: {{ $.Values.kafka.image.repository }}:{{ $.Values.kafka.image.tag }}
         ports:
         - containerPort: {{ add 9092 $i }}
         - containerPort: {{ add 29092 $i }}
@@ -84,5 +83,4 @@ spec:
     port: {{ add 29092 $i }}
     targetPort: {{ add 29092 $i }}
 ---
-{{- end }}
 {{- end }}
