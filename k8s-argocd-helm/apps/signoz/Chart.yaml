@@ -10,3 +10,7 @@ keywords:
   - monitoring
 maintainers:
   - name: hertz-team
+dependencies:
+  - name: signoz
+    version: "0.47.0"
+    repository: https://charts.signoz.io
