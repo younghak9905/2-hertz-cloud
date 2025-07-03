@@ -8,7 +8,7 @@ global:
 kafka:
   image:
     repository: confluentinc/cp-kafka
-    tag: "7.4.0"
+    tag: "7.6.0"
   replicas: 3
   resources:
     requests:
@@ -18,14 +18,14 @@ kafka:
       cpu: 1
       memory: 2Gi
   storage:
-    storageClass: kafka-ebs
+    storageClass: mysql-ebs
     size: 10Gi
 
 # ZooKeeper settings
 zookeeper:
   image:
     repository: confluentinc/cp-zookeeper
-    tag: "7.4.0"
+    tag: "7.6.0"
   port: 2181
   resources:
     requests:

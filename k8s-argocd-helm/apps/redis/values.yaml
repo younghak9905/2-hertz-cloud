@@ -7,7 +7,7 @@ global:
 # Image settings
 image:
   repository: redis
-  tag: "7.0-alpine"
+  tag: "7.2.4"
 
 # Application settings
 app:
@@ -18,10 +18,10 @@ app:
 resources:
   requests:
     cpu: 100m
-    memory: 256Mi
+    memory: 128Mi
   limits:
-    cpu: 500m
-    memory: 512Mi
+    cpu: 200m
+    memory: 256Mi
 
 # Redis credentials (from secrets)
 secrets:

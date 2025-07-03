@@ -1,10 +1,9 @@
 apiVersion: apps/v1
-kind: StatefulSet
+kind: Deployment
 metadata:
   name: {{ .Values.app.name }}
   namespace: {{ .Values.global.namespace }}
 spec:
-  serviceName: {{ .Values.app.name }}
   replicas: 1
   selector:
     matchLabels:
@@ -50,15 +49,10 @@ spec:
           limits:
             cpu: {{ .Values.resources.limits.cpu }}
             memory: {{ .Values.resources.limits.memory }}
-  volumeClaimTemplates:
-  - metadata:
-      name: mysql-storage
-    spec:
-      accessModes: ["ReadWriteOnce"]
-      storageClassName: {{ .Values.storage.storageClass }}
-      resources:
-        requests:
-          storage: {{ .Values.storage.size }}
+      volumes:
+      - name: mysql-storage
+        persistentVolumeClaim:
+          claimName: mysql-pvc
 ---
 apiVersion: v1
 kind: Service

@@ -10,7 +10,7 @@ spec:
   sourceRepos:
     - "*"
   destinations:
-    - namespace: hertz-tuning-dev
+    - namespace: "*"
       server: https://kubernetes.default.svc
   clusterResourceWhitelist:
     - group: "*"
