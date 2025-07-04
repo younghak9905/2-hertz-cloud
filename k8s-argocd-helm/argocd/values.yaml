@@ -74,7 +74,7 @@ argocd-image-updater:
     registries:
       - name: ecr
         api_url: https://969400486509.dkr.ecr.ap-northeast-2.amazonaws.com
-        prefix: 969400486509.dkr.ecr.ap-northeast-2.amazonaws.com
+        prefix: "969400486509.dkr.ecr.ap-northeast-2.amazonaws.com"
         ping: yes
         credentials: ext:/scripts/ecr-login.sh
         credsexpire: 10h
