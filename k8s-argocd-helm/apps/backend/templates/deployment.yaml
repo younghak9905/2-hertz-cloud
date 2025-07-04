@@ -5,7 +5,13 @@ metadata:
   namespace: {{ .Values.global.namespace }}
   annotations:
     reloader.stakater.com/auto: "true"
+    argocd.argoproj.io/sync-wave: "2"
 spec:
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 25%
+      maxSurge: 25%
   selector:
     matchLabels:
       app: {{ .Values.app.name }}
@@ -69,15 +75,19 @@ spec:
             httpGet:
               path: /api/ping
               port: {{ .Values.app.ports.http }}
-            initialDelaySeconds: 20
-            periodSeconds: 10
-            failureThreshold: 6
+            initialDelaySeconds: {{ .Values.healthCheck.readiness.initialDelaySeconds }}
+            periodSeconds: {{ .Values.healthCheck.readiness.periodSeconds }}
+            timeoutSeconds: {{ .Values.healthCheck.readiness.timeoutSeconds }}
+            failureThreshold: {{ .Values.healthCheck.readiness.failureThreshold }}
+            successThreshold: {{ .Values.healthCheck.readiness.successThreshold }}
           livenessProbe:
             httpGet:
               path: /api/ping
               port: {{ .Values.app.ports.http }}
-            initialDelaySeconds: 30
-            periodSeconds: 30
+            initialDelaySeconds: {{ .Values.healthCheck.liveness.initialDelaySeconds }}
+            periodSeconds: {{ .Values.healthCheck.liveness.periodSeconds }}
+            timeoutSeconds: {{ .Values.healthCheck.liveness.timeoutSeconds }}
+            failureThreshold: {{ .Values.healthCheck.liveness.failureThreshold }}
           resources:
             requests:
               cpu: {{ .Values.resources.requests.cpu }}
