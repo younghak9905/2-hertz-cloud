@@ -66,30 +66,24 @@ configs:
 argocd-image-updater:
   enabled: true
   serviceAccount:
-    create: true
-    annotations:
-      eks.amazonaws.com/role-arn: "arn:aws:iam::969400486509:role/argocd-ecr-access-role"
+    create: false
+    name: ecr-access-sa
   config:
+    applicationsAPIKind: kubernetes
     # ECR 레지스트리 설정
     registries:
       - name: ecr
         api_url: https://969400486509.dkr.ecr.ap-northeast-2.amazonaws.com
         prefix: 969400486509.dkr.ecr.ap-northeast-2.amazonaws.com
         ping: yes
-        credentials: ext:/scripts/auth1.sh
+        credentials: ext:/scripts/ecr-login.sh
         credsexpire: 10h
     # 로그 레벨
     logLevel: info
-  # ECR 인증 스크립트
+  # IRSA를 통한 ECR 인증 스크립트
   authScripts:
     enabled: true
     scripts:
-      auth1.sh: |
+      ecr-login.sh: |
         #!/bin/sh
         aws ecr get-login-password --region ap-northeast-2
-  # 추가 환경변수
-  env:
-    - name: AWS_REGION
-      value: ap-northeast-2
-    - name: AWS_DEFAULT_REGION  
-      value: ap-northeast-2
