@@ -4,7 +4,8 @@ metadata:
   name: tuning-dev
   namespace: argocd
   annotations:
-    "helm.sh/hook": post-install,post-upgrade
+    "helm.sh/hook": pre-install,pre-upgrade
+    argocd.argoproj.io/sync-wave: "-1"
 spec:
   description: Project tuning for DEV environment
   sourceRepos:
