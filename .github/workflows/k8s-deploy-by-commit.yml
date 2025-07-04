@@ -134,7 +134,7 @@ jobs:
         uses: actions/checkout@v3
         with:
           repository: 100-hours-a-week/2-hertz-cloud
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.TOKEN_GIHUB }}
           ref: ${{ inputs.target_branch }}
           path: cloud-repo
           
