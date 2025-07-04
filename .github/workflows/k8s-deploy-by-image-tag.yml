@@ -60,9 +60,21 @@ jobs:
           ref: ${{ inputs.target_branch }}
           path: cloud-repo
           
+      - name: Check current image tag
+        id: check-tag
+        run: |
+          cd cloud-repo
+          CURRENT_TAG=$(grep "tag:" k8s-argocd-helm/apps/${{ inputs.service }}/values.yaml | awk '{print $2}')
+          echo "current_tag=$CURRENT_TAG" >> $GITHUB_OUTPUT
+          echo "🔍 Current tag: $CURRENT_TAG"
+          echo "🔍 Target tag: ${{ inputs.image_tag }}"
+          
       - name: Update manifest
         run: |
           cd cloud-repo
+          if [ "${{ steps.check-tag.outputs.current_tag }}" = "${{ inputs.image_tag }}" ]; then
+            echo "⚠️ Image tag is already ${{ inputs.image_tag }}. Forcing update..."
+          fi
           sed -i "s/tag: .*/tag: ${{ inputs.image_tag }}/" k8s-argocd-helm/apps/${{ inputs.service }}/values.yaml
           
       - name: Commit and push
@@ -71,12 +83,26 @@ jobs:
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
           git add k8s-argocd-helm/apps/${{ inputs.service }}/values.yaml
-          git commit -m "Deploy ${{ inputs.service }} with image ${{ inputs.image_tag }}"
-          git push
+          
+          if git diff --staged --quiet; then
+            echo "⚠️ No changes to commit. Image tag might be the same."
+            echo "🔄 Triggering ArgoCD sync anyway..."
+          else
+            git commit -m "Deploy ${{ inputs.service }} with image ${{ inputs.image_tag }}"
+            git push
+            echo "✅ Manifest updated and pushed"
+          fi
           
       - name: Notify deployment
         run: |
+          CURRENT_TAG="${{ steps.check-tag.outputs.current_tag }}"
+          if [ "$CURRENT_TAG" = "${{ inputs.image_tag }}" ]; then
+            MESSAGE="🔄 [수동 배포] **${{ inputs.service }}** 재배포\\n> 이미지: ${{ inputs.image_tag }} (동일)\\n> 브랜치: ${{ inputs.target_branch }}\\n> ArgoCD 수동 동기화 필요"
+          else
+            MESSAGE="🚀 [수동 배포] **${{ inputs.service }}**\\n> 이전: $CURRENT_TAG\\n> 이후: ${{ inputs.image_tag }}\\n> 브랜치: ${{ inputs.target_branch }}\\n> ArgoCD 동기화 중..."
+          fi
+          
           curl -H "Content-Type: application/json" \
                -X POST \
-               -d "{\"content\": \"🚀 [수동 배포] **${{ inputs.service }}**\\n> 이미지: ${{ inputs.image_tag }}\\n> 브랜치: ${{ inputs.target_branch }}\\n> ArgoCD 동기화 중...\"}" \
+               -d "{\"content\": \"$MESSAGE\"}" \
                ${{ secrets.DISCORD_WEBHOOK_CICD_URL }}
