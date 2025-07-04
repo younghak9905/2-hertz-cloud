@@ -13,6 +13,7 @@ spec:
     metadata:
       labels:
         app: {{ .Values.app.name }}
+      annotations:
         signoz.io/scrape: "true"
         signoz.io/port: "8000"
         signoz.io/path: "/metrics"
