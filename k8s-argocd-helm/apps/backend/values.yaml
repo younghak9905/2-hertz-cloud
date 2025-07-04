@@ -7,8 +7,7 @@ global:
 
 # Image settings
 image:
-  repository: 969400486509.dkr.ecr.ap-northeast-2.amazonaws.com
-  name: tuning-springboot
+  repository: 969400486509.dkr.ecr.ap-northeast-2.amazonaws.com/tuning-springboot
   tag: k8s-develop-latest
 
 # Service Account

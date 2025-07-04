@@ -78,6 +78,7 @@ argocd-image-updater:
         ping: yes
         credentials: ext:/scripts/ecr-login.sh
         credsexpire: 10h
+        default: true
     # 로그 레벨
     logLevel: info
   # IRSA를 통한 ECR 인증 스크립트
@@ -86,4 +87,5 @@ argocd-image-updater:
     scripts:
       ecr-login.sh: |
         #!/bin/sh
-        aws ecr get-login-password --region ap-northeast-2
+        echo "AWS:$(aws ecr get-login-password --region ap-northeast-2)"
+
