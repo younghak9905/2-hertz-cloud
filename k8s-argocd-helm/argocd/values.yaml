@@ -89,3 +89,13 @@ argocd-image-updater:
         #!/bin/sh
         echo "AWS:$(aws ecr get-login-password --region ap-northeast-2)"
 
+# Application Git Settings
+applications:
+  git:
+    targetRevision: develop  # 기본 브랜치
+    # 환경별 브랜치 설정
+    branches:
+      dev: develop
+      staging: staging
+      prod: main
+

@@ -13,7 +13,7 @@ spec:
   project: tuning-dev
   source:
     repoURL: https://github.com/100-hours-a-week/2-hertz-cloud.git
-    targetRevision: develop
+    targetRevision: {{ .Values.applications.git.targetRevision }}
     path: k8s-argocd-helm/apps/backend
   destination:
     server: https://kubernetes.default.svc
@@ -22,3 +22,15 @@ spec:
     automated:
       prune: true
       selfHeal: true
+      allowEmpty: false
+    syncOptions:
+      - CreateNamespace=true
+      - PrunePropagationPolicy=foreground
+      - PruneLast=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m
+  revisionHistoryLimit: 10
