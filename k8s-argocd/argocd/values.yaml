@@ -1,0 +1,63 @@
+# ArgoCD Helm Chart Values for EKS (Port-forward access)
+
+## ArgoCD Server
+server:
+  # Service Account with IRSA for ECR access
+  serviceAccount:
+    create: true
+    name: argocd-server-sa
+    annotations:
+      eks.amazonaws.com/role-arn: "arn:aws:iam::969400486509:role/argocd-ecr-access-role"
+  
+  # Resources
+  resources:
+    requests:
+      cpu: 300m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+## Repository Server
+repoServer:
+  # Service Account with IRSA for ECR access
+  serviceAccount:
+    create: true
+    name: argocd-repo-server-sa
+    annotations:
+      eks.amazonaws.com/role-arn: "arn:aws:iam::969400486509:role/argocd-ecr-access-role"
+  
+  resources:
+    requests:
+      cpu: 300m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+## Application Controller
+controller:
+  # Service Account with IRSA for ECR access
+  serviceAccount:
+    create: true
+    name: argocd-application-controller-sa
+    annotations:
+      eks.amazonaws.com/role-arn: "arn:aws:iam::969400486509:role/argocd-ecr-access-role"
+  
+  resources:
+    requests:
+      cpu: 500m
+      memory: 512Mi
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+
+## Configs
+configs:
+  # Repository credentials for ECR
+  credentialTemplates:
+    ecr-creds:
+      url: 969400486509.dkr.ecr.ap-northeast-2.amazonaws.com
+      username: AWS
+      password: |
+        aws ecr get-login-password --region ap-northeast-2

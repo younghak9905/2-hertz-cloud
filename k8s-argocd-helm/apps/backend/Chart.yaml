@@ -1,0 +1,12 @@
+apiVersion: v2
+name: backend
+description: Spring Boot Backend Helm Chart
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+keywords:
+  - springboot
+  - backend
+  - java
+maintainers:
+  - name: hertz-team

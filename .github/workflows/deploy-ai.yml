@@ -46,12 +46,12 @@ jobs:
             echo "INSTANCE=${{ secrets.PROD_GCP_INSTANCE_AI }}" >> $GITHUB_ENV
             echo "PROJECT_ID=${{ secrets.PROD_GCP_PROJECT_ID }}" >> $GITHUB_ENV
             echo "ZONE=${{ secrets.PROD_GCP_ZONE_AI }}" >> $GITHUB_ENV
-          elif [[ "$BRANCH" == "main" && "$SERVICE" == "CHAT-REPORT" ]]; then
+          elif [[ "$SERVICE" == "chat-report" ]]; then
             echo "ENV=DEV" >> $GITHUB_ENV
             echo "HOST=${{ secrets.PROD_GCP_CHAT_REPORT }}" >> $GITHUB_ENV
             echo "INSTANCE=${{ secrets.PROD_INSTANCE_CHAT_REPORT }}" >> $GITHUB_ENV
             echo "PROJECT_ID=${{ secrets.PROD_GCP_PROJECT_ID }}" >> $GITHUB_ENV
-            echo "ZONE=${{ secrets.GCP_ZONE }} }}" >> $GITHUB_ENV
+            echo "ZONE=${{ secrets.GCP_ZONE }}" >> $GITHUB_ENV
           else
             echo "ENV=DEV" >> $GITHUB_ENV
             echo "HOST=${{ secrets.DEV_GCP_HOST_AI }}" >> $GITHUB_ENV
@@ -135,79 +135,80 @@ jobs:
         if: env.DEPLOY_TYPE == 'docker' && env.SERVICE == 'tuning-api'
         run: echo "ECR_REGISTRY=${{ steps.login-ecr.outputs.registry }}" >> $GITHUB_ENV
 
-      - name: Deploy via SSH
-        uses: appleboy/ssh-action@master
-        with:
-          host: ${{ env.HOST }}
-          username: ${{ secrets.SSH_USERNAME }}
-          key: ${{ secrets.SSH_PRIVATE_KEY }}
-          envs: AWS_REGION,ECR_REGISTRY
-
-          script: |
-
-            if [[ "${{ env.DEPLOY_TYPE }}" == "docker" && ${{ env.SERVICE }} == 'tuning-api' ]]; then
-
-              echo "🚀 Docker 배포 시작..."
-              cd /home/deploy
-              pm2 stop ecosystem.config.js || true
-              aws ecr get-login-password --region ${{ env.AWS_REGION }} | docker login --username AWS --password-stdin ${{ env.ECR_REGISTRY }}
-              sleep 5
-
-              docker compose --env-file .env up -d
-            elif [[ "${{ env.SERVICE }}" == "chat-report" ]]; then
-              echo "🚀 Docker 배포 시작..."
-              cd /home/deploy
-              ./ai_deploy.sh
-              sleep 5
-            else 
-              echo "🚀 PM2 배포 시작..."
-              cd /home/deploy
-              docker compose --env-file .env stop || true
-              sleep 10
-              pm2 restart ecosystem.config.js
-              chmod +x ai_deploy.sh
-              if [[ "${{ env.ROLLBACK }}" == "true" ]]; then
-                ./ai_deploy.sh --rollback
+      - name: AI 서버 헬스체크 (FastAPI Swagger docs)
+        run: |
+          echo "🔍 AI 서버 헬스체크 시작 (FastAPI Swagger docs)... 최대 5회 시도합니다."
+      
+          # SERVICE 환경변수에 따라 엔드포인트 분기
+          if [[ "$SERVICE" == "tuning-api" ]]; then
+            echo "🚀 tuning-api 헬스체크 (chromadb) 시작..."
+            for i in {1..5}; do
+              echo "⏱️ 시도 $i: http://$HOST:8000/api/v1/health/chromadb"
+              if curl -sf "http://$HOST:8000/api/v1/health/chromadb"; then
+                echo "✅ 헬스체크 성공 🎉"
+                exit 0
               else
-                ./ai_deploy.sh
+                echo "⚠️ 헬스체크 실패. 15초 후 재시도..."
+                sleep 15
               fi
-            fi
+            done
+      
+          else
+            echo "🚀 chat-report 헬스체크 (/docs) 시작..."
+            for i in {1..5}; do
+              echo "⏱️ 시도 $i: http://$HOST:8000/docs"
+              if curl -sf "http://$HOST:8000/docs"; then
+                echo "✅ 헬스체크 성공 🎉"
+                exit 0
+              else
+                echo "⚠️ 헬스체크 실패. 15초 후 재시도..."
+                sleep 15
+              fi
+            done
+          fi
+      
+          echo "❌ 5회 헬스체크 실패 - AI 서버가 정상 기동되지 않음"
+          exit 1
 
       - name: Wait for FastAPI to start
         run: |
           echo "🕒 FastAPI 서버 기동 대기 중..."
           sleep 15
 
-      - name: Health check AI server
+      - name: AI 서버 헬스체크 (FastAPI Swagger docs)
         run: |
-          echo "🔍 AI 서버 헬스체크 시작 (FastAPI Swagger docs)... 최대 5회 시도합니다."
-          if [[ "${{ env.SERVICE }}" == "tuning-api"]]; then
-              echo "🚀 Docker 배포 시작..."
+            echo "🔍 AI 서버 헬스체크 시작 (FastAPI Swagger docs)... 최대 5회 시도합니다."
+        
+            # 서비스 타입에 따라 헬스체크 엔드포인트 분기
+            if [[ "$SERVICE" == "tuning-api" ]]; then
+              echo "🚀 tuning-api 헬스체크 (chromadb) 시작..."
               for i in {1..5}; do
-              echo "⏱️ 시도 $i: http://${{ env.HOST }}:8000/api/v1/health/chromadb"
-                if curl -sf http://${{ env.HOST }}:8000/api/v1/health/chromadb; then
+                echo "⏱️ 시도 $i: http://$HOST:8000/api/v1/health/chromadb"
+                if curl -sf "http://$HOST:8000/api/v1/health/chromadb"; then
                   echo "✅ 헬스체크 성공 🎉"
                   exit 0
                 else
                   echo "⚠️ 헬스체크 실패. 15초 후 재시도..."
                   sleep 15
                 fi
-          else
+              done
+        
+            else
+              echo "🚀 chat-report 헬스체크 (/docs) 시작..."
               for i in {1..5}; do
-              echo "⏱️ 시도 $i: http://${{ env.HOST }}:8000/docs
-                if curl -sf http://${{ env.HOST }}:8000/docs; then
+                echo "⏱️ 시도 $i: http://$HOST:8000/docs"
+                if curl -sf "http://$HOST:8000/docs"; then
                   echo "✅ 헬스체크 성공 🎉"
                   exit 0
                 else
                   echo "⚠️ 헬스체크 실패. 15초 후 재시도..."
-                  sleep 
+                  sleep 15
                 fi
-            
-          fi
-          done
-
-          echo "❌ 5회 헬스체크 실패 - AI 서버가 정상 기동되지 않음"
-          exit 1
+              done
+            fi
+        
+            echo "❌ 5회 헬스체크 실패 - AI 서버가 정상 기동되지 않음"
+            exit 1
 
       - name: Send success notification
         if: success()

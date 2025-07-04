@@ -1,0 +1,82 @@
+name: Deploy by ECR Image Tag
+
+on:
+  workflow_dispatch:
+    inputs:
+      service:
+        description: 'Service name (backend/frontend)'
+        required: true
+        type: choice
+        options:
+          - backend
+          - frontend
+      image_tag:
+        description: 'ECR Image Tag (e.g., k8s-develop-abc1234)'
+        required: true
+        type: string
+      target_branch:
+        description: 'Target ArgoCD branch'
+        required: false
+        default: 'develop'
+        type: string
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate image tag
+        run: |
+          echo "🔍 Validating image tag: ${{ inputs.image_tag }}"
+          if [[ ! "${{ inputs.image_tag }}" =~ ^k8s-.+ ]]; then
+            echo "❌ Invalid image tag format. Expected: k8s-*"
+            exit 1
+          fi
+          
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+          
+      - name: Verify image exists in ECR
+        run: |
+          echo "🔍 Checking if image exists in ECR..."
+          REPOSITORY=tuning-${{ inputs.service == 'backend' && 'springboot' || 'nextjs' }}
+          aws ecr describe-images \
+            --repository-name $REPOSITORY \
+            --image-ids imageTag=${{ inputs.image_tag }} \
+            --region ap-northeast-2 || {
+            echo "❌ Image not found in ECR: ${{ inputs.image_tag }}"
+            exit 1
+          }
+          echo "✅ Image found in ECR"
+          
+      - name: Clone cloud repository
+        uses: actions/checkout@v3
+        with:
+          repository: 100-hours-a-week/2-hertz-cloud
+          token: ${{ secrets.TOKEN_GIHUB }}
+          ref: ${{ inputs.target_branch }}
+          path: cloud-repo
+          
+      - name: Update manifest
+        run: |
+          cd cloud-repo
+          sed -i "s/tag: .*/tag: ${{ inputs.image_tag }}/" k8s-argocd-helm/apps/${{ inputs.service }}/values.yaml
+          
+      - name: Commit and push
+        run: |
+          cd cloud-repo
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add k8s-argocd-helm/apps/${{ inputs.service }}/values.yaml
+          git commit -m "Deploy ${{ inputs.service }} with image ${{ inputs.image_tag }}"
+          git push
+          
+      - name: Notify deployment
+        run: |
+          curl -H "Content-Type: application/json" \
+               -X POST \
+               -d "{\"content\": \"🚀 [수동 배포] **${{ inputs.service }}**\\n> 이미지: ${{ inputs.image_tag }}\\n> 브랜치: ${{ inputs.target_branch }}\\n> ArgoCD 동기화 중...\"}" \
+               ${{ secrets.DISCORD_WEBHOOK_CICD_URL }}

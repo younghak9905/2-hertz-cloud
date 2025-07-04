@@ -89,3 +89,9 @@ terraform.rc
 
 .secrets
 
+# Shell scripts
+*.sh
+
+#######################################
+# Ignore EKS setting
+**/cluster-config.yaml

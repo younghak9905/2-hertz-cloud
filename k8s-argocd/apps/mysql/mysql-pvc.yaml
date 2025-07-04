@@ -1,0 +1,14 @@
+# mysql-pvc.yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: mysql-pvc
+  namespace: hertz-tuning-dev
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: mysql-ebs
+  resources:
+    requests:
+      storage: 50Gi
+

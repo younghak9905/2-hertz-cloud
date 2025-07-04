@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Values.app.name }}-svc
+  namespace: {{ .Values.global.namespace }}
+spec:
+  type: ClusterIP
+  selector:
+    app: {{ .Values.app.name }}
+  ports:
+    - name: http
+      port: 80
+      targetPort: {{ .Values.app.ports.http }}
+    - name: websocket
+      port: {{ .Values.app.ports.websocket }}
+      targetPort: {{ .Values.app.ports.websocket }}

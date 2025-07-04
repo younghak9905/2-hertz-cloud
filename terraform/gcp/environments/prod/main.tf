@@ -592,7 +592,7 @@ locals {
       source_tags  = ["backend","frontend"]
       target_tags  = ["websocket"]
       protocol     = "tcp"
-      ports        = ["9092"]
+      ports        = ["9100"]
     },
     {
       name         = "${var.env}-fw-backend-to-redis"
@@ -604,17 +604,19 @@ locals {
       protocol     = "tcp"
       ports        = ["6379"]
     },
-      {
-      name         = "${var.env}-fw-kafka-to-kafka"
-      direction    = "INGRESS"
-      priority     = 1000
-      description  = "Allow kafka to access kafka"
-      source_tags  = ["kafka"]
-      target_tags  = ["kafka"]
-      protocol     = "tcp"
-      ports        = ["9092"]
-    }
-    ,
+
+    {
+      name        = "${var.env}-fw-kafka-to-kafka"
+      direction   = "INGRESS"
+      priority    = 1000
+      description = "Allow Kafka access from  on ports 9092-9094"
+      # 허용할 소스 IP (싱글 IP라면 /32)
+      source_ranges = var.kafka_source_ranges
+      # 태그가 kafka 인 인스턴스에만 적용
+      target_tags   = ["backend","frontend"]
+      protocol      = "tcp"    
+      ports    = ["9092-9094"]
+    },
     {
       name         = "${var.env}-fw-kafka-to-redis"
       direction    = "INGRESS"
@@ -624,6 +626,20 @@ locals {
       target_tags  = ["redis"]
       protocol     = "tcp"
       ports        = ["6379"]
+    },
+
+    {
+      name          = "${var.env}-fw-to-websocket"
+      direction     = "INGRESS"
+      priority      = 1000
+      description   = "Allow GCP Health Checks (130.211.0.0/22, 35.191.0.0/16) to websocket on TCP:9100"
+      source_ranges = [
+        "130.211.0.0/22",
+        "35.191.0.0/16",
+      ]
+      target_tags   = ["websocket","backend"]
+      protocol      = "tcp"
+      ports         = ["9100"]
     }
    
    

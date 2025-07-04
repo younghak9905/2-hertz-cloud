@@ -1,0 +1,94 @@
+name: K8s Backend CI/CD with Rolling Update
+
+on:
+  pull_request:
+    types: [closed]
+    branches: [develop]
+    paths:
+      - 'hertz-be/**'
+  workflow_dispatch:
+
+jobs:
+  backend-ci:
+    if: github.event_name == 'workflow_dispatch' || github.event.pull_request.merged == true
+    runs-on: ubuntu-latest
+    outputs:
+      IMAGE_TAG: ${{ steps.build.outputs.IMAGE_TAG }}
+      SHORT_SHA: ${{ steps.build.outputs.SHORT_SHA }}
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Login to ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v1
+
+      - name: Build and push
+        id: build
+        run: |
+          BRANCH="${{ github.ref_name }}"
+          SHORT_SHA=$(echo "${{ github.sha }}" | cut -c1-7)
+          IMAGE_TAG="k8s-${BRANCH}-${SHORT_SHA}"
+          
+          ECR_REGISTRY=${{ steps.login-ecr.outputs.registry }}
+          REPOSITORY=tuning-springboot
+          
+          docker build -f hertz-be/Dockerfile -t $ECR_REGISTRY/$REPOSITORY:$IMAGE_TAG hertz-be/
+          docker tag $ECR_REGISTRY/$REPOSITORY:$IMAGE_TAG $ECR_REGISTRY/$REPOSITORY:k8s-develop-latest
+          docker push $ECR_REGISTRY/$REPOSITORY:$IMAGE_TAG
+          docker push $ECR_REGISTRY/$REPOSITORY:k8s-develop-latest
+          
+          echo "IMAGE_TAG=$IMAGE_TAG" >> $GITHUB_OUTPUT
+          echo "SHORT_SHA=$SHORT_SHA" >> $GITHUB_OUTPUT
+
+  deployment-monitor:
+    needs: backend-ci
+    runs-on: ubuntu-latest
+    steps:
+      - name: Wait for Image Updater
+        run: |
+          echo "⏳ ArgoCD Image Updater가 ECR 이미지를 감지할 때까지 대기..."
+          sleep 180
+
+      - name: Verify deployment
+        env:
+          AWS_REGION: ${{ secrets.AWS_REGION }}
+          EKS_CLUSTER: ${{ secrets.EKS_CLUSTER_NAME }}    # ex: tuning-eks
+        run: |
+          echo "🔑 kubeconfig 설정 중..."
+          aws eks update-kubeconfig \
+            --region "$AWS_REGION" \
+            --name "$EKS_CLUSTER"
+
+          echo "🚀 springboot-be 디플로이먼트 롤아웃 상태 확인..."
+          kubectl rollout status deployment/springboot-be \
+            -n hertz-tuning-dev \
+            --timeout=180s
+
+          echo "🔍 현재 파드 상태:"
+          kubectl get pods \
+            -l app=springboot-be \
+            -n hertz-tuning-dev \
+            -o wide
+
+      - name: Notify success
+        if: success()
+        run: |
+          curl -H "Content-Type: application/json" \
+               -X POST \
+               -d "{\"content\": \"✅ [K8s BE 롤링 배포 성공] **${{ github.ref_name }}**\\n> 이미지: ${{ needs.backend-ci.outputs.IMAGE_TAG }}\\n> Commit: ${{ needs.backend-ci.outputs.SHORT_SHA }}\"}" \
+               ${{ secrets.DISCORD_WEBHOOK_CICD_URL }}
+
+      - name: Notify failure
+        if: failure()
+        run: |
+          curl -H "Content-Type: application/json" \
+               -X POST \
+               -d "{\"content\": \"❌ [K8s BE 롤링 배포 실패] **${{ github.ref_name }}**\\n> Commit: ${{ needs.backend-ci.outputs.SHORT_SHA }}\"}" \
+               ${{ secrets.DISCORD_WEBHOOK_CICD_URL }}

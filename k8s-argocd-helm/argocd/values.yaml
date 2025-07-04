@@ -1,0 +1,101 @@
+# ArgoCD Helm Chart Values for EKS (Port-forward access)
+
+## ArgoCD Server
+server:
+  # Service Account with IRSA for ECR access
+  serviceAccount:
+    create: true
+    name: argocd-server-sa
+    annotations:
+      eks.amazonaws.com/role-arn: "arn:aws:iam::969400486509:role/argocd-ecr-access-role"
+  
+  # Resources
+  resources:
+    requests:
+      cpu: 300m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+## Repository Server
+repoServer:
+  # Service Account with IRSA for ECR access
+  serviceAccount:
+    create: true
+    name: argocd-repo-server-sa
+    annotations:
+      eks.amazonaws.com/role-arn: "arn:aws:iam::969400486509:role/argocd-ecr-access-role"
+  
+  resources:
+    requests:
+      cpu: 300m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+## Application Controller
+controller:
+  # Service Account with IRSA for ECR access
+  serviceAccount:
+    create: true
+    name: argocd-application-controller-sa
+    annotations:
+      eks.amazonaws.com/role-arn: "arn:aws:iam::969400486509:role/argocd-ecr-access-role"
+  
+  resources:
+    requests:
+      cpu: 500m
+      memory: 512Mi
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+
+## Configs
+configs:
+  # Repository credentials for ECR
+  credentialTemplates:
+    ecr-creds:
+      url: 969400486509.dkr.ecr.ap-northeast-2.amazonaws.com
+      username: AWS
+      password: |
+        aws ecr get-login-password --region ap-northeast-2
+
+## Image Updater
+argocd-image-updater:
+  enabled: true
+  serviceAccount:
+    create: false
+    name: ecr-access-sa
+  config:
+    applicationsAPIKind: kubernetes
+    # ECR 레지스트리 설정
+    registries:
+      - name: ecr
+        api_url: https://969400486509.dkr.ecr.ap-northeast-2.amazonaws.com
+        prefix: "969400486509.dkr.ecr.ap-northeast-2.amazonaws.com"
+        ping: yes
+        credentials: ext:/scripts/ecr-login.sh
+        credsexpire: 10h
+        default: true
+    # 로그 레벨
+    logLevel: info
+  # IRSA를 통한 ECR 인증 스크립트
+  authScripts:
+    enabled: true
+    scripts:
+      ecr-login.sh: |
+        #!/bin/sh
+        echo "AWS:$(aws ecr get-login-password --region ap-northeast-2)"
+
+# Application Git Settings
+applications:
+  git:
+    targetRevision: develop  # 기본 브랜치
+    # 환경별 브랜치 설정
+    branches:
+      dev: develop
+      staging: staging
+      prod: main
+

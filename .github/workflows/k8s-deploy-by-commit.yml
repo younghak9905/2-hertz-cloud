@@ -1,0 +1,160 @@
+name: Deploy by Backend Commit
+
+on:
+  workflow_dispatch:
+    inputs:
+      service:
+        description: 'Service name'
+        required: true
+        type: choice
+        options:
+          - backend
+          - frontend
+      commit_hash:
+        description: 'Backend commit hash (7 chars)'
+        required: true
+        type: string
+      source_branch:
+        description: 'Source branch where commit exists'
+        required: true
+        default: 'develop'
+        type: string
+      target_branch:
+        description: 'Target ArgoCD branch'
+        required: false
+        default: 'develop'
+        type: string
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate commit hash
+        run: |
+          echo "🔍 Validating commit hash: ${{ inputs.commit_hash }}"
+          if [[ ! "${{ inputs.commit_hash }}" =~ ^[a-f0-9]{7}$ ]]; then
+            echo "❌ Invalid commit hash format. Expected: 7 hex characters"
+            exit 1
+          fi
+          
+      - name: Clone backend repository
+        uses: actions/checkout@v3
+        with:
+          repository: 100-hours-a-week/2-hertz-backend
+          token: ${{ secrets.GITHUB_TOKEN }}
+          ref: ${{ inputs.source_branch }}
+          path: backend-repo
+          
+      - name: Verify commit exists
+        run: |
+          cd backend-repo
+          echo "🔍 Checking if commit exists..."
+          git log --oneline | grep "^${{ inputs.commit_hash }}" || {
+            echo "❌ Commit not found: ${{ inputs.commit_hash }}"
+            exit 1
+          }
+          echo "✅ Commit found"
+          
+      - name: Checkout specific commit
+        run: |
+          cd backend-repo
+          git checkout ${{ inputs.commit_hash }}
+          
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Login to ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v1
+      
+      - name: Set environment variables from SSM
+        run: |
+          load_param() {
+            VALUE=$(aws ssm get-parameter --name "$1" --with-decryption --query "Parameter.Value" --output text)
+            echo "::add-mask::$VALUE"
+            echo "$2=$VALUE" >> $GITHUB_ENV
+          }
+
+          load_secret_to_file() {
+            VALUE=$(aws ssm get-parameter --name "$1" --with-decryption --output json | jq -r .Parameter.Value)
+
+            echo "$VALUE" | while IFS= read -r line; do
+              echo "::add-mask::$line"
+            done
+
+            echo "$VALUE" > "$2"
+          }
+          BRANCH="${{ inputs.source_branch }}"
+          if [[ "$BRANCH" == "main" ]]; then
+            load_param "/global/k8s/nextjs/prod/NEXT_PUBLIC_API_BASE_URL" NEXT_PUBLIC_API_BASE_URL
+          else
+            load_param "/global/k8s/nextjs/dev/NEXT_PUBLIC_API_BASE_URL" NEXT_PUBLIC_API_BASE_URL
+          fi
+
+
+      - name: Build and push image
+        id: build
+        run: |
+          IMAGE_TAG="k8s-${{ inputs.source_branch }}-${{ inputs.commit_hash }}"
+          ECR_REGISTRY=${{ steps.login-ecr.outputs.registry }}
+          REPOSITORY=tuning-${{ inputs.service == 'backend' && 'springboot' || 'nextjs' }}
+          
+          if [[ "${{ inputs.service }}" == "backend" ]]; then
+            DOCKERFILE_PATH="hertz-be/Dockerfile"
+          else
+            DOCKERFILE_PATH="Dockerfile"
+          fi
+        
+          echo "🏗️ Building image: $IMAGE_TAG"
+          cd backend-repo
+          if [[ "${{ inputs.service }}" == "backend" ]]; then
+
+            docker build -f Dockerfile -t $ECR_REGISTRY/$REPOSITORY:$IMAGE_TAG .
+          else
+            
+          docker build \
+            --platform linux/amd64 \
+            --cache-from=type=registry,ref=$ECR_REGISTRY/$REPOSITORY:$ENV_TAG \
+            --cache-to=type=inline \
+            --build-arg NEXT_PUBLIC_API_BASE_URL=${{ env.NEXT_PUBLIC_API_BASE_URL }} \
+            -t $ECR_REGISTRY/$REPOSITORY:$IMAGE_TAG \
+            .
+          fi
+          
+
+          docker push $ECR_REGISTRY/$REPOSITORY:$IMAGE_TAG
+          
+          echo "IMAGE_TAG=$IMAGE_TAG" >> $GITHUB_OUTPUT
+          
+      - name: Clone cloud repository
+        uses: actions/checkout@v3
+        with:
+          repository: 100-hours-a-week/2-hertz-cloud
+          token: ${{ secrets.TOKEN_GIHUB }}
+          ref: ${{ inputs.target_branch }}
+          path: cloud-repo
+          
+      - name: Update manifest
+        run: |
+          cd cloud-repo
+          sed -i "s/tag: .*/tag: ${{ steps.build.outputs.IMAGE_TAG }}/" k8s-argocd-helm/apps/${{ inputs.service }}/values.yaml
+          
+      - name: Commit and push
+        run: |
+          cd cloud-repo
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add k8s-argocd-helm/apps/${{ inputs.service }}/values.yaml
+          git commit -m "Deploy ${{ inputs.service }} from commit ${{ inputs.commit_hash }}"
+          git push
+          
+      - name: Notify deployment
+        run: |
+          curl -H "Content-Type: application/json" \
+               -X POST \
+               -d "{\"content\": \"🚀 [커밋 기준 배포] **${{ inputs.service }}**\\n> 커밋: ${{ inputs.commit_hash }}\\n> 이미지: ${{ steps.build.outputs.IMAGE_TAG }}\\n> 소스 브랜치: ${{ inputs.source_branch }}\\n> 타겟 브랜치: ${{ inputs.target_branch }}\\n> ArgoCD 동기화 중...\"}" \
+               ${{ secrets.DISCORD_WEBHOOK_CICD_URL }}

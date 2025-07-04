@@ -29,11 +29,14 @@ resource "google_compute_url_map" "this" {
        paths = [
       "/ws",   # wss://…/ws
       "/ws/",  # wss://…/ws/
-      "/ws/*"  # wss://…/ws/anything
+      "/ws/*",
+      "/socket.io",   # wss://…/socket.io
+      "/socket.io/",  # wss://…/socket.io/
+      "/socket.io/*"
     ]
       route_action {
         url_rewrite {
-          path_prefix_rewrite = "/socket.io"
+          path_prefix_rewrite = "/socket.io/"
         }
       }
       service = var.websocket_service

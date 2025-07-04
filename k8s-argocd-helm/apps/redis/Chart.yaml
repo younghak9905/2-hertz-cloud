@@ -1,0 +1,12 @@
+apiVersion: v2
+name: redis
+description: Redis Cache Helm Chart
+type: application
+version: 0.1.0
+appVersion: "7.0"
+keywords:
+  - redis
+  - cache
+  - nosql
+maintainers:
+  - name: hertz-team
