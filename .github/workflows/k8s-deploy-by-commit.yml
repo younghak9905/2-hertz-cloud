@@ -29,13 +29,13 @@ jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
     steps:
-      - name: Validate commit hash
+      - name: Cut commit hash to 7 chars
         run: |
-          echo "🔍 Validating commit hash: ${{ inputs.commit_hash }}"
-          if [[ ! "${{ inputs.commit_hash }}" =~ ^[a-f0-9]{7}$ ]]; then
-            echo "❌ Invalid commit hash format. Expected: 7 hex characters"
-            exit 1
-          fi
+          FULL_HASH="${{ inputs.commit_hash }}"
+          # 앞 7글자만 잘라서 사용
+          SHORT_HASH="${FULL_HASH:0:7}"
+          echo "🔍 Using short commit hash: $SHORT_HASH"
+          echo "SHORT_HASH=$SHORT_HASH" >> $GITHUB_ENV
           
       - name: Clone backend repository
         if: ${{ inputs.service == 'backend' }}
