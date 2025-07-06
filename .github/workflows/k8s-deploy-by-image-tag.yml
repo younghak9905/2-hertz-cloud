@@ -62,24 +62,24 @@ jobs:
           
       - name: Check current image tag
         id: check-tag
+        working-directory: cloud-repo
         run: |
-          cd cloud-repo
           CURRENT_TAG=$(grep "tag:" k8s-argocd-helm/apps/${{ inputs.service }}/values.yaml | awk '{print $2}')
           echo "current_tag=$CURRENT_TAG" >> $GITHUB_OUTPUT
           echo "🔍 Current tag: $CURRENT_TAG"
           echo "🔍 Target tag: ${{ inputs.image_tag }}"
           
       - name: Update manifest
+        working-directory: cloud-repo
         run: |
-          cd cloud-repo
           if [ "${{ steps.check-tag.outputs.current_tag }}" = "${{ inputs.image_tag }}" ]; then
             echo "⚠️ Image tag is already ${{ inputs.image_tag }}. Forcing update..."
           fi
           sed -i "s/tag: .*/tag: ${{ inputs.image_tag }}/" k8s-argocd-helm/apps/${{ inputs.service }}/values.yaml
           
       - name: Commit and push
+        working-directory: cloud-repo
         run: |
-          cd cloud-repo
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
           git add k8s-argocd-helm/apps/${{ inputs.service }}/values.yaml

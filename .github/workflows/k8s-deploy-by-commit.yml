@@ -99,35 +99,31 @@ jobs:
       - name: Build and push image
         id: build
         run: |
-          IMAGE_TAG="k8s-${{ inputs.source_branch }}-${{ inputs.commit_hash }}"
+          # rollback 태그 형식으로 변경
+          IMAGE_TAG="k8s-${{ inputs.source_branch }}-rollback-${{ inputs.commit_hash }}"
           ECR_REGISTRY=${{ steps.login-ecr.outputs.registry }}
           REPOSITORY=tuning-${{ inputs.service == 'backend' && 'springboot' || 'nextjs' }}
           
           if [[ "${{ inputs.service }}" == "backend" ]]; then
             DOCKERFILE_PATH="hertz-be/Dockerfile"
+            cd backend-repo
+            echo "🏗️ Building backend image: $IMAGE_TAG"
+            docker build -f $DOCKERFILE_PATH -t $ECR_REGISTRY/$REPOSITORY:$IMAGE_TAG .
           else
-            DOCKERFILE_PATH="Dockerfile"
+            cd backend-repo
+            echo "🏗️ Building frontend image: $IMAGE_TAG"
+            docker build \
+              --platform linux/amd64 \
+              --cache-from=type=registry,ref=$ECR_REGISTRY/$REPOSITORY:$ENV_TAG \
+              --cache-to=type=inline \
+              --build-arg NEXT_PUBLIC_API_BASE_URL=${{ env.NEXT_PUBLIC_API_BASE_URL }} \
+              -t $ECR_REGISTRY/$REPOSITORY:$IMAGE_TAG \
+              -f Dockerfile \
+              .
           fi
-        
-          echo "🏗️ Building image: $IMAGE_TAG"
-          cd backend-repo
-          if [[ "${{ inputs.service }}" == "backend" ]]; then
 
-            docker build -f Dockerfile -t $ECR_REGISTRY/$REPOSITORY:$IMAGE_TAG .
-          else
-            
-          docker build \
-            --platform linux/amd64 \
-            --cache-from=type=registry,ref=$ECR_REGISTRY/$REPOSITORY:$ENV_TAG \
-            --cache-to=type=inline \
-            --build-arg NEXT_PUBLIC_API_BASE_URL=${{ env.NEXT_PUBLIC_API_BASE_URL }} \
-            -t $ECR_REGISTRY/$REPOSITORY:$IMAGE_TAG \
-            .
-          fi
-          
-
+          echo "▶ Pushing image to ECR: $ECR_REGISTRY/$REPOSITORY:$IMAGE_TAG"
           docker push $ECR_REGISTRY/$REPOSITORY:$IMAGE_TAG
-          
           echo "IMAGE_TAG=$IMAGE_TAG" >> $GITHUB_OUTPUT
           
       - name: Clone cloud repository
@@ -138,19 +134,19 @@ jobs:
           ref: ${{ inputs.target_branch }}
           path: cloud-repo
           
-      - name: Update manifest
-        run: |
-          cd cloud-repo
-          sed -i "s/tag: .*/tag: ${{ steps.build.outputs.IMAGE_TAG }}/" k8s-argocd-helm/apps/${{ inputs.service }}/values.yaml
-          
-      - name: Commit and push
-        run: |
-          cd cloud-repo
-          git config --local user.email "action@github.com"
-          git config --local user.name "GitHub Action"
-          git add k8s-argocd-helm/apps/${{ inputs.service }}/values.yaml
-          git commit -m "Deploy ${{ inputs.service }} from commit ${{ inputs.commit_hash }}"
-          git push
+     # - name: Update manifest
+     #   run: |
+     #     cd cloud-repo
+     #     sed -i "s/tag: .*/tag: ${{ steps.build.outputs.IMAGE_TAG }}/" k8s-argocd-helm/apps/${{ inputs.service }}/values.yaml
+     #    
+     # - name: Commit and push
+     #  run: |
+     #     cd cloud-repo
+     #   git config --local user.email "action@github.com"
+     #     git config --local user.name "GitHub Action"
+     #    git add k8s-argocd-helm/apps/${{ inputs.service }}/values.yaml
+     #     git commit -m "Deploy ${{ inputs.service }} from commit ${{ inputs.commit_hash }}"
+     #     git push
           
       - name: Notify deployment
         run: |
