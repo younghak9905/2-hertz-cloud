@@ -31,7 +31,7 @@ jobs:
     steps:
       - name: Cut commit hash to 7 chars
         run: |
-          FULL_HASH="${{ env.SHORT_HASH }}"
+          FULL_HASH="${{ inputs.commit_hash }}"
           # 앞 7글자만 잘라서 사용
           SHORT_HASH="${FULL_HASH:0:7}"
           echo "🔍 Using short commit hash: $SHORT_HASH"
