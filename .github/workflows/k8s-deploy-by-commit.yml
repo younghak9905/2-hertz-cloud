@@ -50,7 +50,7 @@ jobs:
         if: ${{ inputs.service == 'frontend' }}
         uses: actions/checkout@v3
         with:
-            repository: 100-hours-a-week/2-hertz-be
+            repository: 100-hours-a-week/2-hertz-fe
             token: ${{ secrets.GITHUB_TOKEN }}
             ref: ${{ inputs.source_branch }}
             path: cloud-repo
