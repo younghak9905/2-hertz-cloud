@@ -112,13 +112,12 @@ jobs:
           # rollback 태그 형식으로 변경
           IMAGE_TAG="k8s-${{ inputs.source_branch }}-rollback-${{ inputs.commit_hash }}"
           ECR_REGISTRY=${{ steps.login-ecr.outputs.registry }}
-          REPOSITORY=tuning-${{ inputs.service == 'backend' && 'springboot' || 'nextjs' }}
+          REPOSITORY="tuning-${{ inputs.service == 'backend' && 'springboot' || 'nextjs' }}"
           
           if [[ "${{ inputs.service }}" == "backend" ]]; then
-            DOCKERFILE_PATH="hertz-be/Dockerfile"
-            cd cloud-repo
+            cd cloud-repo/hertz-be
             echo "🏗️ Building backend image: $IMAGE_TAG"
-            docker build -f $DOCKERFILE_PATH -t $ECR_REGISTRY/$REPOSITORY:$IMAGE_TAG .
+            docker build -t $ECR_REGISTRY/$REPOSITORY:$IMAGE_TAG .
           else
             cd cloud-repo
             echo "🏗️ Building frontend image: $IMAGE_TAG"
@@ -136,13 +135,13 @@ jobs:
           docker push $ECR_REGISTRY/$REPOSITORY:$IMAGE_TAG
           echo "IMAGE_TAG=$IMAGE_TAG" >> $GITHUB_OUTPUT
           
-      - name: Clone cloud repository
-        uses: actions/checkout@v3
-        with:
-          repository: 100-hourbackends-a-week/2-hertz-cloud
-          token: ${{ secrets.TOKEN_GIHUB }}
-          ref: ${{ inputs.target_branch }}
-          path: cloud-repo
+     #- name: Clone cloud repository
+     #   uses: actions/checkout@v3
+     #  with:
+     #    repository: 100-hourbackends-a-week/2-hertz-cloud
+     #    token: ${{ secrets.TOKEN_GIHUB }}
+     #     ref: ${{ inputs.target_branch }}
+     #    path: cloud-repo
           
      # - name: Update manifest
      #   run: |
