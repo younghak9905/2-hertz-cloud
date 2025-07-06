@@ -99,11 +99,21 @@ jobs:
             echo "$VALUE" > "$2"
           }
           BRANCH="${{ inputs.source_branch }}"
-          if [[ "$BRANCH" == "main" ]]; then
-            load_param "/global/k8s/nextjs/prod/NEXT_PUBLIC_API_BASE_URL" NEXT_PUBLIC_API_BASE_URL
+          if [[ ${{inputs.service}} == 'backend' ]]; then
+            if [[ "$BRANCH" == "main" ]]; then
+              load_param "/global/k8s/springboot/prod/NEXT_PUBLIC_API_BASE_URL" NEXT_PUBLIC_API_BASE_URL
+            else
+              load_param "/global/k8s/springboot/dev/NEXT_PUBLIC_API_BASE_URL" NEXT_PUBLIC_API_BASE_URL
+            fi
           else
-            load_param "/global/k8s/nextjs/dev/NEXT_PUBLIC_API_BASE_URL" NEXT_PUBLIC_API_BASE_URL
+            if [[ "$BRANCH" == "main" ]]; then
+              load_param "/global/k8s/nextjs/prod/NEXT_PUBLIC_API_BASE_URL" NEXT_PUBLIC_API_BASE_URL
+            else
+              load_param "/global/k8s/nextjs/dev/NEXT_PUBLIC_API_BASE_URL" NEXT_PUBLIC_API_BASE_URL
+            fi
           fi
+
+          
 
 
       - name: Build and push image
