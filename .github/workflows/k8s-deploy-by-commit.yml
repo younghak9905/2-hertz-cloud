@@ -38,16 +38,26 @@ jobs:
           fi
           
       - name: Clone backend repository
+        if: ${{ inputs.service == 'backend' }}
         uses: actions/checkout@v3
         with:
-          repository: 100-hours-a-week/2-hertz-backend
+          repository: 100-hours-a-week/2-hertz-be
           token: ${{ secrets.GITHUB_TOKEN }}
           ref: ${{ inputs.source_branch }}
-          path: backend-repo
+          path: cloud-repo
+      
+      - name: Clone backend repository
+        if: ${{ inputs.service == 'frontend' }}
+        uses: actions/checkout@v3
+        with:
+            repository: 100-hours-a-week/2-hertz-be
+            token: ${{ secrets.GITHUB_TOKEN }}
+            ref: ${{ inputs.source_branch }}
+            path: cloud-repo
           
       - name: Verify commit exists
         run: |
-          cd backend-repo
+          cd cloud-repo
           echo "🔍 Checking if commit exists..."
           git log --oneline | grep "^${{ inputs.commit_hash }}" || {
             echo "❌ Commit not found: ${{ inputs.commit_hash }}"
@@ -57,7 +67,7 @@ jobs:
           
       - name: Checkout specific commit
         run: |
-          cd backend-repo
+          cd cloud-repo
           git checkout ${{ inputs.commit_hash }}
           
       - name: Configure AWS credentials
@@ -106,11 +116,11 @@ jobs:
           
           if [[ "${{ inputs.service }}" == "backend" ]]; then
             DOCKERFILE_PATH="hertz-be/Dockerfile"
-            cd backend-repo
+            cd cloud-repo
             echo "🏗️ Building backend image: $IMAGE_TAG"
             docker build -f $DOCKERFILE_PATH -t $ECR_REGISTRY/$REPOSITORY:$IMAGE_TAG .
           else
-            cd backend-repo
+            cd cloud-repo
             echo "🏗️ Building frontend image: $IMAGE_TAG"
             docker build \
               --platform linux/amd64 \
@@ -129,7 +139,7 @@ jobs:
       - name: Clone cloud repository
         uses: actions/checkout@v3
         with:
-          repository: 100-hours-a-week/2-hertz-cloud
+          repository: 100-hourbackends-a-week/2-hertz-cloud
           token: ${{ secrets.TOKEN_GIHUB }}
           ref: ${{ inputs.target_branch }}
           path: cloud-repo
