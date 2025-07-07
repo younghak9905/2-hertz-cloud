@@ -21,6 +21,20 @@ app:
     http: 8080
     websocket: 9100
 
+# Health Check settings
+healthCheck:
+  readiness:
+    initialDelaySeconds: 100
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 6
+    successThreshold: 1
+  liveness:
+    initialDelaySeconds: 150
+    periodSeconds: 30
+    timeoutSeconds: 10
+    failureThreshold: 3
+
 # Resources
 resources:
   requests:

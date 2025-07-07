@@ -9,6 +9,7 @@ on:
     paths-ignore:
       - .github/workflows/**
 
+
   workflow_dispatch:
     inputs:
       redirect_url:
@@ -18,6 +19,7 @@ on:
         type: choice
         options:
           - local
+          - dev
           - stage
 
 jobs:
@@ -284,14 +286,12 @@ jobs:
         if: env.ENV == 'STAGE'
         run: |
 
-          if [[ "${{ github.event_name }}" == 'workflow_dispatch' ]]; then
-            if [[ "${{ github.event.inputs.redirect_url }}" == "local" ]]; then
-              REDIRECT_URL="${{ secrets.REDIRECT_URL_LOCAL }}"
-            elif [[ "${{ github.event.inputs.redirect_url }}" == "stage" ]]; then
-              REDIRECT_URL="${{ secrets.REDIRECT_URL_APP }}"
-            else
-              REDIRECT_URL="${{ secrets.REDIRECT_URL_APP }}"
-            fi
+          if [[ "${{ github.event.inputs.redirect_url }}" == "local" ]]; then
+            REDIRECT_URL="${{ secrets.REDIRECT_URL_LOCAL }}"
+          elif [[ "${{ github.event.inputs.redirect_url }}" == "dev" ]]; then
+            REDIRECT_URL="${{ secrets.REDIRECT_URL_DEV }}"
+          elif [[ "${{ github.event.inputs.redirect_url }}" == "stage" ]]; then
+            REDIRECT_URL="${{ secrets.REDIRECT_URL_APP }}"
           else
             REDIRECT_URL="${{ secrets.REDIRECT_URL_APP }}"
           fi

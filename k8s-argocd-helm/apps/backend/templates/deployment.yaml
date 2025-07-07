@@ -6,6 +6,11 @@ metadata:
   annotations:
     reloader.stakater.com/auto: "true"
 spec:
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 25%
+      maxSurge: 25%
   selector:
     matchLabels:
       app: {{ .Values.app.name }}
@@ -59,6 +64,10 @@ spec:
               value: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
             - name: JAVA_TOOL_OPTIONS
               value: "-javaagent:/otel/opentelemetry-javaagent.jar"
+            - name: KAFKA_SSE_GROUP_ID
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
           volumeMounts:
             - name: otel-agent
               mountPath: /otel
@@ -69,15 +78,19 @@ spec:
             httpGet:
               path: /api/ping
               port: {{ .Values.app.ports.http }}
-            initialDelaySeconds: 20
-            periodSeconds: 10
-            failureThreshold: 6
+            initialDelaySeconds: {{ .Values.healthCheck.readiness.initialDelaySeconds }}
+            periodSeconds: {{ .Values.healthCheck.readiness.periodSeconds }}
+            timeoutSeconds: {{ .Values.healthCheck.readiness.timeoutSeconds }}
+            failureThreshold: {{ .Values.healthCheck.readiness.failureThreshold }}
+            successThreshold: {{ .Values.healthCheck.readiness.successThreshold }}
           livenessProbe:
             httpGet:
               path: /api/ping
               port: {{ .Values.app.ports.http }}
-            initialDelaySeconds: 30
-            periodSeconds: 30
+            initialDelaySeconds: {{ .Values.healthCheck.liveness.initialDelaySeconds }}
+            periodSeconds: {{ .Values.healthCheck.liveness.periodSeconds }}
+            timeoutSeconds: {{ .Values.healthCheck.liveness.timeoutSeconds }}
+            failureThreshold: {{ .Values.healthCheck.liveness.failureThreshold }}
           resources:
             requests:
               cpu: {{ .Values.resources.requests.cpu }}
