@@ -45,6 +45,7 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           ref: ${{ inputs.source_branch }}
           path: cloud-repo
+          fetch-depth: 0
       
       - name: Clone backend repository
         if: ${{ inputs.service == 'frontend' }}
@@ -54,6 +55,7 @@ jobs:
             token: ${{ secrets.GITHUB_TOKEN }}
             ref: ${{ inputs.source_branch }}
             path: cloud-repo
+            fetch-depth: 0
           
       - name: Verify commit exists
         run: |

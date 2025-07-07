@@ -136,7 +136,7 @@ jobs:
 
       - name: Notify deployment
         run: |
-          CURRENT_TAG="${{ steps.check-tag.outputs.current_tag }}"
+          CURRENT_TAG="${{ steps.check-tag.outputs.latest_tag }}"
           if [ "$CURRENT_TAG" = "${{ inputs.image_tag }}" ]; then
             MESSAGE="🔄 [수동 배포] **${{ inputs.service }}** 재배포\\n> 이미지: ${{ inputs.image_tag }} (동일)\\n> 브랜치: ${{ inputs.target_branch }}\\n> ArgoCD 수동 동기화 필요"
           else
