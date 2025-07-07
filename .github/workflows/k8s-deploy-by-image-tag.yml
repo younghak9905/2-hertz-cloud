@@ -31,18 +31,22 @@ jobs:
             echo "❌ Invalid image tag format. Expected: k8s-*"
             exit 1
           fi
-          
+
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v1
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_REGION }}
-          
+
+      - name: Login to ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v1
+
       - name: Verify image exists in ECR
         run: |
           echo "🔍 Checking if image exists in ECR..."
-          REPOSITORY=tuning-${{ inputs.service == 'backend' && 'springboot' || 'nextjs' }}
+          REPOSITORY="tuning-${{ inputs.service == 'backend' && 'springboot' || 'nextjs' }}"
           aws ecr describe-images \
             --repository-name $REPOSITORY \
             --image-ids imageTag=${{ inputs.image_tag }} \
@@ -51,7 +55,7 @@ jobs:
             exit 1
           }
           echo "✅ Image found in ECR"
-          
+
       - name: Clone cloud repository
         uses: actions/checkout@v3
         with:
@@ -59,24 +63,87 @@ jobs:
           token: ${{ secrets.TOKEN_GIHUB }}
           ref: ${{ inputs.target_branch }}
           path: cloud-repo
-          
-      - name: Update manifest
+
+      - name: Get latest k8s-* image tag from ECR
+        id: check-tag
         run: |
-          cd cloud-repo
-          sed -i "s/tag: .*/tag: ${{ inputs.image_tag }}/" k8s-argocd-helm/apps/${{ inputs.service }}/values.yaml
-          
-      - name: Commit and push
+            REPOSITORY="tuning-${{ inputs.service == 'backend' && 'springboot' || 'nextjs' }}"
+            REGION="ap-northeast-2"
+  
+            echo "🔍 Describing images for $REPOSITORY..."
+            IMAGES_JSON=$(aws ecr describe-images \
+              --repository-name "$REPOSITORY" \
+              --region "$REGION" \
+              --filter tagStatus=TAGGED \
+              --output json)
+  
+            echo "🔍 Looking for k8s-* tags..."
+            LATEST_TAG=$(echo "$IMAGES_JSON" \
+              | jq -r '
+                  .imageDetails[]
+                  | .imageTags[]? as $tag
+                  | select($tag | startswith("k8s-"))
+                  | "\(.imagePushedAt)\t\($tag)"
+                ' \
+              | sort \
+              | tail -n1 \
+              | cut -f2)
+  
+            if [ -z "$LATEST_TAG" ]; then
+              echo "⚠️ No k8s-* tags found, falling back to latest overall tag..."
+              LATEST_TAG=$(echo "$IMAGES_JSON" \
+                | jq -r '
+                    .imageDetails[]
+                    | .imageTags[]? as $tag
+                    | "\(.imagePushedAt)\t\($tag)"
+                  ' \
+                | sort \
+                | tail -n1 \
+                | cut -f2)
+            fi
+  
+            if [ -z "$LATEST_TAG" ]; then
+              echo "❌ No tags found at all in $REPOSITORY"
+              exit 1
+            fi
+  
+            echo "latest_tag=$LATEST_TAG" >> $GITHUB_OUTPUT
+            echo "✅ Selected tag: $LATEST_TAG"
+
+      - name: Pull existing image
         run: |
-          cd cloud-repo
-          git config --local user.email "action@github.com"
-          git config --local user.name "GitHub Action"
-          git add k8s-argocd-helm/apps/${{ inputs.service }}/values.yaml
-          git commit -m "Deploy ${{ inputs.service }} with image ${{ inputs.image_tag }}"
-          git push
-          
+          REPOSITORY="tuning-${{ inputs.service == 'backend' && 'springboot' || 'nextjs' }}"
+          IMAGE_TAG="${{ inputs.image_tag }}"
+          ECR_REGISTRY="${{ steps.login-ecr.outputs.registry }}"
+
+          echo "🔄 Pulling image: $ECR_REGISTRY/$REPOSITORY:$IMAGE_TAG"
+          docker pull "$ECR_REGISTRY/$REPOSITORY:$IMAGE_TAG"
+
+      - name: Tag and push image
+        run: |
+          REPOSITORY="tuning-${{ inputs.service == 'backend' && 'springboot' || 'nextjs' }}"
+          IMAGE_TAG="${{ inputs.image_tag }}"
+          ECR_REGISTRY="${{ steps.login-ecr.outputs.registry }}"
+
+          echo "🏷️ Tagging image as $ECR_REGISTRY/$REPOSITORY:$IMAGE_TAG"
+          docker tag "$ECR_REGISTRY/$REPOSITORY:$IMAGE_TAG" \
+                     "$ECR_REGISTRY/$REPOSITORY:$IMAGE_TAG"
+
+          echo "📤 Pushing to ECR: $ECR_REGISTRY/$REPOSITORY:$IMAGE_TAG"
+          docker push "$ECR_REGISTRY/$REPOSITORY:$IMAGE_TAG"
+
+          echo "✅ Image re-pushed with tag: $IMAGE_TAG"
+
       - name: Notify deployment
         run: |
+          CURRENT_TAG="${{ steps.check-tag.outputs.latest_tag }}"
+          if [ "$CURRENT_TAG" = "${{ inputs.image_tag }}" ]; then
+            MESSAGE="🔄 [수동 배포] **${{ inputs.service }}** 재배포\\n> 이미지: ${{ inputs.image_tag }} (동일)\\n> 브랜치: ${{ inputs.target_branch }}\\n> ArgoCD 수동 동기화 필요"
+          else
+            MESSAGE="🚀 [수동 배포] **${{ inputs.service }}**\\n> 이전: $CURRENT_TAG\\n> 이후: ${{ inputs.image_tag }}\\n> 브랜치: ${{ inputs.target_branch }}\\n> ArgoCD 동기화 중..."
+          fi
+
           curl -H "Content-Type: application/json" \
                -X POST \
-               -d "{\"content\": \"🚀 [수동 배포] **${{ inputs.service }}**\\n> 이미지: ${{ inputs.image_tag }}\\n> 브랜치: ${{ inputs.target_branch }}\\n> ArgoCD 동기화 중...\"}" \
+               -d "{\"content\": \"$MESSAGE\"}" \
                ${{ secrets.DISCORD_WEBHOOK_CICD_URL }}

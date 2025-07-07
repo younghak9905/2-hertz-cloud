@@ -112,7 +112,7 @@ jobs:
             CHECK_URL="http://${{ env.HOST }}:8080/api/ping"
           fi
 
-          for i in {1..10}; do
+          for i in {1..15}; do
             echo "⏱️ 시도 $i: $CHECK_URL"
             if curl -sf "$CHECK_URL"; then
               echo "✅ 헬스체크 성공 🎉"

@@ -29,36 +29,48 @@ jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
     steps:
-      - name: Validate commit hash
+      - name: Cut commit hash to 7 chars
         run: |
-          echo "🔍 Validating commit hash: ${{ inputs.commit_hash }}"
-          if [[ ! "${{ inputs.commit_hash }}" =~ ^[a-f0-9]{7}$ ]]; then
-            echo "❌ Invalid commit hash format. Expected: 7 hex characters"
-            exit 1
-          fi
+          FULL_HASH="${{ inputs.commit_hash }}"
+          # 앞 7글자만 잘라서 사용
+          SHORT_HASH="${FULL_HASH:0:7}"
+          echo "🔍 Using short commit hash: $SHORT_HASH"
+          echo "SHORT_HASH=$SHORT_HASH" >> $GITHUB_ENV
           
       - name: Clone backend repository
+        if: ${{ inputs.service == 'backend' }}
         uses: actions/checkout@v3
         with:
-          repository: 100-hours-a-week/2-hertz-backend
+          repository: 100-hours-a-week/2-hertz-be
           token: ${{ secrets.GITHUB_TOKEN }}
           ref: ${{ inputs.source_branch }}
-          path: backend-repo
+          path: cloud-repo
+          fetch-depth: 0
+      
+      - name: Clone backend repository
+        if: ${{ inputs.service == 'frontend' }}
+        uses: actions/checkout@v3
+        with:
+            repository: 100-hours-a-week/2-hertz-fe
+            token: ${{ secrets.GITHUB_TOKEN }}
+            ref: ${{ inputs.source_branch }}
+            path: cloud-repo
+            fetch-depth: 0
           
       - name: Verify commit exists
         run: |
-          cd backend-repo
+          cd cloud-repo
           echo "🔍 Checking if commit exists..."
-          git log --oneline | grep "^${{ inputs.commit_hash }}" || {
-            echo "❌ Commit not found: ${{ inputs.commit_hash }}"
+          git log --oneline | grep "^${{ env.SHORT_HASH }}" || {
+            echo "❌ Commit not found: ${{ env.SHORT_HASH }}"
             exit 1
           }
           echo "✅ Commit found"
           
       - name: Checkout specific commit
         run: |
-          cd backend-repo
-          git checkout ${{ inputs.commit_hash }}
+          cd cloud-repo
+          git checkout ${{ env.SHORT_HASH }}
           
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v1
@@ -89,72 +101,69 @@ jobs:
             echo "$VALUE" > "$2"
           }
           BRANCH="${{ inputs.source_branch }}"
-          if [[ "$BRANCH" == "main" ]]; then
-            load_param "/global/k8s/nextjs/prod/NEXT_PUBLIC_API_BASE_URL" NEXT_PUBLIC_API_BASE_URL
-          else
-            load_param "/global/k8s/nextjs/dev/NEXT_PUBLIC_API_BASE_URL" NEXT_PUBLIC_API_BASE_URL
+          if [[ ${{inputs.service}} == 'frontend' ]]; then
+            if [[ "$BRANCH" == "main" ]]; then
+              load_param "/global/k8s/nextjs/prod/NEXT_PUBLIC_API_BASE_URL" NEXT_PUBLIC_API_BASE_URL
+            else
+              load_param "/global/k8s/nextjs/dev/NEXT_PUBLIC_API_BASE_URL" NEXT_PUBLIC_API_BASE_URL
+            fi
           fi
 
 
       - name: Build and push image
         id: build
         run: |
-          IMAGE_TAG="k8s-${{ inputs.source_branch }}-${{ inputs.commit_hash }}"
+          # rollback 태그 형식으로 변경
+          IMAGE_TAG="k8s-${{ inputs.source_branch }}-rollback-${{ env.SHORT_HASH }}"
           ECR_REGISTRY=${{ steps.login-ecr.outputs.registry }}
-          REPOSITORY=tuning-${{ inputs.service == 'backend' && 'springboot' || 'nextjs' }}
+          REPOSITORY="tuning-${{ inputs.service == 'backend' && 'springboot' || 'nextjs' }}"
           
           if [[ "${{ inputs.service }}" == "backend" ]]; then
-            DOCKERFILE_PATH="hertz-be/Dockerfile"
+            cd cloud-repo/hertz-be
+            echo "🏗️ Building backend image: $IMAGE_TAG"
+            docker build -t $ECR_REGISTRY/$REPOSITORY:$IMAGE_TAG .
           else
-            DOCKERFILE_PATH="Dockerfile"
+            cd cloud-repo
+            echo "🏗️ Building frontend image: $IMAGE_TAG"
+            docker build \
+              --platform linux/amd64 \
+              --cache-from=type=registry,ref=$ECR_REGISTRY/$REPOSITORY:$ENV_TAG \
+              --cache-to=type=inline \
+              --build-arg NEXT_PUBLIC_API_BASE_URL=${{ env.NEXT_PUBLIC_API_BASE_URL }} \
+              -t $ECR_REGISTRY/$REPOSITORY:$IMAGE_TAG \
+              -f Dockerfile \
+              .
           fi
-        
-          echo "🏗️ Building image: $IMAGE_TAG"
-          cd backend-repo
-          if [[ "${{ inputs.service }}" == "backend" ]]; then
 
-            docker build -f Dockerfile -t $ECR_REGISTRY/$REPOSITORY:$IMAGE_TAG .
-          else
-            
-          docker build \
-            --platform linux/amd64 \
-            --cache-from=type=registry,ref=$ECR_REGISTRY/$REPOSITORY:$ENV_TAG \
-            --cache-to=type=inline \
-            --build-arg NEXT_PUBLIC_API_BASE_URL=${{ env.NEXT_PUBLIC_API_BASE_URL }} \
-            -t $ECR_REGISTRY/$REPOSITORY:$IMAGE_TAG \
-            .
-          fi
-          
-
+          echo "▶ Pushing image to ECR: $ECR_REGISTRY/$REPOSITORY:$IMAGE_TAG"
           docker push $ECR_REGISTRY/$REPOSITORY:$IMAGE_TAG
-          
           echo "IMAGE_TAG=$IMAGE_TAG" >> $GITHUB_OUTPUT
           
-      - name: Clone cloud repository
-        uses: actions/checkout@v3
-        with:
-          repository: 100-hours-a-week/2-hertz-cloud
-          token: ${{ secrets.TOKEN_GIHUB }}
-          ref: ${{ inputs.target_branch }}
-          path: cloud-repo
+     #- name: Clone cloud repository
+     #   uses: actions/checkout@v3
+     #  with:
+     #    repository: 100-hourbackends-a-week/2-hertz-cloud
+     #    token: ${{ secrets.TOKEN_GIHUB }}
+     #     ref: ${{ inputs.target_branch }}
+     #    path: cloud-repo
           
-      - name: Update manifest
-        run: |
-          cd cloud-repo
-          sed -i "s/tag: .*/tag: ${{ steps.build.outputs.IMAGE_TAG }}/" k8s-argocd-helm/apps/${{ inputs.service }}/values.yaml
-          
-      - name: Commit and push
-        run: |
-          cd cloud-repo
-          git config --local user.email "action@github.com"
-          git config --local user.name "GitHub Action"
-          git add k8s-argocd-helm/apps/${{ inputs.service }}/values.yaml
-          git commit -m "Deploy ${{ inputs.service }} from commit ${{ inputs.commit_hash }}"
-          git push
+     # - name: Update manifest
+     #   run: |
+     #     cd cloud-repo
+     #     sed -i "s/tag: .*/tag: ${{ steps.build.outputs.IMAGE_TAG }}/" k8s-argocd-helm/apps/${{ inputs.service }}/values.yaml
+     #    
+     # - name: Commit and push
+     #  run: |
+     #     cd cloud-repo
+     #   git config --local user.email "action@github.com"
+     #     git config --local user.name "GitHub Action"
+     #    git add k8s-argocd-helm/apps/${{ inputs.service }}/values.yaml
+     #     git commit -m "Deploy ${{ inputs.service }} from commit ${{ env.SHORT_HASH }}"
+     #     git push
           
       - name: Notify deployment
         run: |
           curl -H "Content-Type: application/json" \
                -X POST \
-               -d "{\"content\": \"🚀 [커밋 기준 배포] **${{ inputs.service }}**\\n> 커밋: ${{ inputs.commit_hash }}\\n> 이미지: ${{ steps.build.outputs.IMAGE_TAG }}\\n> 소스 브랜치: ${{ inputs.source_branch }}\\n> 타겟 브랜치: ${{ inputs.target_branch }}\\n> ArgoCD 동기화 중...\"}" \
+               -d "{\"content\": \"🚀 [커밋 기준 배포] **${{ inputs.service }}**\\n> 커밋: ${{ env.SHORT_HASH }}\\n> 이미지: ${{ steps.build.outputs.IMAGE_TAG }}\\n> 소스 브랜치: ${{ inputs.source_branch }}\\n> 타겟 브랜치: ${{ inputs.target_branch }}\\n> ArgoCD 동기화 중...\"}" \
                ${{ secrets.DISCORD_WEBHOOK_CICD_URL }}
