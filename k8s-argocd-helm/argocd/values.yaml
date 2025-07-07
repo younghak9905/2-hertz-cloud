@@ -92,10 +92,10 @@ argocd-image-updater:
 # Application Git Settings
 applications:
   git:
-    targetRevision: develop  # 기본 브랜치
+    targetRevision: feat/k8s-environment/prod  # 기본 브랜치
     # 환경별 브랜치 설정
     branches:
-      dev: develop
+      dev: feat/k8s-environment/prod
       staging: staging
       prod: main
 
