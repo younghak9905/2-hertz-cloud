@@ -8,6 +8,7 @@ on:
       - develop
     paths-ignore:
       - .github/workflows/cicd-backend.yml
+      - .github/workflows/k8s-backend-cicd.yml
 
   workflow_dispatch:
     inputs:
@@ -19,7 +20,7 @@ on:
         options:
           - local
           - dev
-          - app
+          - stage
 
 jobs:
   backend-ci:
@@ -285,7 +286,7 @@ jobs:
             REDIRECT_URL="${{ secrets.REDIRECT_URL_LOCAL }}"
           elif [[ "${{ github.event.inputs.redirect_url }}" == "dev" ]]; then
             REDIRECT_URL="${{ secrets.REDIRECT_URL_DEV }}"
-          elif [[ "${{ github.event.inputs.redirect_url }}" == "app" ]]; then
+          elif [[ "${{ github.event.inputs.redirect_url }}" == "stage" ]]; then
             REDIRECT_URL="${{ secrets.REDIRECT_URL_APP }}"
           else
             echo "[ERROR]Redirect URL을 선택해주세요."
