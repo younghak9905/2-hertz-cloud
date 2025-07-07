@@ -64,30 +64,45 @@ jobs:
           ref: ${{ inputs.target_branch }}
           path: cloud-repo
 
-      - name: Get latest image tag from ECR (k8s-* first, then fallback)
+      - name: Get latest k8s-* image tag from ECR
         id: check-tag
         run: |
             REPOSITORY="tuning-${{ inputs.service == 'backend' && 'springboot' || 'nextjs' }}"
             REGION="ap-northeast-2"
   
-            echo "🔍 Trying to fetch latest k8s-* tag for $REPOSITORY..."
-            LATEST_TAG=$(aws ecr describe-images \
+            echo "🔍 Describing images for $REPOSITORY..."
+            IMAGES_JSON=$(aws ecr describe-images \
               --repository-name "$REPOSITORY" \
               --region "$REGION" \
-              --filter "tagStatus=TAGGED","tagPrefixList=k8s" \
-              --query 'sort_by(imageDetails,& imagePushedAt)[-1].imageTags[0]' \
-              --output text)
+              --filter tagStatus=TAGGED \
+              --output json)
   
-            if [ -z "$LATEST_TAG" ] || [ "$LATEST_TAG" = "None" ]; then
-              echo "⚠️ No k8s-* tags found, fetching latest overall tag..."
-              LATEST_TAG=$(aws ecr describe-images \
-                --repository-name "$REPOSITORY" \
-                --region "$REGION" \
-                --query 'sort_by(imageDetails,& imagePushedAt)[-1].imageTags[0]' \
-                --output text)
+            echo "🔍 Looking for k8s-* tags..."
+            LATEST_TAG=$(echo "$IMAGES_JSON" \
+              | jq -r '
+                  .imageDetails[]
+                  | .imageTags[]? as $tag
+                  | select($tag | startswith("k8s-"))
+                  | "\(.imagePushedAt)\t\($tag)"
+                ' \
+              | sort \
+              | tail -n1 \
+              | cut -f2)
+  
+            if [ -z "$LATEST_TAG" ]; then
+              echo "⚠️ No k8s-* tags found, falling back to latest overall tag..."
+              LATEST_TAG=$(echo "$IMAGES_JSON" \
+                | jq -r '
+                    .imageDetails[]
+                    | .imageTags[]? as $tag
+                    | "\(.imagePushedAt)\t\($tag)"
+                  ' \
+                | sort \
+                | tail -n1 \
+                | cut -f2)
             fi
   
-            if [ -z "$LATEST_TAG" ] || [ "$LATEST_TAG" = "None" ]; then
+            if [ -z "$LATEST_TAG" ]; then
               echo "❌ No tags found at all in $REPOSITORY"
               exit 1
             fi
