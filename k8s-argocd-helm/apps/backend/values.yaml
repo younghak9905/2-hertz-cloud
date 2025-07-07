@@ -38,11 +38,11 @@ healthCheck:
 # Resources
 resources:
   requests:
-    cpu: 750m
-    memory: 1536Mi
+    cpu: 500m
+    memory: 512Mi
   limits:
-    cpu: 1500m
-    memory: 3072Mi
+    cpu: 1
+    memory: 1Gi
 
 # HPA settings
 hpa:
