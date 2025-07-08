@@ -121,8 +121,8 @@ jobs:
         env:
           DOCKER_BUILDKIT: 1
         run: |
-          # rollback 태그 형식으로 변경
-          IMAGE_TAG="k8s-${{ inputs.source_branch }}-rollback-${{ env.SHORT_HASH }}"
+         
+          IMAGE_TAG="k8s-${{ inputs.source_branch }}-${{ env.SHORT_HASH }}"
           ENV_TAG="${{ inputs.target_branch == 'main' && 'k8s-main-latest' || 'k8s-develop-latest' }}"
           ECR_REGISTRY=${{ steps.login-ecr.outputs.registry }}
           REPOSITORY="tuning-${{ inputs.service == 'backend' && 'springboot' || 'nextjs' }}"
@@ -152,27 +152,27 @@ jobs:
           docker push $ECR_REGISTRY/$REPOSITORY:$ENV_TAG
           echo "IMAGE_TAG=$IMAGE_TAG" >> $GITHUB_OUTPUT
           
-     #- name: Clone cloud repository
-     #   uses: actions/checkout@v3
-     #  with:
-     #    repository: 100-hourbackends-a-week/2-hertz-cloud
-     #    token: ${{ secrets.TOKEN_GIHUB }}
-     #     ref: ${{ inputs.target_branch }}
-     #    path: cloud-repo
+      - name: Clone cloud repository
+        uses: actions/checkout@v3
+        with:
+          repository: 100-hourbackends-a-week/2-hertz-cloud
+          token: ${{ secrets.TOKEN_GIHUB }}
+          ref: ${{ inputs.target_branch }}
+          path: cloud-repo
           
-     # - name: Update manifest
-     #   run: |
-     #     cd cloud-repo
-     #     sed -i "s/tag: .*/tag: ${{ steps.build.outputs.IMAGE_TAG }}/" k8s-argocd-helm/apps/${{ inputs.service }}/values.yaml
-     #    
-     # - name: Commit and push
-     #  run: |
-     #     cd cloud-repo
-     #   git config --local user.email "action@github.com"
-     #     git config --local user.name "GitHub Action"
-     #    git add k8s-argocd-helm/apps/${{ inputs.service }}/values.yaml
-     #     git commit -m "Deploy ${{ inputs.service }} from commit ${{ env.SHORT_HASH }}"
-     #     git push
+      - name: Update manifest
+        run: |
+          cd cloud-repo
+          sed -i "s/tag: .*/tag: ${{ steps.build.outputs.IMAGE_TAG }}/" k8s-argocd-helm/apps/${{ inputs.service }}/values.yaml
+         
+      - name: Commit and push
+        run: |
+          cd cloud-repo
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add k8s-argocd-helm/apps/${{ inputs.service }}/values.yaml
+          git commit -m "Deploy ${{ inputs.service }} from commit ${{ env.SHORT_HASH }}"
+          git push
           
       - name: Notify deployment
         run: |
