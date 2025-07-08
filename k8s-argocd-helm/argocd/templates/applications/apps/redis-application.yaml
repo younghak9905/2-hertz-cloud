@@ -3,11 +3,9 @@ kind: Application
 metadata:
   name: redis
   namespace: argocd
-  labels:
-    app.kubernetes.io/managed-by: Helm
   annotations:
-    meta.helm.sh/release-name: argocd
-    meta.helm.sh/release-namespace: argocd
+    "helm.sh/hook": post-install,post-upgrade
+    "helm.sh/hook-weight": "1"
     argocd.argoproj.io/sync-wave: "1"
 spec:
   project: tuning-dev

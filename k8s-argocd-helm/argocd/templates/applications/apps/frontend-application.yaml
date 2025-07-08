@@ -3,11 +3,9 @@ kind: Application
 metadata:
   name: frontend
   namespace: argocd
-  labels:
-    app.kubernetes.io/managed-by: Helm
   annotations:
-    meta.helm.sh/release-name: argocd
-    meta.helm.sh/release-namespace: argocd
+    "helm.sh/hook": post-install,post-upgrade
+    "helm.sh/hook-weight": "3"
     argocd.argoproj.io/sync-wave: "3"
     argocd-image-updater.argoproj.io/image-list: frontend=969400486509.dkr.ecr.ap-northeast-2.amazonaws.com/tuning-nextjs
     argocd-image-updater.argoproj.io/frontend.update-strategy: latest
