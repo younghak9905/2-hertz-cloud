@@ -1,17 +1,20 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: secrets
+  name: redis-dev
   namespace: argocd
   annotations:
     "helm.sh/hook": post-install,post-upgrade
-    argocd.argoproj.io/sync-wave: "0"
+    argocd.argoproj.io/sync-wave: "1"
 spec:
   project: tuning-dev
   source:
     repoURL: https://github.com/100-hours-a-week/2-hertz-cloud.git
     targetRevision: {{ .Values.applications.git.targetRevision }}
-    path: k8s-argocd-helm/infrastructure/secrets
+    path: k8s-argocd-helm/apps/redis
+    helm:
+      valueFiles:
+        - values-dev.yaml
   destination:
     server: https://kubernetes.default.svc
     namespace: hertz-tuning-dev

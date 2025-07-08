@@ -1,0 +1,59 @@
+# Prod Environment Settings
+global:
+  namespace: hertz-tuning-prod
+  region: ap-northeast-2
+  accountId: "969400486509"
+  environment: prod
+
+image:
+  repository: 969400486509.dkr.ecr.ap-northeast-2.amazonaws.com/tuning-springboot
+  tag: k8s-main-latest
+
+serviceAccount:
+  ecrAccess: ecr-access-sa
+
+app:
+  name: springboot-be-prod
+  ports:
+    http: 8080
+    websocket: 9100
+
+healthCheck:
+  readiness:
+    initialDelaySeconds: 100
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 6
+    successThreshold: 1
+  liveness:
+    initialDelaySeconds: 150
+    periodSeconds: 30
+    timeoutSeconds: 10
+    failureThreshold: 3
+
+resources:
+  requests:
+    cpu: 750m
+    memory: 1536Mi
+  limits:
+    cpu: 1500m
+    memory: 3072Mi
+
+hpa:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 5
+  targetCPU: 60
+  targetMemory: 70
+  scaleUp:
+    stabilizationWindowSeconds: 30
+    percent: 100
+    periodSeconds: 15
+  scaleDown:
+    stabilizationWindowSeconds: 300
+    percent: 20
+    periodSeconds: 60
+
+observability:
+  signoz:
+    endpoint: "http://cloud.hertz-tuning.com:4317"

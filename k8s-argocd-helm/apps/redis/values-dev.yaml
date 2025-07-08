@@ -2,6 +2,7 @@
 global:
   namespace: hertz-tuning-dev
   region: ap-northeast-2
+  accountId: "969400486509"
   environment: dev
 
 # Image settings

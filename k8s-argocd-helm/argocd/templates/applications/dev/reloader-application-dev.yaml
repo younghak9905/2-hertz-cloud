@@ -1,20 +1,20 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: frontend
+  name: reloader-dev
   namespace: argocd
   annotations:
     "helm.sh/hook": post-install,post-upgrade
-    argocd.argoproj.io/sync-wave: "3"
-    argocd-image-updater.argoproj.io/image-list: frontend=969400486509.dkr.ecr.ap-northeast-2.amazonaws.com/tuning-nextjs
-    argocd-image-updater.argoproj.io/frontend.update-strategy: latest
-    argocd-image-updater.argoproj.io/frontend.allow-tags: regexp:^k8s-develop-.*$
+    argocd.argoproj.io/sync-wave: "0"
 spec:
   project: tuning-dev
   source:
     repoURL: https://github.com/100-hours-a-week/2-hertz-cloud.git
     targetRevision: {{ .Values.applications.git.targetRevision }}
-    path: k8s-argocd-helm/apps/frontend
+    path: k8s-argocd-helm/infrastructure/reloader
+    helm:
+      valueFiles:
+        - values-dev.yaml
   destination:
     server: https://kubernetes.default.svc
     namespace: hertz-tuning-dev

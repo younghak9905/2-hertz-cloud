@@ -1,0 +1,14 @@
+# Global settings
+global:
+  namespace: hertz-tuning-prod
+
+# Application names
+apps:
+  backend: springboot-be
+  mysql: mysql
+  redis: redis
+
+# Ports
+ports:
+  mysql: 3306
+  redis: 6379

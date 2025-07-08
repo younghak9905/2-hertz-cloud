@@ -1,20 +1,23 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: kafka
+  name: redis-prod
   namespace: argocd
   annotations:
     "helm.sh/hook": post-install,post-upgrade
     argocd.argoproj.io/sync-wave: "1"
 spec:
-  project: tuning-dev
+  project: tuning-prod
   source:
     repoURL: https://github.com/100-hours-a-week/2-hertz-cloud.git
-    targetRevision: {{ .Values.applications.git.targetRevision }}
-    path: k8s-argocd-helm/apps/kafka
+    targetRevision: main
+    path: k8s-argocd-helm/apps/redis
+    helm:
+      valueFiles:
+        - values-prod.yaml
   destination:
     server: https://kubernetes.default.svc
-    namespace: hertz-tuning-dev
+    namespace: hertz-tuning-prod
   syncPolicy:
     automated:
       prune: true

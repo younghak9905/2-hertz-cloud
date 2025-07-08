@@ -1,0 +1,44 @@
+# Prod Environment Settings
+global:
+  namespace: hertz-tuning-prod
+  region: ap-northeast-2
+  accountId: "969400486509"
+  environment: prod
+
+image:
+  repository: 969400486509.dkr.ecr.ap-northeast-2.amazonaws.com/tuning-nextjs
+  tag: k8s-main-latest
+
+serviceAccount:
+  ecrAccess: ecr-access-sa
+
+app:
+  name: nextjs-fe
+  port: 3000
+
+resources:
+  requests:
+    cpu: 300m
+    memory: 200Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+hpa:
+  enabled: true
+  minReplicas: 2
+  maxReplicas: 4
+  targetCPU: 60
+  targetMemory: 70
+  scaleUp:
+    stabilizationWindowSeconds: 30
+    percent: 100
+    periodSeconds: 15
+  scaleDown:
+    stabilizationWindowSeconds: 180
+    percent: 20
+    periodSeconds: 60
+
+observability:
+  signoz:
+    endpoint: "http://signoz-otel-collector.observability.svc.cluster.local:4318"

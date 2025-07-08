@@ -1,27 +1,23 @@
-# Global settings
+# Dev Environment Settings
 global:
   namespace: hertz-tuning-dev
   region: ap-northeast-2
   accountId: "969400486509"
   environment: dev
 
-# Image settings
 image:
   repository: 969400486509.dkr.ecr.ap-northeast-2.amazonaws.com/tuning-springboot
   tag: k8s-develop-latest
 
-# Service Account
 serviceAccount:
   ecrAccess: ecr-access-sa
 
-# Application settings
 app:
-  name: springboot-be
+  name: springboot-be-dev
   ports:
     http: 8080
     websocket: 9100
 
-# Health Check settings
 healthCheck:
   readiness:
     initialDelaySeconds: 100
@@ -35,7 +31,6 @@ healthCheck:
     timeoutSeconds: 10
     failureThreshold: 3
 
-# Resources
 resources:
   requests:
     cpu: 750m
@@ -44,7 +39,6 @@ resources:
     cpu: 1500m
     memory: 3072Mi
 
-# HPA settings
 hpa:
   enabled: true
   minReplicas: 1
@@ -60,8 +54,6 @@ hpa:
     percent: 10
     periodSeconds: 60
 
-# Observability
 observability:
   signoz:
-    # endpoint: "http://signoz-otel-collector.observability.svc.cluster.local:4318"
     endpoint: "http://cloud.hertz-tuning.com:4317"
