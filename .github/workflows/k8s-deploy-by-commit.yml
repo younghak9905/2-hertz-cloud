@@ -1,0 +1,182 @@
+name: Deploy by Backend Commit
+
+on:
+  workflow_dispatch:
+    inputs:
+      service:
+        description: 'Service name'
+        required: true
+        type: choice
+        options:
+          - backend
+          - frontend
+      commit_hash:
+        description: 'Backend commit hash (7 chars)'
+        required: true
+        type: string
+      source_branch:
+        description: 'Source branch where commit exists'
+        required: true
+        default: 'develop'
+        type: string
+      target_branch:
+        description: 'Target ArgoCD branch'
+        required: false
+        default: 'develop'
+        type: string
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Cut commit hash to 7 chars
+        run: |
+          FULL_HASH="${{ inputs.commit_hash }}"
+          # 앞 7글자만 잘라서 사용
+          SHORT_HASH="${FULL_HASH:0:7}"
+          echo "🔍 Using short commit hash: $SHORT_HASH"
+          echo "SHORT_HASH=$SHORT_HASH" >> $GITHUB_ENV
+          
+      - name: Clone backend repository
+        if: ${{ inputs.service == 'backend' }}
+        uses: actions/checkout@v3
+        with:
+          repository: 100-hours-a-week/2-hertz-be
+          token: ${{ secrets.GITHUB_TOKEN }}
+          ref: ${{ inputs.source_branch }}
+          path: cloud-repo
+          fetch-depth: 0
+      
+      - name: Clone backend repository
+        if: ${{ inputs.service == 'frontend' }}
+        uses: actions/checkout@v3
+        with:
+            repository: 100-hours-a-week/2-hertz-fe
+            token: ${{ secrets.GITHUB_TOKEN }}
+            ref: ${{ inputs.source_branch }}
+            path: cloud-repo
+            fetch-depth: 0
+          
+      - name: Verify commit exists
+        run: |
+          cd cloud-repo
+          echo "🔍 Checking if commit exists..."
+          git log --oneline | grep "^${{ env.SHORT_HASH }}" || {
+            echo "❌ Commit not found: ${{ env.SHORT_HASH }}"
+            exit 1
+          }
+          echo "✅ Commit found"
+          
+      - name: Checkout specific commit
+        run: |
+          cd cloud-repo
+          git checkout ${{ env.SHORT_HASH }}
+          
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Login to ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v1
+      
+      - name: Set environment variables from SSM
+        run: |
+          load_param() {
+            VALUE=$(aws ssm get-parameter --name "$1" --with-decryption --query "Parameter.Value" --output text)
+            echo "::add-mask::$VALUE"
+            echo "$2=$VALUE" >> $GITHUB_ENV
+          }
+
+          load_secret_to_file() {
+            VALUE=$(aws ssm get-parameter --name "$1" --with-decryption --output json | jq -r .Parameter.Value)
+
+            echo "$VALUE" | while IFS= read -r line; do
+              echo "::add-mask::$line"
+            done
+
+            echo "$VALUE" > "$2"
+          }
+          BRANCH="${{ inputs.source_branch }}"
+          if [[ ${{inputs.service}} == 'frontend' ]]; then
+            if [[ "$BRANCH" == "main" ]]; then
+              load_param "/global/k8s/nextjs/prod/NEXT_PUBLIC_API_BASE_URL" NEXT_PUBLIC_API_BASE_URL
+              load_param "/global/k8s/nextjs/prod/NEXT_PUBLIC_WEBSOCKET_URL" NEXT_PUBLIC_WEBSOCKET_URL
+              load_param "/global/k8s/nextjs/prod/NEXT_PUBLIC_KAKAOTECH_INVITATION_CODE" NEXT_PUBLIC_KAKAOTECH_INVITATION_CODE
+              load_param "/global/k8s/nextjs/prod/NEXT_PUBLIC_GUEST_INVITATION_CODE" NEXT_PUBLIC_GUEST_INVITATION_CODE
+            else
+              load_param "/global/k8s/nextjs/dev/NEXT_PUBLIC_API_BASE_URL" NEXT_PUBLIC_API_BASE_URL
+              load_param "/global/k8s/nextjs/dev/NEXT_PUBLIC_WEBSOCKET_URL" NEXT_PUBLIC_WEBSOCKET_URL
+              load_param "/global/k8s/nextjs/dev/NEXT_PUBLIC_KAKAOTECH_INVITATION_CODE" NEXT_PUBLIC_KAKAOTECH_INVITATION_CODE
+              load_param "/global/k8s/nextjs/dev/NEXT_PUBLIC_GUEST_INVITATION_CODE" NEXT_PUBLIC_GUEST_INVITATION_CODE
+            fi
+          fi
+
+
+      - name: Build and push image
+        id: build
+        env:
+          DOCKER_BUILDKIT: 1
+        run: |
+          # rollback 태그 형식으로 변경
+          IMAGE_TAG="k8s-${{ inputs.source_branch }}-rollback-${{ env.SHORT_HASH }}"
+          ENV_TAG="${{ inputs.target_branch == 'main' && 'k8s-main-latest' || 'k8s-develop-latest' }}"
+          ECR_REGISTRY=${{ steps.login-ecr.outputs.registry }}
+          REPOSITORY="tuning-${{ inputs.service == 'backend' && 'springboot' || 'nextjs' }}"
+          
+          if [[ "${{ inputs.service }}" == "backend" ]]; then
+            cd cloud-repo/hertz-be
+            echo "🏗️ Building backend image: $IMAGE_TAG"
+            docker build -t $ECR_REGISTRY/$REPOSITORY:$IMAGE_TAG .
+          else
+            cd cloud-repo
+            echo "🏗️ Building frontend image: $IMAGE_TAG"
+            docker build \
+              --platform linux/amd64 \
+              --cache-from=type=registry,ref=$ECR_REGISTRY/$REPOSITORY:$ENV_TAG \
+              --cache-to=type=inline \
+              --build-arg NEXT_PUBLIC_API_BASE_URL=${{ env.NEXT_PUBLIC_API_BASE_URL }} \
+              --build-arg NEXT_PUBLIC_WEBSOCKET_URL=${{ env.NEXT_PUBLIC_WEBSOCKET_URL }} \
+              --build-arg NEXT_PUBLIC_KAKAOTECH_INVITATION_CODE=${{ env.NEXT_PUBLIC_KAKAOTECH_INVITATION_CODE }} \
+              --build-arg NEXT_PUBLIC_GUEST_INVITATION_CODE=${{ env.NEXT_PUBLIC_GUEST_INVITATION_CODE }} \
+              -t $ECR_REGISTRY/$REPOSITORY:$IMAGE_TAG \
+              -f Dockerfile \
+              .
+          fi
+          docker tag $ECR_REGISTRY/$REPOSITORY:$IMAGE_TAG $ECR_REGISTRY/$REPOSITORY:$ENV_TAG
+          echo "▶ Pushing image to ECR: $ECR_REGISTRY/$REPOSITORY:$IMAGE_TAG"
+          docker push $ECR_REGISTRY/$REPOSITORY:$IMAGE_TAG
+          docker pyush $ECR_REGISTRY/$REPOSITORY:$ENV_TAG
+          echo "IMAGE_TAG=$IMAGE_TAG" >> $GITHUB_OUTPUT
+          
+     #- name: Clone cloud repository
+     #   uses: actions/checkout@v3
+     #  with:
+     #    repository: 100-hourbackends-a-week/2-hertz-cloud
+     #    token: ${{ secrets.TOKEN_GIHUB }}
+     #     ref: ${{ inputs.target_branch }}
+     #    path: cloud-repo
+          
+     # - name: Update manifest
+     #   run: |
+     #     cd cloud-repo
+     #     sed -i "s/tag: .*/tag: ${{ steps.build.outputs.IMAGE_TAG }}/" k8s-argocd-helm/apps/${{ inputs.service }}/values.yaml
+     #    
+     # - name: Commit and push
+     #  run: |
+     #     cd cloud-repo
+     #   git config --local user.email "action@github.com"
+     #     git config --local user.name "GitHub Action"
+     #    git add k8s-argocd-helm/apps/${{ inputs.service }}/values.yaml
+     #     git commit -m "Deploy ${{ inputs.service }} from commit ${{ env.SHORT_HASH }}"
+     #     git push
+          
+      - name: Notify deployment
+        run: |
+          curl -H "Content-Type: application/json" \
+               -X POST \
+               -d "{\"content\": \"🚀 [커밋 기준 배포] **${{ inputs.service }}**\\n> 커밋: ${{ env.SHORT_HASH }}\\n> 이미지: ${{ steps.build.outputs.IMAGE_TAG }}\\n> 소스 브랜치: ${{ inputs.source_branch }}\\n> 타겟 브랜치: ${{ inputs.target_branch }}\\n> ArgoCD 동기화 중...\"}" \
+               ${{ secrets.DISCORD_WEBHOOK_CICD_URL }}

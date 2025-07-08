@@ -1,0 +1,21 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: alb
+  namespace: argocd
+  annotations:
+    "helm.sh/hook": post-install,post-upgrade
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  project: tuning-dev
+  source:
+    repoURL: https://github.com/100-hours-a-week/2-hertz-cloud.git
+    targetRevision: {{ .Values.applications.git.targetRevision }}
+    path: k8s-argocd-helm/infrastructure/alb
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: hertz-tuning-dev
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true

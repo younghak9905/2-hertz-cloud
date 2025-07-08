@@ -53,7 +53,7 @@ jobs:
               echo "PROJECT_ID=${{ env.PROJECT_ID_GPU }}" >> $GITHUB_ENV
               echo "INSTANCE=${{ env.PROD_INSTANCE_GPU }}" >> $GITHUB_ENV
               echo "ZONE=${{ env.ZONE }}" >> $GITHUB_ENV
-            elif "$TARGET" == "CHAT-REPORT" ]]; then
+            elif [[ "$TARGET" == "CHAT-REPORT" ]]; then
               echo "PROJECT_ID=${{ env.PROJECT_ID_CHAT_REPORT }}" >> $GITHUB_ENV
               echo "INSTANCE=${{ env.PROD_INSTANCE_CHAT_REPORT }}" >> $GITHUB_ENV
               echo "ZONE=${{ env.ZONE }}" >> $GITHUB_ENV
@@ -71,7 +71,7 @@ jobs:
               echo "PROJECT_ID=${{ env.PROJECT_ID_GPU }}" >> $GITHUB_ENV
               echo "INSTANCE=${{ env.PROD_INSTANCE_GPU }}" >> $GITHUB_ENV
               echo "ZONE=${{ env.ZONE }}" >> $GITHUB_ENV
-            elif "$TARGET" == "CHAT-REPORT" ]]; then
+            elif [[ "$TARGET" == "CHAT-REPORT" ]]; then
               echo "PROJECT_ID=${{ env.PROJECT_ID_CHAT_REPORT }}" >> $GITHUB_ENV
               echo "INSTANCE=${{ env.PROD_INSTANCE_CHAT_REPORT }}" >> $GITHUB_ENV
               echo "ZONE=${{ env.ZONE }}" >> $GITHUB_ENV

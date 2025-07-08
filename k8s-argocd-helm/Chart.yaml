@@ -1,0 +1,53 @@
+apiVersion: v2
+name: hertz-tuning-umbrella
+description: Umbrella Helm chart for Hertz Tuning application stack
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+keywords:
+  - umbrella
+  - microservices
+  - hertz-tuning
+maintainers:
+  - name: hertz-team
+dependencies:
+  - name: backend
+    version: "0.1.0"
+    repository: "file://apps/backend"
+    condition: apps.backend.enabled
+  - name: frontend
+    version: "0.1.0"
+    repository: "file://apps/frontend"
+    condition: apps.frontend.enabled
+  - name: mysql
+    version: "0.1.0"
+    repository: "file://apps/mysql"
+    condition: apps.mysql.enabled
+  - name: kafka
+    version: "0.1.0"
+    repository: "file://apps/kafka"
+    condition: apps.kafka.enabled
+  - name: redis
+    version: "0.1.0"
+    repository: "file://apps/redis"
+    condition: apps.redis.enabled
+  - name: signoz
+    version: "0.1.0"
+    repository: "file://apps/signoz"
+    condition: apps.signoz.enabled
+  - name: alb
+    version: "0.1.0"
+    repository: "file://infrastructure/alb"
+    condition: infrastructure.alb.enabled
+  - name: network
+    version: "0.1.0"
+    repository: "file://infrastructure/network"
+    condition: infrastructure.network.enabled
+  - name: secrets
+    version: "0.1.0"
+    repository: "file://infrastructure/secrets"
+    condition: infrastructure.secrets.enabled
+  - name: reloader
+    version: "0.1.0"
+    repository: "file://infrastructure/reloader"
+    condition: infrastructure.reloader.enabled

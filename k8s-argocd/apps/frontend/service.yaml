@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: nextjs-fe-svc
+  namespace: hertz-tuning-dev
+spec:
+  type: ClusterIP
+  selector:
+    app: nextjs-fe
+  ports:
+    - name: http
+      port: 80
+      targetPort: 3000

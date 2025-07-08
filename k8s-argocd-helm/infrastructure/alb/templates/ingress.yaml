@@ -1,0 +1,47 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: tuning-alb-ingress
+  namespace: {{ .Values.global.namespace }}
+  annotations:
+    kubernetes.io/ingress.class: {{ .Values.ingress.className }}
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/target-type: ip
+    alb.ingress.kubernetes.io/backend-protocol: HTTP
+    alb.ingress.kubernetes.io/healthcheck-timeout-seconds: "5"
+    alb.ingress.kubernetes.io/healthcheck-interval-seconds: "10"
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP":80,"HTTPS":443}]'
+    alb.ingress.kubernetes.io/certificate-arn: {{ .Values.ingress.certificateArn }}
+spec:
+  ingressClassName: {{ .Values.ingress.className }}
+  rules:
+    - http:
+        paths:
+          - path: /_next
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ .Values.services.frontend }}
+                port:
+                  number: 80
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ .Values.services.backend }}
+                port:
+                  number: 80
+          - path: /socket.io
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ .Values.services.backend }}
+                port:
+                  number: {{ .Values.services.websocketPort }}
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ .Values.services.frontend }}
+                port:
+                  number: 80

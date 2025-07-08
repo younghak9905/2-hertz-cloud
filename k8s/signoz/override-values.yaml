@@ -1,0 +1,23 @@
+# override-values.yaml
+global:
+  cloud: others                  # self-hosted 환경
+  clusterName: hertz-tuning-dev  # 클러스터 식별자
+  deploymentEnvironment: dev     # 운영환경 레이블
+
+# SigNoz OtelCollector(Deployment)의 주소
+otelCollectorEndpoint: signoz-otel-collector.observability.svc.cluster.local:4317
+otelInsecure: true               # TLS 없이 통신 시 true
+
+presets:
+  # 노드 호스트 메트릭 수집 활성화 (CPU, memory, disk, network…)
+  hostMetrics:
+    enabled: true
+  # kubelet 메트릭 수집 (pod, container 레벨 스테이터스)
+  kubeletMetrics:
+    enabled: true
+  # 클러스터 레벨 메트릭(활성화/비활성화 선택)
+  clusterMetrics:
+    enabled: true
+  # 로그 수집은 원하지 않으면 비활성화
+  logsCollection:
+    enabled: true

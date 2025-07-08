@@ -1,0 +1,39 @@
+# kafka-pvc.yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: kafka1-pvc
+  namespace: hertz-tuning-dev
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: mysql-ebs
+  resources:
+    requests:
+      storage: 10Gi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: kafka2-pvc
+  namespace: hertz-tuning-dev
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: mysql-ebs
+  resources:
+    requests:
+      storage: 10Gi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: kafka3-pvc
+  namespace: hertz-tuning-dev
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: mysql-ebs
+  resources:
+    requests:
+      storage: 10Gi
