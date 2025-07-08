@@ -9,6 +9,6 @@ ingress:
 
 # Service names
 services:
-  backend: springboot-be-svc
+  backend: springboot-be-dev-svc
   frontend: nextjs-fe-svc
   websocketPort: 9100

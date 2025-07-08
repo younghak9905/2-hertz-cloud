@@ -57,3 +57,4 @@ hpa:
 observability:
   signoz:
     endpoint: "http://cloud.hertz-tuning.com:4317"
+    
