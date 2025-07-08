@@ -94,7 +94,7 @@ resource "google_compute_global_forwarding_rule" "https_fr" {
   ip_address            = var.lb_ip.address
 }
 
-
+/*
 # HTTP Proxy for redirection
 resource "google_compute_target_http_proxy" "this" {
   name    = "${var.name}-http-proxy-${var.env}"
@@ -107,4 +107,4 @@ resource "google_compute_global_forwarding_rule" "http_fr" {
   port_range            = "80"
   target                = google_compute_target_http_proxy.this.self_link
   ip_address            = var.lb_ip.address
-}
+}*/
