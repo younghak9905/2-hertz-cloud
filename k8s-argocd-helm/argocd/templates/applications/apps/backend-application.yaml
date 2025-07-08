@@ -4,7 +4,6 @@ metadata:
   name: backend
   namespace: argocd
   annotations:
-    "helm.sh/hook": post-install,post-upgrade
     argocd.argoproj.io/sync-wave: "2"
     argocd-image-updater.argoproj.io/image-list: backend=969400486509.dkr.ecr.ap-northeast-2.amazonaws.com/tuning-springboot
     argocd-image-updater.argoproj.io/backend.update-strategy: latest
