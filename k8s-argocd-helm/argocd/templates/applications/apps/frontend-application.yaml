@@ -4,7 +4,6 @@ metadata:
   name: frontend
   namespace: argocd
   annotations:
-    "helm.sh/hook": post-install,post-upgrade
     argocd.argoproj.io/sync-wave: "3"
     argocd-image-updater.argoproj.io/image-list: frontend=969400486509.dkr.ecr.ap-northeast-2.amazonaws.com/tuning-nextjs
     argocd-image-updater.argoproj.io/frontend.update-strategy: latest
