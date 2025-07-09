@@ -46,6 +46,8 @@ spec:
         - configMapRef:
             name: kafka-config
         env:
+        - name: TZ
+          value: "Asia/Seoul"
         - name: KAFKA_BROKER_ID
           value: "{{ add $i 1 }}"
         - name: KAFKA_ADVERTISED_LISTENERS

@@ -20,7 +20,7 @@ spec:
         app: {{ .Values.app.name }}
       annotations:
         signoz.io/scrape: "true"
-        signoz.io/port: "8000"
+        signoz.io/port: "8080"
         signoz.io/path: "/metrics"
     spec:
       serviceAccountName: {{ .Values.serviceAccount.ecrAccess }}
@@ -44,6 +44,8 @@ spec:
             - secretRef:
                 name: springboot-secrets
           env:
+            - name: TZ
+              value: "Asia/Seoul"
             - name: OTEL_SERVICE_NAME
               value: "{{ .Values.app.name }}"
             - name: OTEL_EXPORTER_OTLP_ENDPOINT
@@ -57,7 +59,7 @@ spec:
             - name: OTEL_TRACES_EXPORTER
               value: "otlp"
             - name: OTEL_RESOURCE_ATTRIBUTES
-              value: "service.name={{ .Values.app.name }},service.version={{ .Values.image.tag }},host.name={{ .Values.app.name }},os.type=linux"
+              value: "service.name=k8s-{{ .Values.app.name }}-{{ .Values.app.environment }},service.version={{ .Values.image.tag }},host.name=k8s-{{ .Values.app.name }}-{{ .Values.app.environment }},os.type=linux"
             - name: LOGGING_LEVEL_ROOT
               value: "INFO"
             - name: LOGGING_PATTERN_CONSOLE

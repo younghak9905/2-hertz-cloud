@@ -13,7 +13,8 @@ serviceAccount:
   ecrAccess: ecr-access-sa
 
 app:
-  name: springboot-be-dev
+  environment: dev
+  name: springboot-be
   ports:
     http: 8080
     websocket: 9100
