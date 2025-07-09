@@ -19,6 +19,8 @@ spec:
         - name: {{ .Values.app.name }}
           image: {{ .Values.image.repository }}:{{ .Values.image.tag }}
           env:
+            - name: TZ
+              value: "Asia/Seoul"
             - name: OTEL_SERVICE_NAME
               value: "{{ .Values.app.name }}"
             - name: OTEL_EXPORTER_OTLP_ENDPOINT

@@ -44,6 +44,8 @@ spec:
             - secretRef:
                 name: springboot-secrets
           env:
+            - name: TZ
+              value: "Asia/Seoul"
             - name: OTEL_SERVICE_NAME
               value: "{{ .Values.app.name }}"
             - name: OTEL_EXPORTER_OTLP_ENDPOINT
