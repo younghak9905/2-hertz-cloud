@@ -1,0 +1,40 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-signoz-collector-egress
+  namespace: observability
+spec:
+  # observability 네임스페이스의 SigNoz Collector 파드에만 이 정책을 적용합니다.
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: otel-collector
+      app.kubernetes.io/instance: signoz
+  policyTypes:
+    - Egress
+  egress:
+    # 1. DNS 쿼리를 허용합니다 (필수).
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+      ports:
+        - protocol: UDP
+          port: 53
+    # 2. Kubernetes API 서버와의 통신을 허용합니다.
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+      ports:
+        - protocol: TCP
+          port: 443
+    # 3. (추가) 각 노드의 Kubelet에서 메트릭을 수집(Pull)하도록 허용합니다.
+    - to:
+        - ipBlock:
+            # 모든 IP 대역 허용 (보안 강화 시 노드 IP 대역으로 제한 가능)
+            cidr: 0.0.0.0/0
+      ports:
+        # Kubelet의 메트릭 포트
+        - protocol: TCP
+          port: 10250
+        - protocol: TCP
+          port: 10255
