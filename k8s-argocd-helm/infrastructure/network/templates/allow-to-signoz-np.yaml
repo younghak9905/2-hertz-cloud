@@ -1,0 +1,22 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-egress-to-signoz-collector
+  namespace: {{ .Values.global.namespace | default "hertz-tuning-dev" }}
+spec:
+  # 이 정책은 hertz-tuning-dev 네임스페이스의 모든 파드에 적용됩니다.
+  podSelector: {}
+  policyTypes:
+    - Egress
+  egress:
+    # observability 네임스페이스로 나가는 트래픽을 허용합니다.
+    - to:
+        - namespaceSelector:
+            # 'observability' 네임스페이스를 식별하기 위한 레이블
+            matchLabels:
+              name: observability
+
+      # SigNoz OTel Collector의 OTLP/HTTP 포트
+      ports:
+        - protocol: TCP
+          port: 4318
