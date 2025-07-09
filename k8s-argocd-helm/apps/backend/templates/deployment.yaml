@@ -20,7 +20,7 @@ spec:
         app: {{ .Values.app.name }}
       annotations:
         signoz.io/scrape: "true"
-        signoz.io/port: "8000"
+        signoz.io/port: "8080"
         signoz.io/path: "/metrics"
     spec:
       serviceAccountName: {{ .Values.serviceAccount.ecrAccess }}
