@@ -124,8 +124,12 @@ jobs:
         env:
           DOCKER_BUILDKIT: 1
         run: |
-         
-          IMAGE_TAG="k8s-${{ inputs.source_branch }}-${{ env.SHORT_HASH }}"
+          BRANCH="${{ inputs.source_branch }}"
+          SANITIZED_BRANCH="${BRANCH//\//-}"
+          SANITIZED_BRANCH=$(echo "$SANITIZED_BRANCH" | sed 's#[^a-zA-Z0-9_.-]#-#g')
+          BRANCH="$SANITIZED_BRANCH"
+          echo "BRANCH=$BRANCH" >> $GITHUB_ENV
+          IMAGE_TAG="k8s-${{ env.BRANCH }}-${{ env.SHORT_HASH }}"
           ENV_TAG="${{ inputs.target_branch == 'main' && 'k8s-main-latest' || 'k8s-develop-latest' }}"
           ECR_REGISTRY=${{ steps.login-ecr.outputs.registry }}
           REPOSITORY="tuning-${{ inputs.service == 'backend' && 'springboot' || 'nextjs' }}"
