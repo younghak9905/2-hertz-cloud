@@ -63,5 +63,5 @@ hpa:
 # Observability
 observability:
   signoz:
-    endpoint: "http://signoz-otel-collector.observability.svc.cluster.local:4318"
-    # endpoint: "http://cloud.hertz-tuning.com:4317"
+    # endpoint: "http://signoz-otel-collector.observability.svc.cluster.local:4318"
+     endpoint: "http://cloud.hertz-tuning.com:4317"
