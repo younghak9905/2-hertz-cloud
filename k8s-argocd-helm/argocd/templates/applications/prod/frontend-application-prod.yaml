@@ -14,7 +14,7 @@ spec:
   project: tuning-prod
   source:
     repoURL: https://github.com/100-hours-a-week/2-hertz-cloud.git
-    targetRevision: main
+    targetRevision: {{ .Values.applications.git.branches.prod }}
     path: k8s-argocd-helm/apps/frontend
     helm:
       valueFiles:
