@@ -112,5 +112,6 @@ resource "google_compute_global_forwarding_rule" "http_fr" {
   ip_address            = var.lb_ip.address
   lifecycle {
     create_before_destroy = true
+    replace_triggered_by = [google_compute_target_http_proxy.this]
   }
 }
