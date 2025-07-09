@@ -101,6 +101,9 @@ jobs:
             echo "$VALUE" > "$2"
           }
           BRANCH="${{ inputs.source_branch }}"
+          SANITIZED_BRANCH="${BRANCH//\//-}"
+          SANITIZED_BRANCH=$(echo "$SANITIZED_BRANCH" | sed 's#[^a-zA-Z0-9_.-]#-#g')
+          BRANCH="$SANITIZED_BRANCH"
           if [[ ${{inputs.service}} == 'frontend' ]]; then
             if [[ "$BRANCH" == "main" ]]; then
               load_param "/global/k8s/nextjs/prod/NEXT_PUBLIC_API_BASE_URL" NEXT_PUBLIC_API_BASE_URL
