@@ -26,10 +26,10 @@ resources:
 
 hpa:
   enabled: true
-  minReplicas: 2
-  maxReplicas: 4
-  targetCPU: 60
-  targetMemory: 70
+  minReplicas: 1
+  maxReplicas: 3
+  targetCPU: 70
+  targetMemory: 80
   scaleUp:
     stabilizationWindowSeconds: 30
     percent: 100
