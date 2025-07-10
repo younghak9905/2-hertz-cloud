@@ -82,14 +82,61 @@ signoz:
       enabled: false
     kubernetesEvents:
       enabled: false
-    kubeletMetrics:
-      enabled: true
-    hostMetrics:
-      enabled: true
 
   global:
-    namespace: observability
     storageClass: mysql-ebs
     cloud: others
-    clusterName: hertz-tuning-stage
-    deploymentEnvironment: stage
+    clusterName: hertz-tuning-dev
+    deploymentEnvironment: dev
+
+# k8s-infra Chart Values (CPU/Memory 메트릭 전용)
+k8s-infra:
+  enabled: true
+
+  # Global 설정
+  global:
+    storageClass: mysql-ebs
+
+  # OTel Deployment (메트릭 수집기)
+  otelDeployment:
+    enabled: true
+    resources:
+      requests:
+        memory: "128Mi"
+        cpu: "50m"
+      limits:
+        memory: "256Mi"
+        cpu: "100m"
+
+  # OTel DaemonSet (각 노드에서 메트릭 수집)
+  otelDaemonSet:
+    enabled: true
+    resources:
+      requests:
+        memory: "64Mi"
+        cpu: "25m"
+      limits:
+        memory: "128Mi"
+        cpu: "50m"
+
+  # 수집할 메트릭 설정
+  presets:
+    # Kubelet 메트릭 (Pod CPU/Memory)
+    kubeletMetrics:
+      enabled: true
+    # 호스트 메트릭 (Node CPU/Memory)
+    hostMetrics:
+      enabled: true
+    # 클러스터 메트릭
+    clusterMetrics:
+      enabled: false
+    # Kubernetes 이벤트
+    kubernetesEvents:
+      enabled: false
+    # Self Telemetry 설정 (오류 방지)
+    selfTelemetry:
+      enabled: false
+      traces:
+        enabled: false
+      metrics:
+        enabled: false

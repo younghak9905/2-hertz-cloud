@@ -31,6 +31,21 @@ spec:
                 name: {{ .Values.services.backend }}
                 port:
                   number: 80
+
+          - path: /swagger-ui/
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ .Values.services.backend }}
+                port:
+                  number: 80
+          - path: /v3/api-docs
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ .Values.services.backend }}
+                port:
+                  number: 80
           - path: /socket.io
             pathType: Prefix
             backend:
