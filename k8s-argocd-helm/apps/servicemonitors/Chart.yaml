@@ -1,0 +1,12 @@
+apiVersion: v2
+name: servicemonitors
+description: ServiceMonitor resources for application monitoring
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+keywords:
+  - servicemonitor
+  - prometheus
+  - monitoring
+maintainers:
+  - name: hertz-team

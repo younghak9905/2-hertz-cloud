@@ -93,5 +93,9 @@ argocd-image-updater:
 applications:
   git:
     branches:
-      stage: feat/k8s-environment/prod
-      prod: feat/k8s-environment/prod
+      stage: develop
+      prod: main
+
+apps:
+  monitoring:
+    enabled: true

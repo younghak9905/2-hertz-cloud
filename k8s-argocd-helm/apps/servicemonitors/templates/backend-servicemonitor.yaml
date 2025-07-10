@@ -1,0 +1,16 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: backend-metrics
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    app: {{ .Values.apps.backend }}
+spec:
+  selector:
+    matchLabels:
+      app: {{ .Values.apps.backend }}
+  endpoints:
+  - port: metrics
+    path: /actuator/prometheus
+    interval: {{ .Values.monitoring.interval }}
+    scrapeTimeout: {{ .Values.monitoring.scrapeTimeout }}
