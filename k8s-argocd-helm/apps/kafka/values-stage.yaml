@@ -1,8 +1,8 @@
 # Global settings
 global:
-  namespace: hertz-tuning-dev
+  namespace: hertz-tuning-stage
   region: ap-northeast-2
-  environment: dev
+  environment: stage
 
 # Kafka settings
 kafka:

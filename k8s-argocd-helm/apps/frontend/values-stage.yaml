@@ -1,9 +1,9 @@
-# Dev Environment Settings
+# Stage Environment Settings
 global:
-  namespace: hertz-tuning-dev
+  namespace: hertz-tuning-stage
   region: ap-northeast-2
   accountId: "969400486509"
-  environment: dev
+  environment: stage
 
 image:
   repository: 969400486509.dkr.ecr.ap-northeast-2.amazonaws.com/tuning-nextjs

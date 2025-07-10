@@ -76,7 +76,7 @@ signoz:
     logsCollection:
       enabled: true
       includeNamespaces:
-        - hertz-tuning-dev
+        - hertz-tuning-stage
     # 다른 메트릭들은 k8s-infra가 처리
     clusterMetrics:
       enabled: false
@@ -91,5 +91,5 @@ signoz:
     namespace: observability
     storageClass: mysql-ebs
     cloud: others
-    clusterName: hertz-tuning-dev
-    deploymentEnvironment: dev
+    clusterName: hertz-tuning-stage
+    deploymentEnvironment: stage

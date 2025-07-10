@@ -93,6 +93,5 @@ argocd-image-updater:
 applications:
   git:
     branches:
-      dev: feat/k8s-environment/prod
       stage: feat/k8s-environment/prod
       prod: feat/k8s-environment/prod

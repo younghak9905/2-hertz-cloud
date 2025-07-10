@@ -1,9 +1,9 @@
 # Global settings
 global:
-  namespace: hertz-tuning-dev
+  namespace: hertz-tuning-stage
   region: ap-northeast-2
   accountId: "969400486509"
-  environment: dev
+  environment: stage
 
 # Image settings
 image:

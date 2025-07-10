@@ -8,10 +8,10 @@
 #     "helm.sh/hook-weight": "0"
 #     argocd.argoproj.io/sync-wave: "0"
 # spec:
-#   project: tuning-dev
+#   project: tuning-stage
 #   source:
 #     repoURL: https://github.com/100-hours-a-week/2-hertz-cloud.git
-#    targetRevision: {{ .Values.applications.git.branches.dev }}
+#    targetRevision: {{ .Values.applications.git.branches.stage }}
 #     path: k8s-argocd-helm/apps/signoz
 #   destination:
 #     server: https://kubernetes.default.svc

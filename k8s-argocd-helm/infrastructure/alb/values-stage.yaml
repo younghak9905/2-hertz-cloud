@@ -1,6 +1,6 @@
 # Global settings
 global:
-  namespace: hertz-tuning-dev
+  namespace: hertz-tuning-stage
 
 # Ingress settings
 ingress:
