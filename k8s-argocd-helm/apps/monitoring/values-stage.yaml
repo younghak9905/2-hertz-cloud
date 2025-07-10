@@ -89,6 +89,14 @@ prometheus:
       createCustomResource: true
     nodeExporter:
       enabled: true
+      serviceMonitor:
+        relabelings:
+        - sourceLabels: [__meta_kubernetes_pod_node_name]
+          separator: ;
+          regex: ^(.*)$
+          targetLabel: nodename
+          replacement: ${1}
+          action: replace
     kubelet:
       enabled: true
       serviceMonitor:
@@ -103,6 +111,14 @@ prometheus:
       enabled: true
     kubeEtcd:
       enabled: true
+    kubeStateMetrics:
+      enabled: true
+    kube-state-metrics:
+      enabled: true
+      metricLabelsAllowlist:
+        - pods=[*]
+        - nodes=[*]
+        - deployments=[*]
     alertmanager:
       enabled: true
       alertmanagerSpec:
