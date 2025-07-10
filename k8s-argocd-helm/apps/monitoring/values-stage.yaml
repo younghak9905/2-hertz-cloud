@@ -9,7 +9,7 @@ prometheus:
   chart:
     repository: https://prometheus-community.github.io/helm-charts
     name: kube-prometheus-stack
-    version: 51.2.0
+    version: 45.7.1
   config:
     grafana:
       adminPassword: "admin123"
@@ -19,13 +19,60 @@ prometheus:
         size: 5Gi
       service:
         type: LoadBalancer
+      additionalDataSources:
+      - name: Loki
+        type: loki
+        url: http://loki:3100
+        access: proxy
+        isDefault: false
+      dashboardProviders:
+        dashboardproviders.yaml:
+          apiVersion: 1
+          providers:
+          - name: 'default'
+            orgId: 1
+            folder: ''
+            type: file
+            disableDeletion: false
+            editable: true
+            options:
+              path: /var/lib/grafana/dashboards/default
+      dashboards:
+        default:
+          kubernetes-cluster-monitoring:
+            gnetId: 7249
+            revision: 1
+            datasource: Prometheus
+          kubernetes-pod-monitoring:
+            gnetId: 6417
+            revision: 1
+            datasource: Prometheus
+          loki-logs:
+            gnetId: 13639
+            revision: 2
+            datasource: Loki
     prometheus:
       prometheusSpec:
-        serviceMonitorSelector: {}
-        serviceMonitorNamespaceSelector: {}
-        ruleSelector: {}
-        ruleNamespaceSelector: {}
+        serviceMonitorSelector:
+          matchLabels: {}
+        serviceMonitorNamespaceSelector:
+          matchLabels: {}
+        ruleSelector:
+          matchLabels: {}
+        ruleNamespaceSelector:
+          matchLabels: {}
+        podMonitorSelector:
+          matchLabels: {}
+        podMonitorNamespaceSelector:
+          matchLabels: {}
         retention: 30d
+        resources:
+          requests:
+            memory: 512Mi
+            cpu: 250m
+          limits:
+            memory: 1Gi
+            cpu: 500m
         storageSpec:
           volumeClaimTemplate:
             spec:
@@ -33,7 +80,7 @@ prometheus:
               accessModes: ["ReadWriteOnce"]
               resources:
                 requests:
-                  storage: 10Gi
+                  storage: 5Gi
     prometheusOperator:
       admissionWebhooks:
         enabled: false
@@ -42,6 +89,36 @@ prometheus:
       createCustomResource: true
     nodeExporter:
       enabled: true
+      serviceMonitor:
+        relabelings:
+        - sourceLabels: [__meta_kubernetes_pod_node_name]
+          separator: ;
+          regex: ^(.*)$
+          targetLabel: nodename
+          replacement: ${1}
+          action: replace
+    kubelet:
+      enabled: true
+      serviceMonitor:
+        https: true
+    kubeApiServer:
+      enabled: true
+    kubeControllerManager:
+      enabled: true
+    kubeScheduler:
+      enabled: true
+    kubeProxy:
+      enabled: true
+    kubeEtcd:
+      enabled: true
+    kubeStateMetrics:
+      enabled: true
+    kube-state-metrics:
+      enabled: true
+      metricLabelsAllowlist:
+        - pods=[*]
+        - nodes=[*]
+        - deployments=[*]
     alertmanager:
       enabled: true
       alertmanagerSpec:
@@ -67,10 +144,36 @@ loki:
       auth_enabled: false
       commonConfig:
         replication_factor: 1
+        path_prefix: /loki
+      limits_config:
+        max_outstanding_requests_per_tenant: 2048
+        max_query_parallelism: 32
+        max_concurrent_tail_requests: 20
+        max_cache_freshness_per_query: 10m
+        split_queries_by_interval: 15m
+      query_scheduler:
+        max_outstanding_requests_per_tenant: 256
+    schemaConfig:
+      configs:
+      - from: 2020-10-24
+        store: boltdb-shipper
+        object_store: filesystem
+        schema: v11
+        index:
+          prefix: index_
+          period: 24h
+    storageConfig:
+      boltdb_shipper:
+        active_index_directory: /loki/boltdb-shipper-active
+        cache_location: /loki/boltdb-shipper-cache
+        shared_store: filesystem
+      filesystem:
+        directory: /loki/chunks
+    rulerConfig:
       storage:
-        type: filesystem
-        filesystem:
-          directory: /loki
+        type: local
+        local:
+          directory: /loki/rules
     singleBinary:
       replicas: 1
       persistence:
@@ -83,11 +186,11 @@ loki:
           mountPath: /loki
       resources:
         requests:
-          memory: 512Mi
-          cpu: 200m
+          memory: 1Gi
+          cpu: 750m
         limits:
           memory: 1Gi
-          cpu: 500m
+          cpu: 1000m
     backend:
       replicas: 0
     read:
@@ -115,7 +218,30 @@ promtail:
     version: 6.15.3
   config:
     config:
-      lokiAddress: http://loki:3100/loki/api/v1/push
+      server:
+        http_listen_port: 3101
+        grpc_listen_port: 0
+      clients:
+      - url: http://loki:3100/loki/api/v1/push
+      scrape_configs:
+      - job_name: kubernetes-pods
+        kubernetes_sd_configs:
+        - role: pod
+        pipeline_stages:
+        - docker: {}
+        relabel_configs:
+        - source_labels: [__meta_kubernetes_pod_node_name]
+          target_label: node_name
+        - source_labels: [__meta_kubernetes_namespace]
+          target_label: namespace
+        - source_labels: [__meta_kubernetes_pod_name]
+          target_label: pod
+        - source_labels: [__meta_kubernetes_pod_container_name]
+          target_label: container
+        - source_labels: [__meta_kubernetes_pod_uid, __meta_kubernetes_pod_container_name]
+          target_label: __path__
+          separator: /
+          replacement: /var/log/pods/*$1/*.log
     daemonset:
       enabled: true
     resources:

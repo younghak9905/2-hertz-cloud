@@ -1,0 +1,234 @@
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Sid": "AllowScopedEC2InstanceAccessActions",
+            "Effect": "Allow",
+            "Resource": [
+                "arn:aws:ec2:*::image/*",
+                "arn:aws:ec2:*::snapshot/*",
+                "arn:aws:ec2:*:*:spot-instances-request/*",
+                "arn:aws:ec2:*:*:security-group/*",
+                "arn:aws:ec2:*:*:subnet/*",
+                "arn:aws:ec2:*:*:launch-template/*"
+            ],
+            "Action": [
+                "ec2:RunInstances",
+                "ec2:CreateFleet"
+            ]
+        },
+        {
+            "Sid": "AllowScopedEC2LaunchTemplateAccessActions",
+            "Effect": "Allow",
+            "Resource": "arn:aws:ec2:*:*:launch-template/*",
+            "Action": [
+                "ec2:CreateLaunchTemplate",
+                "ec2:CreateLaunchTemplateVersion",
+                "ec2:DescribeLaunchTemplates",
+                "ec2:DescribeLaunchTemplateVersions",
+                "ec2:DeleteLaunchTemplate",
+                "ec2:DeleteLaunchTemplateVersions"
+            ],
+            "Condition": {
+                "StringEquals": {
+                    "aws:RequestedRegion": "ap-northeast-2"
+                }
+            }
+        },
+        {
+            "Sid": "AllowScopedEC2InstanceActionsWithTags",
+            "Effect": "Allow",
+            "Resource": [
+                "arn:aws:ec2:*:*:fleet/*",
+                "arn:aws:ec2:*:*:instance/*",
+                "arn:aws:ec2:*:*:volume/*",
+                "arn:aws:ec2:*:*:network-interface/*",
+                "arn:aws:ec2:*:*:launch-template/*",
+                "arn:aws:ec2:*:*:spot-instances-request/*"
+            ],
+            "Action": [
+                "ec2:RunInstances",
+                "ec2:CreateFleet",
+                "ec2:CreateLaunchTemplate",
+                "ec2:CreateTags"
+            ],
+            "Condition": {
+                "StringEquals": {
+                    "aws:RequestedRegion": "ap-northeast-2",
+                    "ec2:CreateAction": [
+                        "RunInstances",
+                        "CreateFleet",
+                        "CreateLaunchTemplate"
+                    ]
+                }
+            }
+        },
+        {
+            "Sid": "AllowScopedResourceCreationTagging",
+            "Effect": "Allow",
+            "Resource": [
+                "arn:aws:ec2:*:*:fleet/*",
+                "arn:aws:ec2:*:*:instance/*",
+                "arn:aws:ec2:*:*:volume/*",
+                "arn:aws:ec2:*:*:network-interface/*",
+                "arn:aws:ec2:*:*:launch-template/*",
+                "arn:aws:ec2:*:*:spot-instances-request/*"
+            ],
+            "Action": "ec2:CreateTags",
+            "Condition": {
+                "StringEquals": {
+                    "aws:RequestedRegion": "ap-northeast-2",
+                    "ec2:CreateAction": [
+                        "RunInstances",
+                        "CreateFleet",
+                        "CreateLaunchTemplate"
+                    ]
+                }
+            }
+        },
+        {
+            "Sid": "AllowMachineMigrationTagging",
+            "Effect": "Allow",
+            "Resource": "arn:aws:ec2:*:*:instance/*",
+            "Action": "ec2:CreateTags",
+            "Condition": {
+                "StringEquals": {
+                    "aws:RequestedRegion": "ap-northeast-2",
+                    "ec2:ResourceTag/karpenter.sh/cluster": "tuning-eks"
+                }
+            }
+        },
+        {
+            "Sid": "AllowScopedDeletion",
+            "Effect": "Allow",
+            "Resource": [
+                "arn:aws:ec2:*:*:instance/*",
+                "arn:aws:ec2:*:*:launch-template/*"
+            ],
+            "Action": [
+                "ec2:TerminateInstances",
+                "ec2:DeleteLaunchTemplate"
+            ],
+            "Condition": {
+                "StringEquals": {
+                    "aws:RequestedRegion": "ap-northeast-2",
+                    "ec2:ResourceTag/karpenter.sh/cluster": "tuning-eks"
+                }
+            }
+        },
+        {
+            "Sid": "AllowRegionalReadActions",
+            "Effect": "Allow",
+            "Resource": "*",
+            "Action": [
+                "ec2:DescribeAvailabilityZones",
+                "ec2:DescribeImages",
+                "ec2:DescribeInstances",
+                "ec2:DescribeInstanceTypeOfferings",
+                "ec2:DescribeInstanceTypes",
+                "ec2:DescribeLaunchTemplates",
+                "ec2:DescribeLaunchTemplateVersions",
+                "ec2:DescribeSecurityGroups",
+                "ec2:DescribeSpotPriceHistory",
+                "ec2:DescribeSubnets"
+            ],
+            "Condition": {
+                "StringEquals": {
+                    "aws:RequestedRegion": "ap-northeast-2"
+                }
+            }
+        },
+        {
+            "Sid": "AllowSSMReadActions",
+            "Effect": "Allow",
+            "Resource": "arn:aws:ssm:ap-northeast-2::parameter/aws/service/*",
+            "Action": "ssm:GetParameter"
+        },
+        {
+            "Sid": "AllowPricingReadActions",
+            "Effect": "Allow",
+            "Resource": "*",
+            "Action": "pricing:GetProducts"
+        },
+        {
+            "Sid": "AllowInterruptionQueueActions",
+            "Effect": "Allow",
+            "Resource": "arn:aws:sqs:ap-northeast-2:969400486509:Karpenter-tuning-eks",
+            "Action": [
+                "sqs:DeleteMessage",
+                "sqs:GetQueueUrl",
+                "sqs:GetQueueAttributes",
+                "sqs:ReceiveMessage"
+            ]
+        },
+        {
+            "Sid": "AllowPassingInstanceRole",
+            "Effect": "Allow",
+            "Resource": "arn:aws:iam::969400486509:role/KarpenterNodeInstanceProfile-tuning-eks",
+            "Action": "iam:PassRole",
+            "Condition": {
+                "StringEquals": {
+                    "iam:PassedToService": "ec2.amazonaws.com"
+                }
+            }
+        },
+        {
+            "Sid": "AllowScopedInstanceProfileCreationActions",
+            "Effect": "Allow",
+            "Resource": "*",
+            "Action": [
+                "iam:CreateInstanceProfile"
+            ],
+            "Condition": {
+                "StringEquals": {
+                    "aws:RequestedRegion": "ap-northeast-2"
+                },
+                "StringLike": {
+                    "aws:RequestTag/karpenter.k8s.aws/ec2nodeclass": "*"
+                }
+            }
+        },
+        {
+            "Sid": "AllowScopedInstanceProfileTagActions",
+            "Effect": "Allow",
+            "Resource": "*",
+            "Action": [
+                "iam:TagInstanceProfile"
+            ],
+            "Condition": {
+                "StringEquals": {
+                    "aws:RequestedRegion": "ap-northeast-2",
+                    "aws:ResourceTag/karpenter.k8s.aws/ec2nodeclass": "*"
+                }
+            }
+        },
+        {
+            "Sid": "AllowScopedInstanceProfileActions",
+            "Effect": "Allow",
+            "Resource": "*",
+            "Action": [
+                "iam:AddRoleToInstanceProfile",
+                "iam:RemoveRoleFromInstanceProfile",
+                "iam:DeleteInstanceProfile"
+            ],
+            "Condition": {
+                "StringEquals": {
+                    "aws:RequestedRegion": "ap-northeast-2",
+                    "aws:ResourceTag/karpenter.k8s.aws/ec2nodeclass": "*"
+                }
+            }
+        },
+        {
+            "Sid": "AllowInstanceProfileReadActions",
+            "Effect": "Allow",
+            "Resource": "*",
+            "Action": "iam:GetInstanceProfile"
+        },
+        {
+            "Sid": "AllowAPIServerEndpointDiscovery",
+            "Effect": "Allow",
+            "Resource": "arn:aws:eks:ap-northeast-2:969400486509:cluster/tuning-eks",
+            "Action": "eks:DescribeCluster"
+        }
+    ]
+}

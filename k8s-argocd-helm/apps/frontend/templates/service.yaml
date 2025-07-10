@@ -13,3 +13,4 @@ spec:
       targetPort: {{ .Values.app.port }}
     - name: metrics
       port: {{ .Values.app.port }}
+      targetPort: {{ .Values.app.port }}
