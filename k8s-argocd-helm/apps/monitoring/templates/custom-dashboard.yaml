@@ -1,0 +1,115 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: custom-dashboards
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    grafana_dashboard: "1"
+data:
+  pod-logs-dashboard.json: |
+    {
+      "dashboard": {
+        "id": null,
+        "title": "Pod Logs & Slow Queries",
+        "tags": ["kubernetes", "logs"],
+        "timezone": "browser",
+        "panels": [
+          {
+            "id": 1,
+            "title": "Pod Logs",
+            "type": "logs",
+            "targets": [
+              {
+                "expr": "{namespace=\"$namespace\", pod=\"$pod\"}",
+                "refId": "A",
+                "datasource": "Loki"
+              }
+            ],
+            "gridPos": {"h": 8, "w": 24, "x": 0, "y": 0}
+          },
+          {
+            "id": 2,
+            "title": "MySQL Slow Queries",
+            "type": "logs",
+            "targets": [
+              {
+                "expr": "{job=\"mysql\"} |= \"Query_time\"",
+                "refId": "B",
+                "datasource": "Loki"
+              }
+            ],
+            "gridPos": {"h": 8, "w": 24, "x": 0, "y": 8}
+          }
+        ],
+        "templating": {
+          "list": [
+            {
+              "name": "namespace",
+              "type": "query",
+              "query": "label_values(namespace)",
+              "datasource": "Loki"
+            },
+            {
+              "name": "pod",
+              "type": "query",
+              "query": "label_values({namespace=\"$namespace\"}, pod)",
+              "datasource": "Loki"
+            }
+          ]
+        },
+        "time": {"from": "now-1h", "to": "now"},
+        "refresh": "5s"
+      }
+    }
+  resource-monitoring-dashboard.json: |
+    {
+      "dashboard": {
+        "id": null,
+        "title": "Kubernetes Resource Monitoring",
+        "tags": ["kubernetes", "resources"],
+        "timezone": "browser",
+        "panels": [
+          {
+            "id": 1,
+            "title": "CPU Usage by Pod",
+            "type": "stat",
+            "targets": [
+              {
+                "expr": "sum(rate(container_cpu_usage_seconds_total{container!=\"POD\",container!=\"\"}[5m])) by (pod)",
+                "refId": "A",
+                "datasource": "Prometheus"
+              }
+            ],
+            "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0}
+          },
+          {
+            "id": 2,
+            "title": "Memory Usage by Pod",
+            "type": "stat",
+            "targets": [
+              {
+                "expr": "sum(container_memory_working_set_bytes{container!=\"POD\",container!=\"\"}) by (pod)",
+                "refId": "B",
+                "datasource": "Prometheus"
+              }
+            ],
+            "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0}
+          },
+          {
+            "id": 3,
+            "title": "Cluster CPU Usage",
+            "type": "graph",
+            "targets": [
+              {
+                "expr": "sum(rate(container_cpu_usage_seconds_total[5m]))",
+                "refId": "C",
+                "datasource": "Prometheus"
+              }
+            ],
+            "gridPos": {"h": 8, "w": 24, "x": 0, "y": 8}
+          }
+        ],
+        "time": {"from": "now-1h", "to": "now"},
+        "refresh": "5s"
+      }
+    }

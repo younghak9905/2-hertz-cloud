@@ -19,6 +19,38 @@ prometheus:
         size: 10Gi
       service:
         type: LoadBalancer
+      additionalDataSources:
+      - name: Loki
+        type: loki
+        url: http://loki:3100
+        access: proxy
+        isDefault: false
+      dashboardProviders:
+        dashboardproviders.yaml:
+          apiVersion: 1
+          providers:
+          - name: 'default'
+            orgId: 1
+            folder: ''
+            type: file
+            disableDeletion: false
+            editable: true
+            options:
+              path: /var/lib/grafana/dashboards/default
+      dashboards:
+        default:
+          kubernetes-cluster-monitoring:
+            gnetId: 7249
+            revision: 1
+            datasource: Prometheus
+          kubernetes-pod-monitoring:
+            gnetId: 6417
+            revision: 1
+            datasource: Prometheus
+          loki-logs:
+            gnetId: 13639
+            revision: 2
+            datasource: Loki
     prometheus:
       prometheusSpec:
         serviceMonitorSelector: {}
