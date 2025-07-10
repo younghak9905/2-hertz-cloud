@@ -68,15 +68,27 @@ loki:
       commonConfig:
         replication_factor: 1
         path_prefix: /loki
+    schemaConfig:
+      configs:
+      - from: 2020-10-24
+        store: boltdb-shipper
+        object_store: filesystem
+        schema: v11
+        index:
+          prefix: index_
+          period: 24h
+    storageConfig:
+      boltdb_shipper:
+        active_index_directory: /loki/boltdb-shipper-active
+        cache_location: /loki/boltdb-shipper-cache
+        shared_store: filesystem
+      filesystem:
+        directory: /loki/chunks
+    rulerConfig:
       storage:
-        type: filesystem
-        filesystem:
-          directory: /loki
-      rulerConfig:
-        storage:
-          type: local
-          local:
-            directory: /loki/rules
+        type: local
+        local:
+          directory: /loki/rules
     singleBinary:
       replicas: 1
       persistence:
