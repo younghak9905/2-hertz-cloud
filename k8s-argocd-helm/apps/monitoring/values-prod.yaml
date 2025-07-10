@@ -58,6 +58,13 @@ prometheus:
         ruleSelector: {}
         ruleNamespaceSelector: {}
         retention: 60d
+        resources:
+          requests:
+            memory: 1Gi
+            cpu: 500m
+          limits:
+            memory: 2Gi
+            cpu: 1000m
         storageSpec:
           volumeClaimTemplate:
             spec:
@@ -65,7 +72,7 @@ prometheus:
               accessModes: ["ReadWriteOnce"]
               resources:
                 requests:
-                  storage: 20Gi
+                  storage: 10Gi
     prometheusOperator:
       admissionWebhooks:
         enabled: false
