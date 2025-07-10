@@ -1,0 +1,25 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: network-prod
+  namespace: argocd
+  annotations:
+    "helm.sh/hook": post-install,post-upgrade
+    "helm.sh/hook-weight": "0"
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  project: tuning-prod
+  source:
+    repoURL: https://github.com/100-hours-a-week/2-hertz-cloud.git
+    targetRevision: {{ .Values.applications.git.branches.prod }}
+    path: k8s-argocd-helm/infrastructure/network
+    helm:
+      valueFiles:
+        - values-prod.yaml
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: hertz-tuning-prod
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true

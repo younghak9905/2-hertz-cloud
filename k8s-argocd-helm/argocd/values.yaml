@@ -8,7 +8,7 @@ server:
     name: argocd-server-sa
     annotations:
       eks.amazonaws.com/role-arn: "arn:aws:iam::969400486509:role/argocd-ecr-access-role"
-  
+
   # Resources
   resources:
     requests:
@@ -26,7 +26,7 @@ repoServer:
     name: argocd-repo-server-sa
     annotations:
       eks.amazonaws.com/role-arn: "arn:aws:iam::969400486509:role/argocd-ecr-access-role"
-  
+
   resources:
     requests:
       cpu: 300m
@@ -43,7 +43,7 @@ controller:
     name: argocd-application-controller-sa
     annotations:
       eks.amazonaws.com/role-arn: "arn:aws:iam::969400486509:role/argocd-ecr-access-role"
-  
+
   resources:
     requests:
       cpu: 500m
@@ -92,10 +92,6 @@ argocd-image-updater:
 # Application Git Settings
 applications:
   git:
-    targetRevision: develop  # 기본 브랜치
-    # 환경별 브랜치 설정
     branches:
-      dev: develop
-      staging: staging
-      prod: main
-
+      stage: feat/k8s-environment/prod
+      prod: feat/k8s-environment/prod
