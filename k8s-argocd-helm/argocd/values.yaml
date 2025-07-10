@@ -93,7 +93,7 @@ argocd-image-updater:
 applications:
   git:
     branches:
-      stage: develop
+      stage: fix/prometheus
       prod: main
 
 apps:
