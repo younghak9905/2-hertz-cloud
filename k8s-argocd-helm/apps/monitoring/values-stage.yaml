@@ -9,7 +9,7 @@ prometheus:
   chart:
     repository: https://prometheus-community.github.io/helm-charts
     name: kube-prometheus-stack
-    version: 55.5.0
+    version: 51.2.0
   config:
     grafana:
       adminPassword: "admin123"
@@ -39,6 +39,7 @@ prometheus:
         enabled: false
       tls:
         enabled: false
+      createCustomResource: true
     nodeExporter:
       enabled: true
     alertmanager:
