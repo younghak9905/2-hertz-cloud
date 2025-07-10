@@ -53,10 +53,18 @@ prometheus:
             datasource: Loki
     prometheus:
       prometheusSpec:
-        serviceMonitorSelector: {}
-        serviceMonitorNamespaceSelector: {}
-        ruleSelector: {}
-        ruleNamespaceSelector: {}
+        serviceMonitorSelector:
+          matchLabels: {}
+        serviceMonitorNamespaceSelector:
+          matchLabels: {}
+        ruleSelector:
+          matchLabels: {}
+        ruleNamespaceSelector:
+          matchLabels: {}
+        podMonitorSelector:
+          matchLabels: {}
+        podMonitorNamespaceSelector:
+          matchLabels: {}
         retention: 30d
         resources:
           requests:
@@ -80,6 +88,20 @@ prometheus:
         enabled: false
       createCustomResource: true
     nodeExporter:
+      enabled: true
+    kubelet:
+      enabled: true
+      serviceMonitor:
+        https: true
+    kubeApiServer:
+      enabled: true
+    kubeControllerManager:
+      enabled: true
+    kubeScheduler:
+      enabled: true
+    kubeProxy:
+      enabled: true
+    kubeEtcd:
       enabled: true
     alertmanager:
       enabled: true
