@@ -1,6 +1,7 @@
 # Prod Environment Settings
 global:
   namespace: monitoring
+  environment: prod
 
 # Prometheus Stack Configuration
 prometheus:

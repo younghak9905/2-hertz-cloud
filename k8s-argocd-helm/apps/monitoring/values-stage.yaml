@@ -1,6 +1,7 @@
 # Stage Environment Settings
 global:
   namespace: monitoring
+  environment: stage
 
 # Prometheus Stack Configuration
 prometheus:
