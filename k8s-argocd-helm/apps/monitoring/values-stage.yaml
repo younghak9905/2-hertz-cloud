@@ -67,10 +67,16 @@ loki:
       auth_enabled: false
       commonConfig:
         replication_factor: 1
+        path_prefix: /loki
       storage:
         type: filesystem
         filesystem:
           directory: /loki
+      rulerConfig:
+        storage:
+          type: local
+          local:
+            directory: /loki/rules
     singleBinary:
       replicas: 1
       persistence:
