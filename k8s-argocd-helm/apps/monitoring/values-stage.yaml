@@ -165,7 +165,30 @@ promtail:
     version: 6.15.3
   config:
     config:
-      lokiAddress: http://loki:3100/loki/api/v1/push
+      server:
+        http_listen_port: 3101
+        grpc_listen_port: 0
+      clients:
+      - url: http://loki:3100/loki/api/v1/push
+      scrape_configs:
+      - job_name: kubernetes-pods
+        kubernetes_sd_configs:
+        - role: pod
+        pipeline_stages:
+        - docker: {}
+        relabel_configs:
+        - source_labels: [__meta_kubernetes_pod_node_name]
+          target_label: node_name
+        - source_labels: [__meta_kubernetes_namespace]
+          target_label: namespace
+        - source_labels: [__meta_kubernetes_pod_name]
+          target_label: pod
+        - source_labels: [__meta_kubernetes_pod_container_name]
+          target_label: container
+        - source_labels: [__meta_kubernetes_pod_uid, __meta_kubernetes_pod_container_name]
+          target_label: __path__
+          separator: /
+          replacement: /var/log/pods/*$1/*.log
     daemonset:
       enabled: true
     resources:
