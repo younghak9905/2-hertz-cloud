@@ -13,7 +13,7 @@ spec:
     targetRevision: {{ .Values.prometheus.chart.version }}
     helm:
       releaseName: prometheus-stack
-      skipCrds: true
+      skipCrds: false
       values: |
 {{ .Values.prometheus.config | toYaml | indent 8 }}
   destination:
@@ -25,7 +25,6 @@ spec:
       selfHeal: true
     syncOptions:
       - CreateNamespace=true
-      - ServerSideApply=true
       - RespectIgnoreDifferences=true
   ignoreDifferences:
   - group: ""
