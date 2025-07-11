@@ -1,6 +1,6 @@
 # Prod Environment Settings
 global:
-  namespace: monitoring
+  namespace: hertz-tuning-prod
   environment: prod
 
 # Prometheus Stack Configuration
