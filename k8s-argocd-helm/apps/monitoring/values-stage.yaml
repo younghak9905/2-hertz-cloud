@@ -69,10 +69,10 @@ prometheus:
         resources:
           requests:
             memory: 512Mi
-            cpu: 250m
+            cpu: 200m
           limits:
-            memory: 1Gi
-            cpu: 500m
+            memory: 750i
+            cpu: 400m
         storageSpec:
           volumeClaimTemplate:
             spec:
@@ -86,7 +86,7 @@ prometheus:
         enabled: false
       tls:
         enabled: false
-      createCustomResource: true
+      createCustomResource: false
     nodeExporter:
       enabled: true
       serviceMonitor:
@@ -102,15 +102,15 @@ prometheus:
       serviceMonitor:
         https: true
     kubeApiServer:
-      enabled: true
+      enabled: false
     kubeControllerManager:
-      enabled: true
+      enabled: false
     kubeScheduler:
-      enabled: true
+      enabled: false
     kubeProxy:
-      enabled: true
+      enabled: false
     kubeEtcd:
-      enabled: true
+      enabled: false
     kubeStateMetrics:
       enabled: true
     kube-state-metrics:
@@ -120,7 +120,7 @@ prometheus:
         - nodes=[*]
         - deployments=[*]
     alertmanager:
-      enabled: true
+      enabled: false
       alertmanagerSpec:
         storage:
           volumeClaimTemplate:
@@ -186,11 +186,11 @@ loki:
           mountPath: /loki
       resources:
         requests:
-          memory: 1Gi
-          cpu: 750m
+          memory: 256Mi
+          cpu: 100m
         limits:
-          memory: 1Gi
-          cpu: 1000m
+          memory: 512Mi
+          cpu: 200m
     backend:
       replicas: 0
     read:
