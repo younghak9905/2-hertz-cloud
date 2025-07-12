@@ -26,7 +26,7 @@ resources:
 
 # Storage
 storage:
-  storageClass: mysql-ebs
+  storageClass: mysql-ebs-prod
   size: 20Gi
 
 # Database credentials (from secrets)
