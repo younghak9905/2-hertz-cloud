@@ -66,16 +66,16 @@ spec:
               value: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
             - name: JAVA_TOOL_OPTIONS
               value: "-javaagent:/otel/opentelemetry-javaagent.jar"
+
             - name: KAFKA_SSE_GROUP_ID
               valueFrom:
                 fieldRef:
                   fieldPath: metadata.name
-          volumeMounts:
-            - name: otel-agent
-              mountPath: /otel
+
           ports:
             - containerPort: {{ .Values.app.ports.http }}
             - containerPort: {{ .Values.app.ports.websocket }}
+
           readinessProbe:
             httpGet:
               path: /api/ping
@@ -85,6 +85,7 @@ spec:
             timeoutSeconds: {{ .Values.healthCheck.readiness.timeoutSeconds }}
             failureThreshold: {{ .Values.healthCheck.readiness.failureThreshold }}
             successThreshold: {{ .Values.healthCheck.readiness.successThreshold }}
+
           livenessProbe:
             httpGet:
               path: /api/ping
@@ -93,6 +94,7 @@ spec:
             periodSeconds: {{ .Values.healthCheck.liveness.periodSeconds }}
             timeoutSeconds: {{ .Values.healthCheck.liveness.timeoutSeconds }}
             failureThreshold: {{ .Values.healthCheck.liveness.failureThreshold }}
+
           resources:
             requests:
               cpu: {{ .Values.resources.requests.cpu }}
@@ -101,6 +103,20 @@ spec:
               cpu: {{ .Values.resources.limits.cpu }}
               memory: {{ .Values.resources.limits.memory }}
 
+          volumeMounts:
+            - name: otel-agent
+              mountPath: /otel
+            # 오직 TUNING_FCM 키만 이 경로에 파일로 제공
+            - name: fcm-cert-volume
+              mountPath: /app
+              readOnly: true
+
       volumes:
         - name: otel-agent
           emptyDir: {}
+        - name: fcm-cert-volume
+          secret:
+            secretName: springboot-secrets
+            items:
+              - key: TUNING_FCM
+                path: tuning-fcm-certification.json
