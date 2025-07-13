@@ -146,23 +146,8 @@ loki:
       # ① 핵심: PVC가 마운트되는 경로로 통일
       commonConfig:
         replication_factor: 1
-        path_prefix: /var/loki
+        path_prefix: /var/loki            # ← 반드시 /var/loki
 
-      limits_config:
-        max_query_parallelism:       32    # 쿼리당 최대 병렬도
-        max_concurrent_tail_requests: 20   # tail 요청 동시처리 상한
-        max_cache_freshness_per_query: 10m # 쿼리당 캐싱 만료 시간
-        split_queries_by_interval:   15m   # 긴 쿼리 분할 주기
-
-      query_scheduler:
-        max_outstanding_requests_per_tenant: 256  # 한 테넌트당 스케줄러 큐 크기
-
-      # (Optional) 로그 보존 정책이 필요하면 아래처럼 compactor 설정 추가
-      # compactor:
-      #   working_directory: /var/loki/boltdb-shipper-compactor
-      #   retention_enabled:    true
-      #   retention_delete_delay: 2h
-      #   retention_period:       168h
 
     schemaConfig:
       configs:
@@ -176,17 +161,18 @@ loki:
 
     storageConfig:
       boltdb_shipper:
-        active_index_directory: /var/loki/boltdb-shipper-active
-        cache_location:         /var/loki/boltdb-shipper-cache
+        active_index_directory: /var/loki/boltdb-shipper-active  # ← /var/loki 로 시작
+        cache_location:         /var/loki/boltdb-shipper-cache   # ← /var/loki 로 시작
         shared_store:           filesystem
       filesystem:
-        directory: /var/loki/chunks
+        directory: /var/loki/chunks                            # ← /var/loki 로 시
 
     rulerConfig:
       storage:
         type: local
         local:
-          directory: /var/loki/rules
+          directory: /var/loki/rules                           # ← /var/loki 로 시작
+
 
     singleBinary:
       replicas: 1
