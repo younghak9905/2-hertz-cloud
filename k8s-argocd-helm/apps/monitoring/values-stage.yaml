@@ -71,7 +71,7 @@ prometheus:
             memory: 512Mi
             cpu: 200m
           limits:
-            memory: 750i
+            memory: 750Mi
             cpu: 400m
         storageSpec:
           volumeClaimTemplate:
@@ -86,7 +86,7 @@ prometheus:
         enabled: false
       tls:
         enabled: false
-      createCustomResource: false
+      createCustomResource: true
     nodeExporter:
       enabled: true
       serviceMonitor:
@@ -177,13 +177,9 @@ loki:
     singleBinary:
       replicas: 1
       persistence:
-        enabled: false
-      extraVolumes:
-        - name: loki-data
-          emptyDir: {}
-      extraVolumeMounts:
-        - name: loki-data
-          mountPath: /loki
+        enabled: true
+        storageClass: gp2
+        size: 10Gi
       resources:
         requests:
           memory: 256Mi
