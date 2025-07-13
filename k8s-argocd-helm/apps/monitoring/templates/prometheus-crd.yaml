@@ -9,7 +9,7 @@ spec:
   project: tuning-{{ .Values.global.environment }}
   source:
     repoURL: https://github.com/prometheus-operator/prometheus-operator
-    targetRevision: v0.68.0
+    targetRevision: v0.63.0 # kube-prometheus-stack:45.7.1 에 맞는 버전으로 수정
     path: example/prometheus-operator-crd
   destination:
     server: https://kubernetes.default.svc
