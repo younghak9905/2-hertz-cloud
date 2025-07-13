@@ -67,6 +67,10 @@ spec:
             - name: JAVA_TOOL_OPTIONS
               value: "-javaagent:/otel/opentelemetry-javaagent.jar"
 
+            # fcm.certification 속성에 마운트된 파일의 절대 경로를 지정합니다.
+            - name: FCM_CERTIFICATION
+              value: "/app/tuning-fcm-certification.json"
+
             - name: KAFKA_SSE_GROUP_ID
               valueFrom:
                 fieldRef:
@@ -106,9 +110,10 @@ spec:
           volumeMounts:
             - name: otel-agent
               mountPath: /otel
-            # 오직 TUNING_FCM 키만 이 경로에 파일로 제공
+            # subPath를 사용하여 디렉터리를 덮어쓰지 않고 파일만 마운트합니다.
             - name: fcm-cert-volume
-              mountPath: /app
+              mountPath: /app/tuning-fcm-certification.json
+              subPath: tuning-fcm-certification.json
               readOnly: true
 
       volumes:
