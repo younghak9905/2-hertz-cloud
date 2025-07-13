@@ -119,9 +119,9 @@ spec:
       volumes:
         - name: otel-agent
           emptyDir: {}
-        - name: fcm-cert-volume
-          secret:
-            secretName: springboot-secrets
-            items:
-              - key: TUNING_FCM
-                path: tuning-fcm-certification.json
+        # - name: fcm-cert-volume
+        #   secret:
+        #     secretName: springboot-secrets
+        #     items:
+        #       - key: TUNING_FCM
+        #         path: tuning-fcm-certification.json
