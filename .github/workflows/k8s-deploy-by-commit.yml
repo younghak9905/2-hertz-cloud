@@ -159,27 +159,27 @@ jobs:
           docker push $ECR_REGISTRY/$REPOSITORY:$ENV_TAG
           echo "IMAGE_TAG=$IMAGE_TAG" >> $GITHUB_OUTPUT
           
-      - name: Clone cloud repository
-        uses: actions/checkout@v3
-        with:
-          repository: 100-hours-a-week/2-hertz-cloud
-          token: ${{ secrets.TOKEN_GITHUB }}
-          ref: ${{ inputs.target_branch }}
-          path: cloud-repo
+      # - name: Clone cloud repository
+      #   uses: actions/checkout@v3
+      #   with:
+      #     repository: 100-hours-a-week/2-hertz-cloud
+      #     token: ${{ secrets.TOKEN_GITHUB }}
+      #     ref: ${{ inputs.target_branch }}
+      #     path: cloud-repo
           
-      - name: Update manifest
-        run: |
-          cd cloud-repo
-          sed -i "s/tag: .*/tag: ${{ steps.build.outputs.IMAGE_TAG }}/" k8s-argocd-helm/apps/${{ inputs.service }}/values.yaml
+      # - name: Update manifest
+      #   run: |
+      #     cd cloud-repo
+      #     sed -i "s/tag: .*/tag: ${{ steps.build.outputs.IMAGE_TAG }}/" k8s-argocd-helm/apps/${{ inputs.service }}/values.yaml
          
-      - name: Commit and push
-        run: |
-          cd cloud-repo
-          git config --local user.email "action@github.com"
-          git config --local user.name "GitHub Action"
-          git add k8s-argocd-helm/apps/${{ inputs.service }}/values.yaml
-          git commit -m "Deploy ${{ inputs.service }} from commit ${{ env.SHORT_HASH }}"
-          git push
+      # - name: Commit and push
+      #   run: |
+      #     cd cloud-repo
+      #     git config --local user.email "action@github.com"
+      #     git config --local user.name "GitHub Action"
+      #     git add k8s-argocd-helm/apps/${{ inputs.service }}/values.yaml
+      #     git commit -m "Deploy ${{ inputs.service }} from commit ${{ env.SHORT_HASH }}"
+      #     git push
           
       - name: Notify deployment
         run: |

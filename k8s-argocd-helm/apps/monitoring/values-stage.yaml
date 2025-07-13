@@ -130,8 +130,6 @@ prometheus:
               resources:
                 requests:
                   storage: 2Gi
-
-# Loki Configuration
 loki:
   enabled: true
   chart:
@@ -144,9 +142,12 @@ loki:
 
     loki:
       auth_enabled: false
+
+      # ① 핵심: PVC가 마운트되는 경로로 통일
       commonConfig:
         replication_factor: 1
         path_prefix: /var/loki            # ← 반드시 /var/loki
+
 
     schemaConfig:
       configs:
@@ -164,13 +165,14 @@ loki:
         cache_location:         /var/loki/boltdb-shipper-cache   # ← /var/loki 로 시작
         shared_store:           filesystem
       filesystem:
-        directory: /var/loki/chunks                            # ← /var/loki 로 시작
+        directory: /var/loki/chunks                            # ← /var/loki 로 시
 
     rulerConfig:
       storage:
         type: local
         local:
           directory: /var/loki/rules                           # ← /var/loki 로 시작
+
 
     singleBinary:
       replicas: 1
