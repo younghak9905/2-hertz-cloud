@@ -13,7 +13,8 @@ spec:
     targetRevision: {{ .Values.loki.chart.version }}
     helm:
       releaseName: loki
-      skipCrds: true
+      skipCrds: false
+      installCRDs: true
       values: |
 {{ .Values.loki.config | toYaml | indent 8 }}
   destination:
