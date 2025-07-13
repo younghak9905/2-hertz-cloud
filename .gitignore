@@ -97,3 +97,4 @@ terraform.rc
 **/cluster-config.yaml
 
 .amazonq/**
+rules.md

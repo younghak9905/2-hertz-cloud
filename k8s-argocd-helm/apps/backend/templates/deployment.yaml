@@ -66,15 +66,21 @@ spec:
               value: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
             - name: JAVA_TOOL_OPTIONS
               value: "-javaagent:/otel/opentelemetry-javaagent.jar"
-            # # fcm.certification 속성에 마운트된 파일의 절대 경로를 지정합니다.
-            # - name: FCM_CERTIFICATION
-            #   value: "/app/tuning-fcm-certification.json"
+            # fcm.certification 속성에 마운트된 파일의 절대 경로를 지정합니다.
+            - name: FCM_CERTIFICATION
+              value: "/app/tuning-fcm-certification.json"
             - name: KAFKA_SSE_GROUP_ID
               valueFrom:
                 fieldRef:
                   fieldPath: metadata.name
           volumeMounts:
             - name: otel-agent
+              mountPath: /otel
+            # subPath를 사용하여 디렉터리를 덮어쓰지 않고 파일만 마운트합니다.
+            - name: fcm-cert-volume
+              mountPath: /app/tuning-fcm-certification.json
+              subPath: tuning-fcm-certification.json
+              readOnly: true
           ports:
             - containerPort: {{ .Values.app.ports.http }}
             - containerPort: {{ .Values.app.ports.websocket }}
@@ -106,21 +112,12 @@ spec:
               cpu: {{ .Values.resources.limits.cpu }}
               memory: {{ .Values.resources.limits.memory }}
 
-          # volumeMounts:
-          #   - name: otel-agent
-          #     mountPath: /otel
-          #   # subPath를 사용하여 디렉터리를 덮어쓰지 않고 파일만 마운트합니다.
-          #   - name: fcm-cert-volume
-          #     mountPath: /app/tuning-fcm-certification.json
-          #     subPath: tuning-fcm-certification.json
-          #     readOnly: true
-
       volumes:
         - name: otel-agent
           emptyDir: {}
-        # - name: fcm-cert-volume
-        #   secret:
-        #     secretName: springboot-secrets
-        #     items:
-        #       - key: TUNING_FCM
-        #         path: tuning-fcm-certification.json
+        - name: fcm-cert-volume
+          secret:
+            secretName: springboot-fcm-secret
+            items:
+              - key: tuning-fcm-certification.json
+                path: tuning-fcm-certification.json
