@@ -1,8 +1,7 @@
-# Prod Environment Settings
+# Stage Environment Settings
 global:
   namespace: hertz-tuning-prod
   environment: prod
-
 # Prometheus Stack Configuration
 prometheus:
   enabled: true
@@ -16,7 +15,7 @@ prometheus:
       persistence:
         enabled: true
         storageClassName: gp2
-        size: 10Gi
+        size: 5Gi
       service:
         type: LoadBalancer
       additionalDataSources:
@@ -65,14 +64,14 @@ prometheus:
           matchLabels: {}
         podMonitorNamespaceSelector:
           matchLabels: {}
-        retention: 60d
+        retention: 30d
         resources:
           requests:
-            memory: 1Gi
-            cpu: 500m
+            memory: 512Mi
+            cpu: 200m
           limits:
-            memory: 2Gi
-            cpu: 1000m
+            memory: 750Mi
+            cpu: 400m
         storageSpec:
           volumeClaimTemplate:
             spec:
@@ -80,7 +79,7 @@ prometheus:
               accessModes: ["ReadWriteOnce"]
               resources:
                 requests:
-                  storage: 10Gi
+                  storage: 5Gi
     prometheusOperator:
       admissionWebhooks:
         enabled: false
@@ -102,15 +101,15 @@ prometheus:
       serviceMonitor:
         https: true
     kubeApiServer:
-      enabled: true
+      enabled: false
     kubeControllerManager:
-      enabled: true
+      enabled: false
     kubeScheduler:
-      enabled: true
+      enabled: false
     kubeProxy:
-      enabled: true
+      enabled: false
     kubeEtcd:
-      enabled: true
+      enabled: false
     kubeStateMetrics:
       enabled: true
     kube-state-metrics:
@@ -120,7 +119,7 @@ prometheus:
         - nodes=[*]
         - deployments=[*]
     alertmanager:
-      enabled: true
+      enabled: false
       alertmanagerSpec:
         storage:
           volumeClaimTemplate:
@@ -129,7 +128,7 @@ prometheus:
               accessModes: ["ReadWriteOnce"]
               resources:
                 requests:
-                  storage: 5Gi
+                  storage: 2Gi
 
 # Loki Configuration
 loki:
@@ -145,6 +144,13 @@ loki:
       commonConfig:
         replication_factor: 1
         path_prefix: /loki
+      limits_config:
+        max_query_parallelism: 32
+        max_concurrent_tail_requests: 20
+        max_cache_freshness_per_query: 10m
+        split_queries_by_interval: 15m
+      query_scheduler:
+        max_outstanding_requests_per_tenant: 256
     schemaConfig:
       configs:
       - from: 2020-10-24
@@ -174,11 +180,11 @@ loki:
         size: 10Gi
       resources:
         requests:
-          memory: 1Gi
-          cpu: 750m
+          memory: 256Mi
+          cpu: 100m
         limits:
-          memory: 2Gi
-          cpu: 1000m
+          memory: 512Mi
+          cpu: 200m
     backend:
       replicas: 0
     read:
@@ -245,19 +251,12 @@ promtail:
           target_label: __path__
           separator: /
           replacement: /var/log/pods/*$1/*.log
-        - source_labels: [__meta_kubernetes_pod_annotationpresent_kubernetes_io_config_hash, __meta_kubernetes_pod_annotation_kubernetes_io_config_hash, __meta_kubernetes_pod_container_name]
-          regex: true;(.*);.+
-          target_label: __tmp_config_hash
-          replacement: $1
-        - source_labels: [__tmp_config_hash]
-          regex: ^$
-          action: drop
     daemonset:
       enabled: true
     resources:
       requests:
+        memory: 128Mi
+        cpu: 100m
+      limits:
         memory: 256Mi
         cpu: 200m
-      limits:
-        memory: 512Mi
-        cpu: 400m
