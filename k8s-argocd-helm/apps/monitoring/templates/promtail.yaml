@@ -4,7 +4,7 @@ metadata:
   name: promtail
   namespace: argocd
   annotations:
-    argocd.argoproj.io/sync-wave: "4"
+    argocd.argoproj.io/sync-wave: "2"
 spec:
   project: tuning-{{ .Values.global.environment }}
   source:

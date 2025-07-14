@@ -4,7 +4,7 @@ metadata:
   name: prometheus-stack
   namespace: argocd
   annotations:
-    argocd.argoproj.io/sync-wave: "2"
+    argocd.argoproj.io/sync-wave: "1" # CRD를 함께 설치하므로 가장 먼저 실행되도록 sync-wave를 0으로 변경
 spec:
   project: tuning-{{ .Values.global.environment }}
   source:
@@ -13,7 +13,7 @@ spec:
     targetRevision: {{ .Values.prometheus.chart.version }}
     helm:
       releaseName: prometheus-stack
-      skipCrds: true
+      # skipCrds: true # CRD를 이 차트에서 직접 관리하도록 주석 처리 또는 삭제
       values: |
 {{ .Values.prometheus.config | toYaml | indent 8 }}
   destination:
