@@ -13,7 +13,7 @@ spec:
     targetRevision: {{ .Values.prometheus.chart.version }}
     helm:
       releaseName: prometheus-stack
-      # skipCrds: true # CRD를 이 차트에서 직접 관리하도록 주석 처리 또는 삭제
+      skipCrds: true # CRD를 이 차트에서 직접 관리하도록 주석 처리 또는 삭제
       values: |
 {{ .Values.prometheus.config | toYaml | indent 8 }}
   destination:
