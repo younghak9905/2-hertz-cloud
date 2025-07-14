@@ -126,7 +126,7 @@ jobs:
           fi
 
       - name: Authenticate to GCP
-        if: github.ref_name == 'main' && github.event.inputs.target != 'GPU' && github.event.inputs.target  != 'TEST' 
+        if: github.event.inputs.target  == 'TEST' || github.ref_name == 'main' && github.event.inputs.target != 'GPU' 
         uses: google-github-actions/auth@v1
         with:
           credentials_json: ${{ secrets.PROD_GCP_SA_KEY }}
