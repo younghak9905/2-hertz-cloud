@@ -11,12 +11,62 @@ on:
         options:
           - "false"
           - "true"
+      project_id:
+        description: "GCP 프로젝트 ID를 입력하세요"
+        required: false
+        default: "Tuning-DEV-01"
+        type: choice
+        options:
+          - "Tuning-DEV-01"
+          - "Tuning-PROD-01"
 jobs:
   deploy:
     runs-on: ubuntu-latest
-
     steps:
+      - name: Configure AWS credentials
+        if: ${{ inputs.project_id == 'Tuning-PROD-01' }}
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Login to ECR
+        if: ${{ inputs.project_id == 'Tuning-PROD-01' }}
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v1
+      
+      - name: Set environment variables from SSM
+        if: ${{ inputs.project_id == 'Tuning-PROD-01' }}
+        run: |
+          load_param() {
+            VALUE=$(aws ssm get-parameter --name "$1" --with-decryption --query "Parameter.Value" --output text)
+            echo "::add-mask::$VALUE"
+            echo "$2=$VALUE" >> $GITHUB_ENV
+          }
+
+          load_secret_to_file() {
+            VALUE=$(aws ssm get-parameter --name "$1" --with-decryption --output json | jq -r .Parameter.Value)
+
+            echo "$VALUE" | while IFS= read -r line; do
+              echo "::add-mask::$line"
+            done
+
+            echo "$VALUE" > "$2"
+          }
+          BRANCH="develop"  # 개발 환경을 위한 브랜치 설정
+          SANITIZED_BRANCH="${BRANCH//\//-}"
+          SANITIZED_BRANCH=$(echo "$SANITIZED_BRANCH" | sed 's#[^a-zA-Z0-9_.-]#-#g')
+          BRANCH="$SANITIZED_BRANCH"
+          echo "ENV=develop" >> $GITHUB_ENV
+          load_param "/global/gcp/test/HOST" HOST
+          load_param "/global/gcp/test/INSTANCE" INSTANCE
+          load_param "/global/gcp/test/PROJECT_ID" PROJECT_ID
+          load_param "/global/gcp/test/ZONE" ZONE
+          load_secret_to_file "/global/gcp/test/SA_KEY" gcp-sa-key.json
+
       - name: Set environment
+        if: ${{ inputs.project_id == 'Tuning-DEV-01' }}
         run: |
           BRANCH="${{ github.ref_name }}"
           echo "BRANCH=$BRANCH" >> $GITHUB_ENV
@@ -40,6 +90,7 @@ jobs:
           echo "COMMIT_HASH=${{ github.sha }}" >> $GITHUB_ENV
 
       - name: Set deploy message
+        if: ${{ inputs.project_id == 'Tuning-DEV-01' }}
         run: |
           if [[ "${{ github.event.inputs.rollback }}" == "true" ]]; then
             echo "DEPLOY_MESSAGE=🚨 **[${{ env.ENV }} 환경]** BE 롤백 완료" >> $GITHUB_ENV
@@ -48,13 +99,13 @@ jobs:
           fi
 
       - name: Authenticate to GCP
-        if: github.ref_name == 'main'
+        if: github.ref_name == 'main' && ${{ inputs.project_id == 'Tuning-DEV-01' }}
         uses: google-github-actions/auth@v1
         with:
           credentials_json: ${{ secrets.PROD_GCP_SA_KEY }}
 
       - name: Authenticate to GCP (Stage)
-        if: github.ref_name != 'main'
+        if: github.ref_name != 'main' && ${{ inputs.project_id == 'Tuning-DEV-01' }}
         uses: google-github-actions/auth@v1
         with:
           credentials_json: ${{ secrets.DEV_GCP_SA_KEY }}
