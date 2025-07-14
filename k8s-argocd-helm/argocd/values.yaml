@@ -94,7 +94,7 @@ argocd-image-updater:
 applications:
   git:
     branches:
-      stage: fix/k8s/grafana
+      stage: develop
       prod: main
 
 apps:
