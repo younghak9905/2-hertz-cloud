@@ -2,6 +2,7 @@
 global:
   namespace: hertz-tuning-prod
   environment: prod
+
 # Prometheus Stack Configuration
 prometheus:
   enabled: true
@@ -9,7 +10,11 @@ prometheus:
     repository: https://prometheus-community.github.io/helm-charts
     name: kube-prometheus-stack
     version: 45.7.1
+
+  # ← 이 부분이 .Values.prometheus.config 입니다
   config:
+    # ─────────────────────────────────────
+    # grafana 설정을 한 단계 위로 이동
     grafana:
       adminPassword: "admin123"
       persistence:
@@ -18,24 +23,29 @@ prometheus:
         size: 5Gi
       service:
         type: LoadBalancer
+        annotations:
+          service.beta.kubernetes.io/aws-load-balancer-scheme: internet-facing
+          service.beta.kubernetes.io/aws-load-balancer-internal: "false"
+        loadBalancerSourceRanges:
+          - 0.0.0.0/0
       additionalDataSources:
-      - name: Loki
-        type: loki
-        url: http://loki:3100
-        access: proxy
-        isDefault: false
+        - name: Loki
+          type: loki
+          url: http://loki:3100
+          access: proxy
+          isDefault: false
       dashboardProviders:
         dashboardproviders.yaml:
           apiVersion: 1
           providers:
-          - name: 'default'
-            orgId: 1
-            folder: ''
-            type: file
-            disableDeletion: false
-            editable: true
-            options:
-              path: /var/lib/grafana/dashboards/default
+            - name: 'default'
+              orgId: 1
+              folder: ''
+              type: file
+              disableDeletion: false
+              editable: true
+              options:
+                path: /var/lib/grafana/dashboards/default
       dashboards:
         default:
           kubernetes-cluster-monitoring:
@@ -50,6 +60,7 @@ prometheus:
             gnetId: 13639
             revision: 2
             datasource: Loki
+    # ─────────────────────────────────────
     prometheus:
       prometheusSpec:
         serviceMonitorSelector:
@@ -90,28 +101,29 @@ prometheus:
       enabled: true
       serviceMonitor:
         relabelings:
-        - sourceLabels: [__meta_kubernetes_pod_node_name]
-          separator: ;
-          regex: ^(.*)$
-          targetLabel: nodename
-          replacement: ${1}
-          action: replace
+          - sourceLabels: [__meta_kubernetes_pod_node_name]
+            regex: ^(.*)$
+            targetLabel: nodename
+            replacement: ${1}
+            action: replace
     kubelet:
       enabled: true
       serviceMonitor:
         https: true
-    kubeApiServer:
+    kubeApiServer:    
       enabled: false
-    kubeControllerManager:
+    kubeControllerManager: 
       enabled: false
-    kubeScheduler:
+    kubeScheduler:    
       enabled: false
-    kubeProxy:
+    kubeProxy:        
       enabled: false
-    kubeEtcd:
+    kubeEtcd:         
       enabled: false
+
     kubeStateMetrics:
       enabled: true
+
     kube-state-metrics:
       enabled: true
       metricLabelsAllowlist:
@@ -129,79 +141,63 @@ prometheus:
               resources:
                 requests:
                   storage: 2Gi
-
-# Loki Configuration
 loki:
   enabled: true
   chart:
     repository: https://grafana.github.io/helm-charts
     name: loki
     version: 5.8.0
+
   config:
     deploymentMode: SingleBinary
+
     loki:
       auth_enabled: false
+
+      # ① 핵심: PVC가 마운트되는 경로로 통일
       commonConfig:
         replication_factor: 1
-        path_prefix: /loki
-      limits_config:
-        max_query_parallelism: 32
-        max_concurrent_tail_requests: 20
-        max_cache_freshness_per_query: 10m
-        split_queries_by_interval: 15m
-      query_scheduler:
-        max_outstanding_requests_per_tenant: 256
+        path_prefix: /var/loki            # ← 반드시 /var/loki
+
+
     schemaConfig:
       configs:
-      - from: 2020-10-24
-        store: boltdb-shipper
-        object_store: filesystem
-        schema: v11
-        index:
-          prefix: index_
-          period: 24h
+        - from: 2020-10-24
+          store: boltdb-shipper
+          object_store: filesystem
+          schema: v11
+          index:
+            prefix: index_
+            period: 24h
+
     storageConfig:
       boltdb_shipper:
-        active_index_directory: /loki/boltdb-shipper-active
-        cache_location: /loki/boltdb-shipper-cache
-        shared_store: filesystem
+        active_index_directory: /var/loki/boltdb-shipper-active  # ← /var/loki 로 시작
+        cache_location:         /var/loki/boltdb-shipper-cache   # ← /var/loki 로 시작
+        shared_store:           filesystem
       filesystem:
-        directory: /loki/chunks
+        directory: /var/loki/chunks                            # ← /var/loki 로 시
+
     rulerConfig:
       storage:
         type: local
         local:
-          directory: /loki/rules
+          directory: /var/loki/rules                           # ← /var/loki 로 시작
+
+
     singleBinary:
       replicas: 1
       persistence:
-        enabled: true
+        enabled:      true
         storageClass: gp2
-        size: 10Gi
+        size:         10Gi
       resources:
         requests:
+          cpu:    100m
           memory: 256Mi
-          cpu: 100m
         limits:
+          cpu:    200m
           memory: 512Mi
-          cpu: 200m
-    backend:
-      replicas: 0
-    read:
-      replicas: 0
-    write:
-      replicas: 0
-    gateway:
-      enabled: false
-    monitoring:
-      selfMonitoring:
-        enabled: false
-        grafanaAgent:
-          installOperator: false
-    test:
-      enabled: false
-    grafana-agent-operator:
-      enabled: false
 
 # Promtail Configuration
 promtail:

@@ -65,6 +65,7 @@ configs:
 ## Image Updater
 argocd-image-updater:
   enabled: true
+  installCRDs: true          # ← 이 줄을 꼭 넣습니다.
   serviceAccount:
     create: false
     name: ecr-access-sa
