@@ -7,7 +7,7 @@ global:
 
 image:
   repository: 969400486509.dkr.ecr.ap-northeast-2.amazonaws.com/tuning-springboot
-  tag: k8s-develop-latest
+  tag: k8s--e94649e
 
 serviceAccount:
   ecrAccess: ecr-access-sa
