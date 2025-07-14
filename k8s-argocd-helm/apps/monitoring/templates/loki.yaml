@@ -4,7 +4,7 @@ metadata:
   name: loki
   namespace: argocd
   annotations:
-    argocd.argoproj.io/sync-wave: "3"
+    argocd.argoproj.io/sync-wave: "1"
 spec:
   project: tuning-{{ .Values.global.environment }}
   source:
@@ -26,3 +26,9 @@ spec:
       selfHeal: true
     syncOptions:
       - CreateNamespace=true
+  ignoreDifferences:
+  - group: ""
+    kind: "*"
+    jsonPointers:
+      - /metadata/annotations/controller-gen.kubebuilder.io~1version
+

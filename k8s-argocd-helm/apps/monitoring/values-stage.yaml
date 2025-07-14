@@ -10,7 +10,11 @@ prometheus:
     repository: https://prometheus-community.github.io/helm-charts
     name: kube-prometheus-stack
     version: 45.7.1
+
+  # ← 이 부분이 .Values.prometheus.config 입니다
   config:
+    # ─────────────────────────────────────
+    # grafana 설정을 한 단계 위로 이동
     grafana:
       adminPassword: "admin123"
       persistence:
@@ -19,24 +23,29 @@ prometheus:
         size: 5Gi
       service:
         type: LoadBalancer
+        annotations:
+          service.beta.kubernetes.io/aws-load-balancer-scheme: internet-facing
+          service.beta.kubernetes.io/aws-load-balancer-internal: "false"
+        loadBalancerSourceRanges:
+          - 0.0.0.0/0
       additionalDataSources:
-      - name: Loki
-        type: loki
-        url: http://loki:3100
-        access: proxy
-        isDefault: false
+        - name: Loki
+          type: loki
+          url: http://loki:3100
+          access: proxy
+          isDefault: false
       dashboardProviders:
         dashboardproviders.yaml:
           apiVersion: 1
           providers:
-          - name: 'default'
-            orgId: 1
-            folder: ''
-            type: file
-            disableDeletion: false
-            editable: true
-            options:
-              path: /var/lib/grafana/dashboards/default
+            - name: 'default'
+              orgId: 1
+              folder: ''
+              type: file
+              disableDeletion: false
+              editable: true
+              options:
+                path: /var/lib/grafana/dashboards/default
       dashboards:
         default:
           kubernetes-cluster-monitoring:
@@ -51,6 +60,7 @@ prometheus:
             gnetId: 13639
             revision: 2
             datasource: Loki
+    # ─────────────────────────────────────
     prometheus:
       prometheusSpec:
         serviceMonitorSelector:
@@ -91,28 +101,29 @@ prometheus:
       enabled: true
       serviceMonitor:
         relabelings:
-        - sourceLabels: [__meta_kubernetes_pod_node_name]
-          separator: ;
-          regex: ^(.*)$
-          targetLabel: nodename
-          replacement: ${1}
-          action: replace
+          - sourceLabels: [__meta_kubernetes_pod_node_name]
+            regex: ^(.*)$
+            targetLabel: nodename
+            replacement: ${1}
+            action: replace
     kubelet:
       enabled: true
       serviceMonitor:
         https: true
-    kubeApiServer:
+    kubeApiServer:    
       enabled: false
-    kubeControllerManager:
+    kubeControllerManager: 
       enabled: false
-    kubeScheduler:
+    kubeScheduler:    
       enabled: false
-    kubeProxy:
+    kubeProxy:        
       enabled: false
-    kubeEtcd:
+    kubeEtcd:         
       enabled: false
+
     kubeStateMetrics:
       enabled: true
+
     kube-state-metrics:
       enabled: true
       metricLabelsAllowlist:
