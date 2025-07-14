@@ -10,63 +10,57 @@ prometheus:
     repository: https://prometheus-community.github.io/helm-charts
     name: kube-prometheus-stack
     version: 45.7.1
+
+  # ← 이 부분이 .Values.prometheus.config 입니다
   config:
-  grafana:
-    adminPassword: "admin123"
-    persistence:
-      enabled: true
-      storageClassName: gp2
-      size: 5Gi
-    service:
-      type: LoadBalancer
-
-      # ────────────────────────────────────────────────────────────
-      # ELB를 Public(Internet-facing)으로 만들기 위한 어노테이션
-      annotations:
-        # Classic ELB / NLB 모두 지원
-        service.beta.kubernetes.io/aws-load-balancer-scheme: internet-facing
-        # 내부용 ELB가 아닌 외부용으로 확실히 설정
-        service.beta.kubernetes.io/aws-load-balancer-internal: "false"
-
-      # (선택) 접근 가능한 CIDR 범위를 제한하고 싶다면
-      loadBalancerSourceRanges:
-        - 0.0.0.0/0
-      # ────────────────────────────────────────────────────────────
-
-    additionalDataSources:
-      - name: Loki
-        type: loki
-        url: http://loki:3100
-        access: proxy
-        isDefault: false
-
-    dashboardProviders:
-      dashboardproviders.yaml:
-        apiVersion: 1
-        providers:
-        - name: 'default'
-          orgId: 1
-          folder: ''
-          type: file
-          disableDeletion: false
-          editable: true
-          options:
-            path: /var/lib/grafana/dashboards/default
-
-    dashboards:
-      default:
-        kubernetes-cluster-monitoring:
-          gnetId: 7249
-          revision: 1
-          datasource: Prometheus
-        kubernetes-pod-monitoring:
-          gnetId: 6417
-          revision: 1
-          datasource: Prometheus
-        loki-logs:
-          gnetId: 13639
-          revision: 2
-          datasource: Loki
+    # ─────────────────────────────────────
+    # grafana 설정을 한 단계 위로 이동
+    grafana:
+      adminPassword: "admin123"
+      persistence:
+        enabled: true
+        storageClassName: gp2
+        size: 5Gi
+      service:
+        type: LoadBalancer
+        annotations:
+          service.beta.kubernetes.io/aws-load-balancer-scheme: internet-facing
+          service.beta.kubernetes.io/aws-load-balancer-internal: "false"
+        loadBalancerSourceRanges:
+          - 0.0.0.0/0
+      additionalDataSources:
+        - name: Loki
+          type: loki
+          url: http://loki:3100
+          access: proxy
+          isDefault: false
+      dashboardProviders:
+        dashboardproviders.yaml:
+          apiVersion: 1
+          providers:
+            - name: 'default'
+              orgId: 1
+              folder: ''
+              type: file
+              disableDeletion: false
+              editable: true
+              options:
+                path: /var/lib/grafana/dashboards/default
+      dashboards:
+        default:
+          kubernetes-cluster-monitoring:
+            gnetId: 7249
+            revision: 1
+            datasource: Prometheus
+          kubernetes-pod-monitoring:
+            gnetId: 6417
+            revision: 1
+            datasource: Prometheus
+          loki-logs:
+            gnetId: 13639
+            revision: 2
+            datasource: Loki
+    # ─────────────────────────────────────
     prometheus:
       prometheusSpec:
         serviceMonitorSelector:
@@ -107,28 +101,29 @@ prometheus:
       enabled: true
       serviceMonitor:
         relabelings:
-        - sourceLabels: [__meta_kubernetes_pod_node_name]
-          separator: ;
-          regex: ^(.*)$
-          targetLabel: nodename
-          replacement: ${1}
-          action: replace
+          - sourceLabels: [__meta_kubernetes_pod_node_name]
+            regex: ^(.*)$
+            targetLabel: nodename
+            replacement: ${1}
+            action: replace
     kubelet:
       enabled: true
       serviceMonitor:
         https: true
-    kubeApiServer:
+    kubeApiServer:    
       enabled: false
-    kubeControllerManager:
+    kubeControllerManager: 
       enabled: false
-    kubeScheduler:
+    kubeScheduler:    
       enabled: false
-    kubeProxy:
+    kubeProxy:        
       enabled: false
-    kubeEtcd:
+    kubeEtcd:         
       enabled: false
+
     kubeStateMetrics:
       enabled: true
+
     kube-state-metrics:
       enabled: true
       metricLabelsAllowlist:
