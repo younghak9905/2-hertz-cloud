@@ -1,3 +1,4 @@
+{{- if .Values.environments.stage.enabled }}
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
@@ -38,3 +39,4 @@ spec:
         factor: 2
         maxDuration: 3m
   revisionHistoryLimit: 2
+{{- end }}

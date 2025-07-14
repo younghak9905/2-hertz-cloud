@@ -97,6 +97,13 @@ applications:
       stage: develop
       prod: main
 
+# Environment deployment control
+environments:
+  prod:
+    enabled: true
+  stage:
+    enabled: true
+
 apps:
   monitoring:
     enabled: true
