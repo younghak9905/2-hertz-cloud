@@ -1,8 +1,8 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: prometheus-stack
-  namespace: {{ .Values.global.namespace }}
+  name: prometheus-stack-{{ .Values.global.environment }}
+  namespace: argocd
   annotations:
     argocd.argoproj.io/sync-wave: "1" # CRD를 함께 설치하므로 가장 먼저 실행되도록 sync-wave를 0으로 변경
 spec:
