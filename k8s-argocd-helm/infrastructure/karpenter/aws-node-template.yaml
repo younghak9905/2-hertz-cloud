@@ -1,0 +1,10 @@
+apiVersion: karpenter.k8s.aws/v1alpha1
+kind: AWSNodeTemplate
+metadata:
+  name: default # Provisioner에서 참조하는 이름과 동일해야 함
+spec:
+  amiFamily: AL2
+  subnetSelector:
+    karpenter.sh/discovery: "tuning-eks" # EKS 클러스터 태그와 동일해야 함
+  securityGroupSelector:
+    karpenter.sh/discovery: "tuning-eks" # 보안 그룹 태그와 동일해야 함

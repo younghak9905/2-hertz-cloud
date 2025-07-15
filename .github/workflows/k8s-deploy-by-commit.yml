@@ -101,6 +101,9 @@ jobs:
             echo "$VALUE" > "$2"
           }
           BRANCH="${{ inputs.source_branch }}"
+          SANITIZED_BRANCH="${BRANCH//\//-}"
+          SANITIZED_BRANCH=$(echo "$SANITIZED_BRANCH" | sed 's#[^a-zA-Z0-9_.-]#-#g')
+          BRANCH="$SANITIZED_BRANCH"
           if [[ ${{inputs.service}} == 'frontend' ]]; then
             if [[ "$BRANCH" == "main" ]]; then
               load_param "/global/k8s/nextjs/prod/NEXT_PUBLIC_API_BASE_URL" NEXT_PUBLIC_API_BASE_URL
@@ -121,8 +124,9 @@ jobs:
         env:
           DOCKER_BUILDKIT: 1
         run: |
-          # rollback 태그 형식으로 변경
-          IMAGE_TAG="k8s-${{ inputs.source_branch }}-rollback-${{ env.SHORT_HASH }}"
+          BRANCH="${{ inputs.source_branch }}"
+          echo "BRANCH=$BRANCH" >> $GITHUB_ENV
+          IMAGE_TAG="k8s-develop-${{ env.SHORT_HASH }}"
           ENV_TAG="${{ inputs.target_branch == 'main' && 'k8s-main-latest' || 'k8s-develop-latest' }}"
           ECR_REGISTRY=${{ steps.login-ecr.outputs.registry }}
           REPOSITORY="tuning-${{ inputs.service == 'backend' && 'springboot' || 'nextjs' }}"
@@ -149,30 +153,30 @@ jobs:
           docker tag $ECR_REGISTRY/$REPOSITORY:$IMAGE_TAG $ECR_REGISTRY/$REPOSITORY:$ENV_TAG
           echo "▶ Pushing image to ECR: $ECR_REGISTRY/$REPOSITORY:$IMAGE_TAG"
           docker push $ECR_REGISTRY/$REPOSITORY:$IMAGE_TAG
-          docker pyush $ECR_REGISTRY/$REPOSITORY:$ENV_TAG
+          docker push $ECR_REGISTRY/$REPOSITORY:$ENV_TAG
           echo "IMAGE_TAG=$IMAGE_TAG" >> $GITHUB_OUTPUT
           
-     #- name: Clone cloud repository
-     #   uses: actions/checkout@v3
-     #  with:
-     #    repository: 100-hourbackends-a-week/2-hertz-cloud
-     #    token: ${{ secrets.TOKEN_GIHUB }}
-     #     ref: ${{ inputs.target_branch }}
-     #    path: cloud-repo
+      # - name: Clone cloud repository
+      #   uses: actions/checkout@v3
+      #   with:
+      #     repository: 100-hours-a-week/2-hertz-cloud
+      #     token: ${{ secrets.TOKEN_GITHUB }}
+      #     ref: ${{ inputs.target_branch }}
+      #     path: cloud-repo
           
-     # - name: Update manifest
-     #   run: |
-     #     cd cloud-repo
-     #     sed -i "s/tag: .*/tag: ${{ steps.build.outputs.IMAGE_TAG }}/" k8s-argocd-helm/apps/${{ inputs.service }}/values.yaml
-     #    
-     # - name: Commit and push
-     #  run: |
-     #     cd cloud-repo
-     #   git config --local user.email "action@github.com"
-     #     git config --local user.name "GitHub Action"
-     #    git add k8s-argocd-helm/apps/${{ inputs.service }}/values.yaml
-     #     git commit -m "Deploy ${{ inputs.service }} from commit ${{ env.SHORT_HASH }}"
-     #     git push
+      # - name: Update manifest
+      #   run: |
+      #     cd cloud-repo
+      #     sed -i "s/tag: .*/tag: ${{ steps.build.outputs.IMAGE_TAG }}/" k8s-argocd-helm/apps/${{ inputs.service }}/values.yaml
+         
+      # - name: Commit and push
+      #   run: |
+      #     cd cloud-repo
+      #     git config --local user.email "action@github.com"
+      #     git config --local user.name "GitHub Action"
+      #     git add k8s-argocd-helm/apps/${{ inputs.service }}/values.yaml
+      #     git commit -m "Deploy ${{ inputs.service }} from commit ${{ env.SHORT_HASH }}"
+      #     git push
           
       - name: Notify deployment
         run: |

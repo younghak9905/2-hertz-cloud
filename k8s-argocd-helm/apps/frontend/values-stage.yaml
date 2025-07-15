@@ -1,0 +1,44 @@
+# Stage Environment Settings
+global:
+  namespace: hertz-tuning-stage
+  region: ap-northeast-2
+  accountId: "969400486509"
+  environment: stage
+
+image:
+  repository: 969400486509.dkr.ecr.ap-northeast-2.amazonaws.com/tuning-nextjs
+  tag: k8s-develop-latest
+
+serviceAccount:
+  ecrAccess: ecr-access-sa
+
+app:
+  name: nextjs-fe
+  port: 3000
+
+resources:
+  requests:
+    cpu: 200m
+    memory: 128Mi
+  limits:
+    cpu: 300m
+    memory: 256Mi
+
+hpa:
+  enabled: true
+  minReplicas: 1
+  maxReplicas: 2
+  targetCPU: 70
+  targetMemory: 80
+  scaleUp:
+    stabilizationWindowSeconds: 30
+    percent: 100
+    periodSeconds: 15
+  scaleDown:
+    stabilizationWindowSeconds: 180
+    percent: 20
+    periodSeconds: 60
+
+observability:
+  signoz:
+    endpoint: "http://signoz-otel-collector.observability.svc.cluster.local:4318"

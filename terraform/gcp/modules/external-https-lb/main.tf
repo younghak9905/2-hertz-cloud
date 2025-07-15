@@ -99,6 +99,9 @@ resource "google_compute_global_forwarding_rule" "https_fr" {
 resource "google_compute_target_http_proxy" "this" {
   name    = "${var.name}-http-proxy-${var.env}"
   url_map = google_compute_url_map.http_redirect_url_map.self_link
+  lifecycle {
+    create_before_destroy = true
+  }
 }
 
 resource "google_compute_global_forwarding_rule" "http_fr" {
@@ -107,4 +110,8 @@ resource "google_compute_global_forwarding_rule" "http_fr" {
   port_range            = "80"
   target                = google_compute_target_http_proxy.this.self_link
   ip_address            = var.lb_ip.address
+  lifecycle {
+    create_before_destroy = true
+    replace_triggered_by = [google_compute_target_http_proxy.this]
+  }
 }

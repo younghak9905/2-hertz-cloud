@@ -1,0 +1,13 @@
+# Prod Environment Settings
+global:
+  namespace: hertz-tuning-prod
+
+# Application names
+apps:
+  backend: springboot-be
+  frontend: nextjs-fe
+
+# Monitoring settings
+monitoring:
+  interval: 30s
+  scrapeTimeout: 10s

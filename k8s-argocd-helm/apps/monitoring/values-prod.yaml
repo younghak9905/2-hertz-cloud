@@ -1,0 +1,258 @@
+# Stage Environment Settings
+global:
+  namespace: hertz-tuning-prod
+  environment: prod
+
+# Prometheus Stack Configuration
+prometheus:
+  enabled: true
+  chart:
+    repository: https://prometheus-community.github.io/helm-charts
+    name: kube-prometheus-stack
+    version: 45.7.1
+
+  # ← 이 부분이 .Values.prometheus.config 입니다
+  config:
+    # ─────────────────────────────────────
+    # grafana 설정을 한 단계 위로 이동
+    grafana:
+      adminPassword: "admin123"
+      persistence:
+        enabled: true
+        storageClassName: gp2
+        size: 5Gi
+      service:
+        type: LoadBalancer
+        annotations:
+          service.beta.kubernetes.io/aws-load-balancer-scheme: internet-facing
+          service.beta.kubernetes.io/aws-load-balancer-internal: "false"
+        loadBalancerSourceRanges:
+          - 0.0.0.0/0
+      additionalDataSources:
+        - name: Loki
+          type: loki
+          url: http://loki:3100
+          access: proxy
+          isDefault: false
+      dashboardProviders:
+        dashboardproviders.yaml:
+          apiVersion: 1
+          providers:
+            - name: 'default'
+              orgId: 1
+              folder: ''
+              type: file
+              disableDeletion: false
+              editable: true
+              options:
+                path: /var/lib/grafana/dashboards/default
+      dashboards:
+        default:
+          kubernetes-cluster-monitoring:
+            gnetId: 7249
+            revision: 1
+            datasource: Prometheus
+          kubernetes-pod-monitoring:
+            gnetId: 6417
+            revision: 1
+            datasource: Prometheus
+          loki-logs:
+            gnetId: 13639
+            revision: 2
+            datasource: Loki
+    # ─────────────────────────────────────
+    prometheus:
+      prometheusSpec:
+        serviceMonitorSelector:
+          matchLabels: {}
+        serviceMonitorNamespaceSelector:
+          matchLabels: {}
+        ruleSelector:
+          matchLabels: {}
+        ruleNamespaceSelector:
+          matchLabels: {}
+        podMonitorSelector:
+          matchLabels: {}
+        podMonitorNamespaceSelector:
+          matchLabels: {}
+        retention: 30d
+        resources:
+          requests:
+            memory: 512Mi
+            cpu: 200m
+          limits:
+            memory: 750Mi
+            cpu: 400m
+        storageSpec:
+          volumeClaimTemplate:
+            spec:
+              storageClassName: gp2
+              accessModes: ["ReadWriteOnce"]
+              resources:
+                requests:
+                  storage: 5Gi
+    prometheusOperator:
+      admissionWebhooks:
+        enabled: false
+      tls:
+        enabled: false
+      createCustomResource: true
+    nodeExporter:
+      enabled: true
+      serviceMonitor:
+        relabelings:
+          - sourceLabels: [__meta_kubernetes_pod_node_name]
+            regex: ^(.*)$
+            targetLabel: nodename
+            replacement: ${1}
+            action: replace
+    kubelet:
+      enabled: true
+      serviceMonitor:
+        https: true
+    kubeApiServer:    
+      enabled: false
+    kubeControllerManager: 
+      enabled: false
+    kubeScheduler:    
+      enabled: false
+    kubeProxy:        
+      enabled: false
+    kubeEtcd:         
+      enabled: false
+
+    kubeStateMetrics:
+      enabled: true
+
+    kube-state-metrics:
+      enabled: true
+      metricLabelsAllowlist:
+        - pods=[*]
+        - nodes=[*]
+        - deployments=[*]
+    alertmanager:
+      enabled: false
+      alertmanagerSpec:
+        storage:
+          volumeClaimTemplate:
+            spec:
+              storageClassName: gp2
+              accessModes: ["ReadWriteOnce"]
+              resources:
+                requests:
+                  storage: 2Gi
+loki:
+  enabled: true
+  chart:
+    repository: https://grafana.github.io/helm-charts
+    name: loki
+    version: 5.8.0
+
+  config:
+    deploymentMode: SingleBinary
+
+    loki:
+      auth_enabled: false
+
+      # ① 핵심: PVC가 마운트되는 경로로 통일
+      commonConfig:
+        replication_factor: 1
+        path_prefix: /var/loki            # ← 반드시 /var/loki
+
+
+    schemaConfig:
+      configs:
+        - from: 2020-10-24
+          store: boltdb-shipper
+          object_store: filesystem
+          schema: v11
+          index:
+            prefix: index_
+            period: 24h
+
+    storageConfig:
+      boltdb_shipper:
+        active_index_directory: /var/loki/boltdb-shipper-active  # ← /var/loki 로 시작
+        cache_location:         /var/loki/boltdb-shipper-cache   # ← /var/loki 로 시작
+        shared_store:           filesystem
+      filesystem:
+        directory: /var/loki/chunks                            # ← /var/loki 로 시
+
+    rulerConfig:
+      storage:
+        type: local
+        local:
+          directory: /var/loki/rules                           # ← /var/loki 로 시작
+
+
+    singleBinary:
+      replicas: 1
+      persistence:
+        enabled:      true
+        storageClass: gp2
+        size:         10Gi
+      resources:
+        requests:
+          cpu:    100m
+          memory: 256Mi
+        limits:
+          cpu:    200m
+          memory: 512Mi
+
+# Promtail Configuration
+promtail:
+  enabled: true
+  chart:
+    repository: https://grafana.github.io/helm-charts
+    name: promtail
+    version: 6.15.3
+  config:
+    config:
+      server:
+        http_listen_port: 3101
+        grpc_listen_port: 0
+      clients:
+      - url: http://loki:3100/loki/api/v1/push
+      scrape_configs:
+      - job_name: kubernetes-pods
+        kubernetes_sd_configs:
+        - role: pod
+        pipeline_stages:
+        - docker: {}
+        relabel_configs:
+        - source_labels: [__meta_kubernetes_pod_controller_name]
+          regex: ([0-9a-z-.]+?)(-[0-9a-f]{8,10})?
+          target_label: __tmp_controller_name
+        - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_name, __meta_kubernetes_pod_label_app, __tmp_controller_name, __meta_kubernetes_pod_name]
+          regex: ^;*([^;]+)(;.*)?$
+          target_label: app
+          replacement: $1
+        - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_instance, __meta_kubernetes_pod_label_instance]
+          regex: ^;*([^;]+)(;.*)?$
+          target_label: instance
+          replacement: $1
+        - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_component, __meta_kubernetes_pod_label_component]
+          regex: ^;*([^;]+)(;.*)?$
+          target_label: component
+          replacement: $1
+        - source_labels: [__meta_kubernetes_pod_node_name]
+          target_label: node_name
+        - source_labels: [__meta_kubernetes_namespace]
+          target_label: namespace
+        - source_labels: [__meta_kubernetes_pod_name]
+          target_label: pod
+        - source_labels: [__meta_kubernetes_pod_container_name]
+          target_label: container
+        - source_labels: [__meta_kubernetes_pod_uid, __meta_kubernetes_pod_container_name]
+          target_label: __path__
+          separator: /
+          replacement: /var/log/pods/*$1/*.log
+    daemonset:
+      enabled: true
+    resources:
+      requests:
+        memory: 128Mi
+        cpu: 100m
+      limits:
+        memory: 256Mi
+        cpu: 200m

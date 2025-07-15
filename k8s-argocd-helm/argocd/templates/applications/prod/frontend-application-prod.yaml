@@ -1,0 +1,42 @@
+{{- if .Values.environments.prod.enabled }}
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: frontend-prod
+  namespace: argocd
+  annotations:
+    "helm.sh/hook": post-install,post-upgrade
+    "helm.sh/hook-weight": "3"
+    argocd.argoproj.io/sync-wave: "3"
+    argocd-image-updater.argoproj.io/image-list: frontend=969400486509.dkr.ecr.ap-northeast-2.amazonaws.com/tuning-nextjs
+    argocd-image-updater.argoproj.io/frontend.update-strategy: latest
+    argocd-image-updater.argoproj.io/frontend.allow-tags: regexp:^k8s-main-.*$
+spec:
+  project: tuning-prod
+  source:
+    repoURL: https://github.com/100-hours-a-week/2-hertz-cloud.git
+    targetRevision: {{ .Values.applications.git.branches.prod }}
+    path: k8s-argocd-helm/apps/frontend
+    helm:
+      valueFiles:
+        - values-prod.yaml
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: hertz-tuning-prod
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+      allowEmpty: false
+    syncOptions:
+      - CreateNamespace=true
+      - PrunePropagationPolicy=foreground
+      - PruneLast=true
+    retry:
+      limit: 5
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m
+  revisionHistoryLimit: 3
+{{- end }}

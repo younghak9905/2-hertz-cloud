@@ -8,7 +8,10 @@
         "ssm:GetParameters",
         "ssm:GetParametersByPath"
       ],
-      "Resource": "arn:aws:ssm:ap-northeast-2:*:parameter/global/k8s/springboot/dev/*"
+      "Resource": [
+        "arn:aws:ssm:ap-northeast-2:*:parameter/global/k8s/springboot/dev/*",
+        "arn:aws:ssm:ap-northeast-2:*:parameter/global/k8s/springboot/prod/*"
+      ]
     },
     {
       "Effect": "Allow",
