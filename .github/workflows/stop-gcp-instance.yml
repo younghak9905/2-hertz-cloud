@@ -100,7 +100,7 @@ jobs:
 
 
       - name: Set environment
-        if: ${{ inputs.target != 'TEST' }} && ${{ inputs.target != 'KAFKA' }}
+        if: ${{ inputs.target != 'TEST' && inputs.target != 'KAFKA' }}        
         run: |
           BRANCH="${{ github.ref_name }}"
           TARGET="${{ github.event.inputs.target }}"
@@ -179,13 +179,18 @@ jobs:
       - name: Setup gcloud CLI
         uses: google-github-actions/setup-gcloud@v1
 
-      - name: Configure gcloud project
+      - name: Debug gcloud auth & config
         if: ${{ inputs.target == 'KAFKA' }}
         run: |
+          echo "▶ Active account:"
+          gcloud auth list --filter="status:ACTIVE" --format="value(account)"
+          echo "▶ Configured project:"
+          gcloud config get-value project
           gcloud config set project "$PROJECT_ID"
+
       
-      - name: Stop target instance(kfaka) || ChatReort
-        if: ${{ inputs.target == 'TEST' }} || ${{ inputs.target == 'KAFKA' }}
+      - name: Stop target instance(kfaka)
+        if: ${{ inputs.target == 'KAFKA' }}
         run: |
             echo "⚡ 인스턴스: $INSTANCE (zone: $ZONE, project: $PROJECT_ID)"
             STATUS=$(gcloud compute instances describe "$INSTANCE" \
@@ -204,7 +209,7 @@ jobs:
             fi
 
       - name: Stop target instance
-        if: ${{ inputs.target != 'TEST' }} && ${{ inputs.target != 'KAFKA' }}
+        if: ${{ inputs.target != 'KAFKA' }}
         run: |
           echo "⚡ 중지할 인스턴스: $INSTANCE (zone: $ZONE)"
           STATUS=$(gcloud compute instances describe "$INSTANCE" --zone="$ZONE" --format='get(status)')
