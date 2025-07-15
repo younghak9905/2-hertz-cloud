@@ -58,6 +58,11 @@ jobs:
           cat gcp-sa-key.json >> $GITHUB_ENV
           echo "EOF" >> $GITHUB_ENV
 
+      - name: Authenticate to GCP KAFKA
+        if: github.event.inputs.target == 'KAFKA' 
+        uses: google-github-actions/auth@v1
+        with:
+            credentials_json: ${{ env.SA_KEY }}
 
       - name: Setup gcloud CLI
         uses: google-github-actions/setup-gcloud@v1
@@ -100,16 +105,15 @@ jobs:
       - name: Send success notification
         if: success()
         run: |
-          curl -H "Content-Type: application/json" \
-               -X POST \
-               -d "{\"content\": \"${{ env.DEPLOY_MESSAGE }}\\n> Branch: \`${{ env.BRANCH }}\`\\n> Commit: ${{ env.COMMIT_HASH }}\"}" \
-               ${{ secrets.DISCORD_WEBHOOK_CICD_URL }}
-
+            curl -H "Content-Type: application/json" \
+                 -X POST \
+                 -d "{\"content\": \"kafka 배포 완료\n> \"}" \
+                 ${{ secrets.DISCORD_WEBHOOK_CICD_URL }}
+    
       - name: Send failure notification
         if: failure()
         run: |
-          WORKFLOW_URL="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-          curl -H "Content-Type: application/json" \
-               -X POST \
-               -d "{\"content\": \"❌ **[${{ env.ENV }} 환경]** BE 배포 실패\\n> Branch: \`${{ env.BRANCH }}\`\\n> Commit: ${{ env.COMMIT_HASH }}\\n> [워크플로우 로그 보기]($WORKFLOW_URL)\"}" \
-               ${{ secrets.DISCORD_WEBHOOK_CICD_URL }}
+            curl -H "Content-Type: application/json" \
+                 -X POST \
+                 -d "{\"content\": \"kafka 배포 실패\n> \"}" \
+                 ${{ secrets.DISCORD_WEBHOOK_CICD_URL }}
