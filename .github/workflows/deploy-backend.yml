@@ -24,7 +24,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Configure AWS credentials
-        if: ${{ inputs.project_id == 'Tuning-PROD-01' }}
         uses: aws-actions/configure-aws-credentials@v1
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
@@ -32,7 +31,6 @@ jobs:
           aws-region: ${{ secrets.AWS_REGION }}
 
       - name: Login to ECR
-        if: ${{ inputs.project_id == 'Tuning-PROD-01' }}
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v1
       
@@ -54,17 +52,64 @@ jobs:
 
             echo "$VALUE" > "$2"
           }
-          BRANCH="develop"  # 개발 환경을 위한 브랜치 설정
-          SANITIZED_BRANCH="${BRANCH//\//-}"
-          SANITIZED_BRANCH=$(echo "$SANITIZED_BRANCH" | sed 's#[^a-zA-Z0-9_.-]#-#g')
-          BRANCH="$SANITIZED_BRANCH"
-          echo "BRANCH=$BRANCH" >> $GITHUB_ENV
-          echo "ENV=develop" >> $GITHUB_ENV
-          load_param "/global/gcp/test/HOST" HOST
-          load_param "/global/gcp/test/INSTANCE" INSTANCE
-          load_param "/global/gcp/test/PROJECT_ID" PROJECT_ID
-          load_param "/global/gcp/test/ZONE" ZONE
-          load_secret_to_file "/global/gcp/test/SA_KEY" gcp-sa-key.json
+          load_param "/global/gcp/kafka/INSTANCE" KAFKA_INSTANCE
+          load_param "/global/gcp/kafka/PROJECT_ID" KAFKA_PROJECT_ID
+          load_param "/global/gcp/kafka/ZONE" KAFKA_ZONE
+          load_secret_to_file "/global/gcp/kafka/SA_KEY" kafka_gcp-sa-key.json
+          
+          echo "KAFKA_SA_KEY<<EOF" >> $GITHUB_ENV
+          cat kafka_gcp-sa-key.json >> $GITHUB_ENV
+          echo "EOF" >> $GITHUB_ENV
+          
+          if [[ "${{ inputs.project_id }}" == "Tuning-PROD-01" ]]; then
+            BRANCH="develop"  # 개발 환경을 위한 브랜치 설정
+            SANITIZED_BRANCH="${BRANCH//\//-}"
+            SANITIZED_BRANCH=$(echo "$SANITIZED_BRANCH" | sed 's#[^a-zA-Z0-9_.-]#-#g')
+            BRANCH="$SANITIZED_BRANCH"
+            echo "BRANCH=$BRANCH" >> $GITHUB_ENV
+            echo "ENV=develop" >> $GITHUB_ENV
+            load_param "/global/gcp/test/HOST" HOST
+            load_param "/global/gcp/test/INSTANCE" INSTANCE
+            load_param "/global/gcp/test/PROJECT_ID" PROJECT_ID
+            load_param "/global/gcp/test/ZONE" ZONE
+            load_secret_to_file "/global/gcp/test/SA_KEY" gcp-sa-key.json
+          else
+            BRANCH="develop"  # 개발 환경을 위한 브랜치 설정
+            SANITIZED_BRANCH="${BRANCH//\//-}"
+            SANITIZED_BRANCH=$(echo "$SANITIZED_BRANCH" | sed 's#[^a-zA-Z0-9_.-]#-#g')
+            BRANCH="$SANITIZED_BRANCH"
+            echo "BRANCH=$BRANCH" >> $GITHUB_ENV
+            echo "ENV=develop" >> $GITHUB_ENV
+          fi
+
+      - name: Authenticate to GCP KAFKA
+        uses: google-github-actions/auth@v1
+        with:
+              credentials_json: ${{ env.KAFKA_SA_KEY }}
+  
+      - name: Setup gcloud CLI_KAFKA
+        uses: google-github-actions/setup-gcloud@v1
+  
+      - name: Boot target instance (start/resume with conditional wait) KAFKA
+        run: |
+            echo "⚡ 인스턴스 상태 확인 중: $KAFKA_INSTANCE (zone: $KAFKA_ZONE)"
+            STATUS=$(gcloud compute instances describe "$KAFKA_INSTANCE" --zone="$KAFKA_ZONE" --format='get(status)')
+            echo "🔎 현재 상태: $STATUS"
+  
+            if [[ "$STATUS" == "SUSPENDED" ]]; then
+              echo "🔄 'resume' 명령 실행"
+              gcloud compute instances resume "$KAFKA_INSTANCE" --zone="$KAFKA_ZONE"
+            
+             
+            elif [[ "$STATUS" == "TERMINATED" ]]; then
+              echo "🔄 'start' 명령 실행"
+              gcloud compute instances start "$KAFKA_INSTANCE" --zone="$KAFKA_ZONE"
+            
+            else
+              echo "✅ 이미 실행 중 - 대기 생략"
+            fi
+
+          
 
       - name: Set environment
         if: ${{ inputs.project_id == 'Tuning-DEV-01' }}
@@ -184,6 +229,8 @@ jobs:
 
           echo "::error::❌ 10회 헬스체크 실패 - 서버가 정상 기동되지 않음"
           exit 1
+      
+
 
       - name: Send success notification
         if: success()
