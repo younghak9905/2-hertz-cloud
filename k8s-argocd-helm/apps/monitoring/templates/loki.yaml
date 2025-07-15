@@ -1,7 +1,7 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: loki
+  name: loki-{{ .Values.global.environment }}
   namespace: argocd
   annotations:
     argocd.argoproj.io/sync-wave: "1"
@@ -14,7 +14,7 @@ spec:
     helm:
       releaseName: loki
       skipCrds: false
-      installCRDs: true
+      # installCRDs: true
       values: |
 {{ .Values.loki.config | toYaml | indent 8 }}
   destination:

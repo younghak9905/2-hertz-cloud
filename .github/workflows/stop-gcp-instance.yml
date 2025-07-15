@@ -14,6 +14,7 @@ on:
           - "GPU"
           - "CHAT-REPORT"
           - "TEST"
+          - "KAFKA"
 
 env:
   PROJECT_ID: ${{ secrets.PROD_GCP_PROJECT_ID }}
@@ -38,7 +39,7 @@ jobs:
 
     steps:
       - name: Configure AWS credentials
-        if: ${{ inputs.target == 'TEST' }}
+        if: ${{ inputs.target == 'TEST' }} || ${{ inputs.target == 'KAFKA' }}
         uses: aws-actions/configure-aws-credentials@v1
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
@@ -46,12 +47,14 @@ jobs:
           aws-region: ${{ secrets.AWS_REGION }}
 
       - name: Login to ECR
-        if: ${{ inputs.target == 'TEST' }}
+        if: ${{ inputs.target == 'TEST' }} || ${{ inputs.target == 'KAFKA' }}
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v1
       
       - name: Set environment variables from SSM
-        if: ${{ inputs.target == 'TEST' }}
+        if: ${{ inputs.target == 'TEST' }} || ${{ inputs.target == 'KAFKA' }}
+        env:
+          TARGET: ${{ inputs.target }}
         run: |
           load_param() {
             VALUE=$(aws ssm get-parameter --name "$1" --with-decryption --query "Parameter.Value" --output text)
@@ -73,14 +76,31 @@ jobs:
           SANITIZED_BRANCH=$(echo "$SANITIZED_BRANCH" | sed 's#[^a-zA-Z0-9_.-]#-#g')
           BRANCH="$SANITIZED_BRANCH"
           echo "ENV=develop" >> $GITHUB_ENV
-          load_param "/global/gcp/test/HOST" HOST
-          load_param "/global/gcp/test/INSTANCE" INSTANCE
-          load_param "/global/gcp/test/PROJECT_ID" PROJECT_ID
-          load_param "/global/gcp/test/ZONE" ZONE
-          load_secret_to_file "/global/gcp/test/SA_KEY" gcp-sa-key.json
+          if [[ "$TARGET" == "TEST" ]]; then
+            load_param "/global/gcp/test/HOST" HOST
+            load_param "/global/gcp/test/INSTANCE" INSTANCE
+            load_param "/global/gcp/test/PROJECT_ID" PROJECT_ID
+            load_param "/global/gcp/test/ZONE" ZONE
+            load_secret_to_file "/global/gcp/test/SA_KEY" gcp-sa-key.json
+          elif [[ "$TARGET" == "KAFKA" ]]; then
+            load_param "/global/gcp/kafka/HOST" HOST
+            load_param "/global/gcp/kafka/INSTANCE" INSTANCE
+            load_param "/global/gcp/kafka/PROJECT_ID" PROJECT_ID
+            load_param "/global/gcp/kafka/ZONE" ZONE
+            load_secret_to_file "/global/gcp/kafka/SA_KEY" gcp-sa-key.json
+          else
+            echo "❌ 잘못된 타겟: $TARGET"
+            exit 1
+          fi
+
+
+          echo "SA_KEY<<EOF" >> $GITHUB_ENV
+          cat gcp-sa-key.json >> $GITHUB_ENV
+          echo "EOF" >> $GITHUB_ENV
+
 
       - name: Set environment
-        if: ${{ inputs.target != 'TEST' }}
+        if: ${{ inputs.target != 'TEST' && inputs.target != 'KAFKA' }}        
         run: |
           BRANCH="${{ github.ref_name }}"
           TARGET="${{ github.event.inputs.target }}"
@@ -148,13 +168,48 @@ jobs:
         uses: google-github-actions/auth@v1
         with:
             credentials_json: ${{ secrets.PROD_GCP_SA_KEY }}
-
+      
+      - name: Authenticate to GCP KAFKA
+        if: github.event.inputs.target == 'KAFKA' 
+        uses: google-github-actions/auth@v1
+        with:
+            credentials_json: ${{ env.SA_KEY }}
 
 
       - name: Setup gcloud CLI
         uses: google-github-actions/setup-gcloud@v1
 
+      - name: Debug gcloud auth & config
+        if: ${{ inputs.target == 'KAFKA' }}
+        run: |
+          echo "▶ Active account:"
+          gcloud auth list --filter="status:ACTIVE" --format="value(account)"
+          echo "▶ Configured project:"
+          gcloud config get-value project
+          gcloud config set project "$PROJECT_ID"
+
+      
+      - name: Stop target instance(kfaka)
+        if: ${{ inputs.target == 'KAFKA' }}
+        run: |
+            echo "⚡ 인스턴스: $INSTANCE (zone: $ZONE, project: $PROJECT_ID)"
+            STATUS=$(gcloud compute instances describe "$INSTANCE" \
+              --zone="$ZONE" \
+              --project="$PROJECT_ID" \
+              --format="get(status)")
+            echo "🔎 현재 상태: $STATUS"
+  
+            if [[ "$STATUS" == "RUNNING" ]]; then
+              gcloud compute instances stop "$INSTANCE" \
+                --zone="$ZONE" \
+                --project="$PROJECT_ID"
+              echo "🛑 중지 완료"
+            else
+              echo "ℹ️ 중지 생략: 현재는 '$STATUS'"
+            fi
+
       - name: Stop target instance
+        if: ${{ inputs.target != 'KAFKA' }}
         run: |
           echo "⚡ 중지할 인스턴스: $INSTANCE (zone: $ZONE)"
           STATUS=$(gcloud compute instances describe "$INSTANCE" --zone="$ZONE" --format='get(status)')
