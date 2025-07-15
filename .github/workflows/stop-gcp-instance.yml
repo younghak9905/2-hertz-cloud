@@ -100,7 +100,7 @@ jobs:
 
 
       - name: Set environment
-        if: ${{ inputs.target != 'TEST' }} && ${{ inputs.target != 'KAFKA' }}
+        if: ${{ inputs.target != 'TEST' && inputs.target != 'KAFKA' }}        
         run: |
           BRANCH="${{ github.ref_name }}"
           TARGET="${{ github.event.inputs.target }}"
