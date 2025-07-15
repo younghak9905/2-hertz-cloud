@@ -97,6 +97,8 @@ jobs:
           echo "SA_KEY<<EOF" >> $GITHUB_ENV
           cat gcp-sa-key.json >> $GITHUB_ENV
           echo "EOF" >> $GITHUB_ENV
+          echo "TARGET=${{ inputs.target}}" >> $GITHUB_ENV
+          echo "BRANCH=$BRANCH" >> $GITHUB_ENV
 
 
       - name: Set environment
