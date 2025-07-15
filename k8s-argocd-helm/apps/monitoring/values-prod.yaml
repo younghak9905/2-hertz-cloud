@@ -16,6 +16,7 @@ prometheus:
     # ─────────────────────────────────────
     # grafana 설정을 한 단계 위로 이동
     grafana:
+      nameOverride: "prod"
       adminPassword: "admin123"
       persistence:
         enabled: true
@@ -62,6 +63,7 @@ prometheus:
             datasource: Loki
     # ─────────────────────────────────────
     prometheus:
+      nameOverride: "prod"
       prometheusSpec:
         serviceMonitorSelector:
           matchLabels: {}
@@ -92,12 +94,14 @@ prometheus:
                 requests:
                   storage: 5Gi
     prometheusOperator:
+      nameOverride: "prod"
       admissionWebhooks:
         enabled: false
       tls:
         enabled: false
       createCustomResource: true
     nodeExporter:
+      nameOverride: "prod"
       enabled: true
       serviceMonitor:
         relabelings:
@@ -125,6 +129,7 @@ prometheus:
       enabled: true
 
     kube-state-metrics:
+      nameOverride: "prod"
       enabled: true
       metricLabelsAllowlist:
         - pods=[*]
@@ -151,6 +156,7 @@ loki:
   config:
     deploymentMode: SingleBinary
 
+    nameOverride: "prod"
     loki:
       auth_enabled: false
       commonConfig:
@@ -209,6 +215,7 @@ promtail:
     name: promtail
     version: 6.15.3
   config:
+    nameOverride: "prod"
     config:
       server:
         http_listen_port: 3101

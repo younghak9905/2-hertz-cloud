@@ -16,6 +16,7 @@ prometheus:
     # ─────────────────────────────────────
     # grafana 설정을 한 단계 위로 이동
     grafana:
+      nameOverride: "stage"
       adminPassword: "admin123"
       persistence:
         enabled: true
@@ -62,6 +63,7 @@ prometheus:
             datasource: Loki
     # ─────────────────────────────────────
     prometheus:
+      nameOverride: "stage"
       prometheusSpec:
         serviceMonitorSelector:
           matchLabels: {}
@@ -92,12 +94,14 @@ prometheus:
                 requests:
                   storage: 5Gi
     prometheusOperator:
+      nameOverride: "stage"
       admissionWebhooks:
         enabled: false
       tls:
         enabled: false
       createCustomResource: true
     nodeExporter:
+      nameOverride: "stage"
       enabled: true
       serviceMonitor:
         relabelings:
@@ -125,6 +129,7 @@ prometheus:
       enabled: true
 
     kube-state-metrics:
+      nameOverride: "stage"
       enabled: true
       metricLabelsAllowlist:
         - pods=[*]
@@ -151,6 +156,7 @@ loki:
   config:
     deploymentMode: SingleBinary
 
+    nameOverride: "stage"
     loki:
       auth_enabled: false
       commonConfig:
@@ -209,6 +215,7 @@ promtail:
     name: promtail
     version: 6.15.3
   config:
+    nameOverride: "stage"
     config:
       server:
         http_listen_port: 3101
