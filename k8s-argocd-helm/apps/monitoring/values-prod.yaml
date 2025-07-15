@@ -149,6 +149,7 @@ loki:
     version: 5.8.0
 
   config:
+    installCRDs: true
     deploymentMode: SingleBinary
 
     loki:
