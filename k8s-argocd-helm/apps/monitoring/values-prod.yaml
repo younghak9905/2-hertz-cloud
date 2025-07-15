@@ -153,12 +153,14 @@ loki:
 
     loki:
       auth_enabled: false
-
-      # ① 핵심: PVC가 마운트되는 경로로 통일
       commonConfig:
         replication_factor: 1
-        path_prefix: /var/loki            # ← 반드시 /var/loki
-
+        path_prefix: /var/loki
+      storage:
+        type: filesystem
+        filesystem:
+          chunks_directory: /var/loki/chunks
+          rules_directory: /var/loki/rules
 
     schemaConfig:
       configs:
@@ -172,17 +174,17 @@ loki:
 
     storageConfig:
       boltdb_shipper:
-        active_index_directory: /var/loki/boltdb-shipper-active  # ← /var/loki 로 시작
-        cache_location:         /var/loki/boltdb-shipper-cache   # ← /var/loki 로 시작
-        shared_store:           filesystem
+        active_index_directory: /var/loki/boltdb-shipper-active
+        cache_location: /var/loki/boltdb-shipper-cache
+        shared_store: filesystem
       filesystem:
-        directory: /var/loki/chunks                            # ← /var/loki 로 시
+        directory: /var/loki/chunks
 
     rulerConfig:
       storage:
         type: local
         local:
-          directory: /var/loki/rules                           # ← /var/loki 로 시작
+          directory: /var/loki/rules
 
 
     singleBinary:
