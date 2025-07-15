@@ -16,8 +16,6 @@ prometheus:
     # ─────────────────────────────────────
     # grafana 설정을 한 단계 위로 이동
     grafana:
-      rbac:
-        namespaced: true
       adminPassword: "admin123"
       persistence:
         enabled: true
@@ -64,8 +62,6 @@ prometheus:
             datasource: Loki
     # ─────────────────────────────────────
     prometheus:
-      rbac:
-        namespaced: true
       prometheusSpec:
         serviceMonitorSelector:
           matchLabels: {}
@@ -96,16 +92,12 @@ prometheus:
                 requests:
                   storage: 5Gi
     prometheusOperator:
-      rbac:
-        namespaced: true
       admissionWebhooks:
         enabled: false
       tls:
         enabled: false
       createCustomResource: true
     nodeExporter:
-      rbac:
-        namespaced: true
       enabled: true
       serviceMonitor:
         relabelings:
@@ -133,8 +125,6 @@ prometheus:
       enabled: true
 
     kube-state-metrics:
-      rbac:
-        namespaced: true
       enabled: true
       metricLabelsAllowlist:
         - pods=[*]
@@ -161,8 +151,6 @@ loki:
   config:
     deploymentMode: SingleBinary
 
-    rbac:
-      namespaced: true
     loki:
       auth_enabled: false
       commonConfig:
@@ -221,8 +209,6 @@ promtail:
     name: promtail
     version: 6.15.3
   config:
-    rbac:
-      namespaced: true
     config:
       server:
         http_listen_port: 3101
