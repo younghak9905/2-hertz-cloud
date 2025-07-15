@@ -35,7 +35,6 @@ jobs:
         uses: aws-actions/amazon-ecr-login@v1
       
       - name: Set environment variables from SSM
-        if: ${{ inputs.project_id == 'Tuning-PROD-01' }}
         run: |
           load_param() {
             VALUE=$(aws ssm get-parameter --name "$1" --with-decryption --query "Parameter.Value" --output text)
