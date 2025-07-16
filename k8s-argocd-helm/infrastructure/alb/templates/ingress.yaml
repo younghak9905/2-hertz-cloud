@@ -77,29 +77,6 @@ spec:
                 name: {{ .Values.services.backend }}
                 port:
                   number: 80
-
----
-# WebSocket Ingress
-apiVersion: networking.k8s.io/v1
-kind: Ingress
-metadata:
-  name: tuning-alb-ingress-websocket
-  namespace: {{ .Values.global.namespace }}
-  annotations:
-    kubernetes.io/ingress.class: {{ .Values.ingress.className }}
-    alb.ingress.kubernetes.io/group.name: tuning-alb-{{ .Values.global.evironment }}
-    alb.ingress.kubernetes.io/scheme: internet-facing
-    alb.ingress.kubernetes.io/target-type: ip
-    alb.ingress.kubernetes.io/backend-protocol: HTTP
-    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP":80,"HTTPS":443}]'
-    alb.ingress.kubernetes.io/certificate-arn: {{ .Values.ingress.certificateArn }}
-    alb.ingress.kubernetes.io/healthcheck-path: /socket.io
-    alb.ingress.kubernetes.io/success-codes: "200"
-spec:
-  ingressClassName: {{ .Values.ingress.className }}
-  rules:
-    - http:
-        paths:
           - path: /socket.io
             pathType: Prefix
             backend:
@@ -107,3 +84,33 @@ spec:
                 name: {{ .Values.services.backend }}
                 port:
                   number: {{ .Values.services.websocketPort }}
+
+# ---
+# # WebSocket Ingress
+# apiVersion: networking.k8s.io/v1
+# kind: Ingress
+# metadata:
+#   name: tuning-alb-ingress-websocket
+#   namespace: {{ .Values.global.namespace }}
+#   annotations:
+#     kubernetes.io/ingress.class: {{ .Values.ingress.className }}
+#     alb.ingress.kubernetes.io/group.name: tuning-alb-{{ .Values.global.evironment }}
+#     alb.ingress.kubernetes.io/scheme: internet-facing
+#     alb.ingress.kubernetes.io/target-type: ip
+#     alb.ingress.kubernetes.io/backend-protocol: HTTP
+#     alb.ingress.kubernetes.io/listen-ports: '[{"HTTP":80,"HTTPS":443}]'
+#     alb.ingress.kubernetes.io/certificate-arn: {{ .Values.ingress.certificateArn }}
+#     alb.ingress.kubernetes.io/healthcheck-path: /socket.io
+#     alb.ingress.kubernetes.io/success-codes: "200"
+# spec:
+#   ingressClassName: {{ .Values.ingress.className }}
+#   rules:
+#     - http:
+#         paths:
+#           - path: /socket.io
+#             pathType: Prefix
+#             backend:
+#               service:
+#                 name: {{ .Values.services.backend }}
+#                 port:
+#                   number: {{ .Values.services.websocketPort }}
