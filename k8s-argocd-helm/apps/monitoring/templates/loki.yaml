@@ -1,12 +1,12 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: loki-{{ .Values.global.environment }}
+  name: loki
   namespace: argocd
   annotations:
     argocd.argoproj.io/sync-wave: "1"
 spec:
-  project: tuning-{{ .Values.global.environment }}
+  project: default
   source:
     repoURL: {{ .Values.loki.chart.repository }}
     chart: {{ .Values.loki.chart.name }}

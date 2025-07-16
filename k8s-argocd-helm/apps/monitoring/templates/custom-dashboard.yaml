@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: custom-dashboards-{{ .Values.global.environment }}
+  name: custom-dashboards
   namespace: argocd
   labels:
     grafana_dashboard: "1"
