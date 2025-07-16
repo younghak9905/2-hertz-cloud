@@ -6,7 +6,7 @@ metadata:
   namespace: {{ .Values.global.namespace }}
   annotations:
     kubernetes.io/ingress.class: {{ .Values.ingress.className }}
-    alb.ingress.kubernetes.io/group.name: tuning-alb-group-{{ .Values.global.evironment  }}
+    alb.ingress.kubernetes.io/group.name: tuning-alb-{{ .Values.global.evironment }}
     alb.ingress.kubernetes.io/scheme: internet-facing
     alb.ingress.kubernetes.io/target-type: ip
     alb.ingress.kubernetes.io/backend-protocol: HTTP
@@ -43,7 +43,7 @@ metadata:
   namespace: {{ .Values.global.namespace }}
   annotations:
     kubernetes.io/ingress.class: {{ .Values.ingress.className }}
-    alb.ingress.kubernetes.io/group.name: tuning-alb-group-{{ .Values.global.namespace }}
+    alb.ingress.kubernetes.io/group.name: tuning-alb-{{ .Values.global.evironment }}
     alb.ingress.kubernetes.io/scheme: internet-facing
     alb.ingress.kubernetes.io/target-type: ip
     alb.ingress.kubernetes.io/backend-protocol: HTTP
@@ -88,7 +88,7 @@ metadata:
   namespace: {{ .Values.global.namespace }}
   annotations:
     kubernetes.io/ingress.class: {{ .Values.ingress.className }}
-    alb.ingress.kubernetes.io/group.name: tuning-alb-group-{{ .Values.global.namespace }}
+    alb.ingress.kubernetes.io/group.name: tuning-alb-{{ .Values.global.evironment }}
     alb.ingress.kubernetes.io/scheme: internet-facing
     alb.ingress.kubernetes.io/target-type: ip
     alb.ingress.kubernetes.io/backend-protocol: HTTP
