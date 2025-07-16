@@ -51,6 +51,7 @@ metadata:
     alb.ingress.kubernetes.io/certificate-arn: {{ .Values.ingress.certificateArn }}
     alb.ingress.kubernetes.io/healthcheck-path: /api/ping
     alb.ingress.kubernetes.io/success-codes: "200"
+    alb.ingress.kubernetes.io/load-balancer-attributes: idle_timeout.timeout_seconds=86400
 spec:
   ingressClassName: {{ .Values.ingress.className }}
   rules:
@@ -95,6 +96,7 @@ metadata:
     alb.ingress.kubernetes.io/certificate-arn: {{ .Values.ingress.certificateArn }}
     alb.ingress.kubernetes.io/healthcheck-path: /socket.io
     alb.ingress.kubernetes.io/success-codes: "200"
+    alb.ingress.kubernetes.io/load-balancer-attributes: idle_timeout.timeout_seconds=86400
 spec:
   ingressClassName: {{ .Values.ingress.className }}
   rules:
