@@ -1,6 +1,6 @@
 # Stage Environment Settings
 global:
-  namespace: hertz-tuning-stage
+  namespace: default
   environment: stage
 
 # Prometheus Stack Configuration
