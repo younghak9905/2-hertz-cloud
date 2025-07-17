@@ -47,6 +47,7 @@ jobs:
 
 
       - name: Set environment variables from SSM
+        if: ${{ github.event.inputs.service == 'app.hertz-tuning-api' }}
         run: |
           load_param() {
             VALUE=$(aws ssm get-parameter --name "$1" --with-decryption --query "Parameter.Value" --output text)
