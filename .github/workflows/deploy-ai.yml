@@ -150,11 +150,11 @@ jobs:
       - name: Set deploy message
         run: |
           if [[ "${{ github.event.inputs.rollback }}" == "true" ]]; then
-            echo "DEPLOY_MESSAGE=🚨 **[${{ env.ENV }} 환경]** AI-CPU 롤백 완료(수동)" >> $GITHUB_ENV
+            echo "DEPLOY_MESSAGE=🚨 **[${{ env.ENV }} 환경]** ${{ github.event.inputs.service }} 롤백 완료(수동)" >> $GITHUB_ENV
           elif [[ "${{ env.SERVICE }}" == "chat-report" ]]; then
-            echo "DEPLOY_MESSAGE=🚀 **[${{ env.ENV }} 환경]** AI-CHAT-REPORT 배포 완료(수동)" >> $GITHUB_ENV
+            echo "DEPLOY_MESSAGE=🚀 **[${{ env.ENV }} 환경]** ${{ github.event.inputs.service }} 배포 완료(수동)" >> $GITHUB_ENV
           else
-            echo "DEPLOY_MESSAGE=🚀 **[${{ env.ENV }} 환경]** AI-CPU 배포 완료(수동)" >> $GITHUB_ENV
+            echo "DEPLOY_MESSAGE=🚀 **[${{ env.ENV }} 환경]** ${{ github.event.inputs.service }}" >> $GITHUB_ENV
           fi
 
       - name: Authenticate to GCP
@@ -310,5 +310,5 @@ jobs:
           WORKFLOW_URL="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
           curl -H "Content-Type: application/json" \
                -X POST \
-               -d "{\"content\": \"❌ **[${{ env.ENV }} 환경]** AI-CPU 배포 실패(수동)\\n> Branch: \`${{ env.BRANCH }}\`\\n> Commit: ${{ env.COMMIT_HASH }}\\n> [워크플로우 로그 보기]($WORKFLOW_URL)\"}" \
+               -d "{\"content\": \"❌ **[${{ env.ENV }} 환경]** ${{ github.event.inputs.service }} 배포 실패(수동)\\n> Branch: \`${{ env.BRANCH }}\`\\n> Commit: ${{ env.COMMIT_HASH }}\\n> [워크플로우 로그 보기]($WORKFLOW_URL)\"}" \
                ${{ secrets.DISCORD_WEBHOOK_CICD_URL }}
