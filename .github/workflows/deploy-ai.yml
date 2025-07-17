@@ -9,6 +9,7 @@ on:
         type: choice
         options:
           - "tuning-api"
+          - "app.hertz-tuning-api"
           - "chat-report"
       rollback:
         description: "롤백 배포를 수행할까요?"
@@ -32,7 +33,89 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Configure AWS credentials
+        if: ${{ github.event.inputs.service == 'app.hertz-tuning-api' }}
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Login to ECR (app.hertz-tuning-api)
+        if: ${{ github.event.inputs.service == 'app.hertz-tuning-api' }}
+        uses: aws-actions/amazon-ecr-login@v1
+
+
+      - name: Set environment variables from SSM
+        if: ${{ github.event.inputs.service == 'app.hertz-tuning-api' }}
+        run: |
+          load_param() {
+            VALUE=$(aws ssm get-parameter --name "$1" --with-decryption --query "Parameter.Value" --output text)
+            echo "::add-mask::$VALUE"
+            echo "$2=$VALUE" >> $GITHUB_ENV
+          }
+
+          load_secret_to_file() {
+            VALUE=$(aws ssm get-parameter --name "$1" --with-decryption --output json | jq -r .Parameter.Value)
+
+            echo "$VALUE" | while IFS= read -r line; do
+              echo "::add-mask::$line"
+            done
+
+            echo "$VALUE" > "$2"
+          }
+          BRANCH="develop"  # 개발 환경을 위한 브랜치 설정
+          SANITIZED_BRANCH="${BRANCH//\//-}"
+          SANITIZED_BRANCH=$(echo "$SANITIZED_BRANCH" | sed 's#[^a-zA-Z0-9_.-]#-#g')
+          BRANCH="$SANITIZED_BRANCH"
+          echo "BRANCH=$BRANCH" >> $GITHUB_ENV
+          echo "ENV=develop" >> $GITHUB_ENV
+          load_param "/global/gcp/app/GCP_HOST" HOST
+          load_param "/global/gcp/app/GCP_INSTANCE" INSTANCE
+          load_param "/global/gcp/app/GCP_PROJECT_ID" PROJECT_ID
+          load_param "/global/gcp/app/GCP_ZONE" ZONE
+          load_secret_to_file "/global/gcp/app/GCP_SA_KEY" gcp-sa-key.json
+          echo "GCP_SA_KEY<<EOF" >> $GITHUB_ENV
+          cat gcp-sa-key.json >> $GITHUB_ENV
+          echo "EOF" >> $GITHUB_ENV
+          
+
+      - name: Authenticate to GCP (app.hertz-tuning-api)
+        if: ${{ github.event.inputs.service == 'app.hertz-tuning-api' }}
+        uses: google-github-actions/auth@v1
+        with:
+            credentials_json: ${{ env.GCP_SA_KEY }}
+      
+      - name: Setup gcloud CLI
+        if: ${{ github.event.inputs.service == 'app.hertz-tuning-api' }}
+        uses: google-github-actions/setup-gcloud@v1
+
+      - name: Boot target instance (start/resume with conditional wait)
+        if: ${{ github.event.inputs.service == 'app.hertz-tuning-api' }}
+        run: |
+              echo "⚡ 인스턴스 상태 확인 중: $INSTANCE (zone: $ZONE)"
+              STATUS=$(gcloud compute instances describe "$INSTANCE" --zone="$ZONE" --format='get(status)')
+              echo "🔎 현재 상태: $STATUS"
+    
+              if [[ "$STATUS" == "SUSPENDED" ]]; then
+                echo "🔄 'resume' 명령 실행"
+                gcloud compute instances resume "$INSTANCE" --zone="$ZONE"
+                echo "⏳ 상태 변경 후 30초 대기..."
+                sleep 30
+              elif [[ "$STATUS" == "TERMINATED" ]]; then
+                echo "🔄 'start' 명령 실행"
+                gcloud compute instances start "$INSTANCE" --zone="$ZONE"
+                echo "⏳ 상태 변경 후 30초 대기..."
+                sleep 30
+              else
+                echo "✅ 이미 실행 중 - 대기 생략"
+              fi
+              //종료
+               
+              exit 0
+              
       - name: Set environment
+        if: ${{ github.event.inputs.service != 'app.hertz-tuning-api' }}
         run: |
           BRANCH="${{ github.ref_name }}"
           SERVICE="${{ github.event.inputs.service }}"
@@ -67,11 +150,11 @@ jobs:
       - name: Set deploy message
         run: |
           if [[ "${{ github.event.inputs.rollback }}" == "true" ]]; then
-            echo "DEPLOY_MESSAGE=🚨 **[${{ env.ENV }} 환경]** AI-CPU 롤백 완료(수동)" >> $GITHUB_ENV
+            echo "DEPLOY_MESSAGE=🚨 **[${{ env.ENV }} 환경]** ${{ github.event.inputs.service }} 롤백 완료(수동)" >> $GITHUB_ENV
           elif [[ "${{ env.SERVICE }}" == "chat-report" ]]; then
-            echo "DEPLOY_MESSAGE=🚀 **[${{ env.ENV }} 환경]** AI-CHAT-REPORT 배포 완료(수동)" >> $GITHUB_ENV
+            echo "DEPLOY_MESSAGE=🚀 **[${{ env.ENV }} 환경]** ${{ github.event.inputs.service }} 배포 완료(수동)" >> $GITHUB_ENV
           else
-            echo "DEPLOY_MESSAGE=🚀 **[${{ env.ENV }} 환경]** AI-CPU 배포 완료(수동)" >> $GITHUB_ENV
+            echo "DEPLOY_MESSAGE=🚀 **[${{ env.ENV }} 환경]** ${{ github.event.inputs.service }}" >> $GITHUB_ENV
           fi
 
       - name: Authenticate to GCP
@@ -227,5 +310,5 @@ jobs:
           WORKFLOW_URL="https://github.com/${{ github.repository }}/actions/runs/${{ github.run_id }}"
           curl -H "Content-Type: application/json" \
                -X POST \
-               -d "{\"content\": \"❌ **[${{ env.ENV }} 환경]** AI-CPU 배포 실패(수동)\\n> Branch: \`${{ env.BRANCH }}\`\\n> Commit: ${{ env.COMMIT_HASH }}\\n> [워크플로우 로그 보기]($WORKFLOW_URL)\"}" \
+               -d "{\"content\": \"❌ **[${{ env.ENV }} 환경]** ${{ github.event.inputs.service }} 배포 실패(수동)\\n> Branch: \`${{ env.BRANCH }}\`\\n> Commit: ${{ env.COMMIT_HASH }}\\n> [워크플로우 로그 보기]($WORKFLOW_URL)\"}" \
                ${{ secrets.DISCORD_WEBHOOK_CICD_URL }}
