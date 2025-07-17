@@ -1,0 +1,16 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: frontend-metrics
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    app: {{ .Values.apps.frontend }}
+spec:
+  selector:
+    matchLabels:
+      app: {{ .Values.apps.frontend }}
+  endpoints:
+  - port: metrics
+    path: /metrics
+    interval: {{ .Values.monitoring.interval }}
+    scrapeTimeout: {{ .Values.monitoring.scrapeTimeout }}

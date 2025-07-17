@@ -1,0 +1,15 @@
+# Prod Environment Settings
+# Global settings
+global:
+  namespace: hertz-tuning-prod
+
+# Ingress settings
+ingress:
+  className: alb
+  certificateArn: arn:aws:acm:ap-northeast-2:969400486509:certificate/0923e90f-18b8-4f6c-b33f-878e9d00cfbf
+
+# Service names
+services:
+  backend: springboot-be-svc
+  frontend: nextjs-fe-svc
+  websocketPort: 9100

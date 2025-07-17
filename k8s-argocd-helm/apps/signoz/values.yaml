@@ -1,8 +1,3 @@
-# Global settings
-global:
-  namespace: observability
-  environment: dev
-
 # SigNoz Chart Values (경량화 + k8s-infra)
 signoz:
   # ClickHouse (로그 + 메트릭 저장소)
@@ -15,11 +10,11 @@ signoz:
       size: 4Gi
     resources:
       requests:
-        memory: "512Mi"
-        cpu: "200m"
+        memory: "2Gi"
+        cpu: "500m"
       limits:
-        memory: "1Gi"
-        cpu: "400m"
+        memory: "4Gi"
+        cpu: "1"
     layout:
       shardsCount: 1
       replicasCount: 1
@@ -37,25 +32,36 @@ signoz:
     enabled: true
     resources:
       requests:
-        memory: "256Mi"
-        cpu: "100m"
+        memory: "1Gi"
+        cpu: "250m"
       limits:
-        memory: "512Mi"
-        cpu: "200m"
+        memory: "2Gi"
+        cpu: "500m"
 
   # Frontend
   frontend:
     enabled: true
     resources:
       requests:
-        memory: "128Mi"
-        cpu: "50m"
-      limits:
         memory: "256Mi"
         cpu: "100m"
+      limits:
+        memory: "512Mi"
+        cpu: "200m"
 
   # OTel Collector
   otelCollector:
+    enabled: true
+    resources:
+      requests:
+        memory: "512Mi"
+        cpu: "200m"
+      limits:
+        memory: "1Gi"
+        cpu: "400m"
+
+  # 애플리케이션 메트릭 수집기 (SpringBoot, MySQL 성능)
+  otelCollectorMetrics:
     enabled: true
     resources:
       requests:
@@ -65,28 +71,13 @@ signoz:
         memory: "512Mi"
         cpu: "200m"
 
-  # 애플리케이션 메트릭 수집기 (SpringBoot, MySQL 성능)
-  otelCollectorMetrics:
-    enabled: true
-    resources:
-      requests:
-        memory: "128Mi"
-        cpu: "50m"
-      limits:
-        memory: "256Mi"
-        cpu: "100m"
-
   # 로그 수집만 활성화
   presets:
     logsCollection:
       enabled: true
       includeNamespaces:
-        - hertz-tuning-dev
+        - hertz-tuning-stage
     # 다른 메트릭들은 k8s-infra가 처리
-    kubeletMetrics:
-      enabled: false
-    hostMetrics:
-      enabled: false
     clusterMetrics:
       enabled: false
     kubernetesEvents:

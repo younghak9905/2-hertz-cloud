@@ -95,3 +95,6 @@ terraform.rc
 #######################################
 # Ignore EKS setting
 **/cluster-config.yaml
+
+.amazonq/**
+rules.md

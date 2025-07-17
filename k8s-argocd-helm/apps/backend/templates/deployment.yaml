@@ -5,7 +5,6 @@ metadata:
   namespace: {{ .Values.global.namespace }}
   annotations:
     reloader.stakater.com/auto: "true"
-    argocd.argoproj.io/sync-wave: "2"
 spec:
   strategy:
     type: RollingUpdate
@@ -21,7 +20,7 @@ spec:
         app: {{ .Values.app.name }}
       annotations:
         signoz.io/scrape: "true"
-        signoz.io/port: "8000"
+        signoz.io/port: "8080"
         signoz.io/path: "/metrics"
     spec:
       serviceAccountName: {{ .Values.serviceAccount.ecrAccess }}
@@ -45,6 +44,8 @@ spec:
             - secretRef:
                 name: springboot-secrets
           env:
+            - name: TZ
+              value: "Asia/Seoul"
             - name: OTEL_SERVICE_NAME
               value: "{{ .Values.app.name }}"
             - name: OTEL_EXPORTER_OTLP_ENDPOINT
@@ -58,19 +59,35 @@ spec:
             - name: OTEL_TRACES_EXPORTER
               value: "otlp"
             - name: OTEL_RESOURCE_ATTRIBUTES
-              value: "service.name={{ .Values.app.name }},service.version={{ .Values.image.tag }},host.name={{ .Values.app.name }},os.type=linux"
+              value: "service.name=k8s-{{ .Values.app.name }}-{{ .Values.app.environment }},service.version={{ .Values.image.tag }},host.name=k8s-{{ .Values.app.name }}-{{ .Values.app.environment }},os.type=linux"
             - name: LOGGING_LEVEL_ROOT
               value: "INFO"
             - name: LOGGING_PATTERN_CONSOLE
               value: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
             - name: JAVA_TOOL_OPTIONS
               value: "-javaagent:/otel/opentelemetry-javaagent.jar"
+            # fcm.certification 속성에 마운트된 파일의 절대 경로를 지정합니다.
+            - name: FCM_CERTIFICATION
+              value: "tuning-fcm-certification.json"
+            - name: KAFKA_SSE_GROUP_ID
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
           volumeMounts:
             - name: otel-agent
               mountPath: /otel
+            # subPath를 사용하여 디렉터리를 덮어쓰지 않고 파일만 마운트합니다.
+            # - name: fcm-cert-volume
+            #   mountPath: /app/tuning-fcm-certification.json
+            #   subPath: tuning-fcm-certification.json
+            #   readOnly: true
+            - name: fcm-cert-volume
+              mountPath: /app/resources
+              readOnly: true
           ports:
             - containerPort: {{ .Values.app.ports.http }}
             - containerPort: {{ .Values.app.ports.websocket }}
+
           readinessProbe:
             httpGet:
               path: /api/ping
@@ -80,6 +97,7 @@ spec:
             timeoutSeconds: {{ .Values.healthCheck.readiness.timeoutSeconds }}
             failureThreshold: {{ .Values.healthCheck.readiness.failureThreshold }}
             successThreshold: {{ .Values.healthCheck.readiness.successThreshold }}
+
           livenessProbe:
             httpGet:
               path: /api/ping
@@ -88,6 +106,7 @@ spec:
             periodSeconds: {{ .Values.healthCheck.liveness.periodSeconds }}
             timeoutSeconds: {{ .Values.healthCheck.liveness.timeoutSeconds }}
             failureThreshold: {{ .Values.healthCheck.liveness.failureThreshold }}
+
           resources:
             requests:
               cpu: {{ .Values.resources.requests.cpu }}
@@ -99,3 +118,12 @@ spec:
       volumes:
         - name: otel-agent
           emptyDir: {}
+        # - name: fcm-cert-volume
+        #   secret:
+        #     secretName: springboot-fcm-secret
+        #     items:
+        #       - key: tuning-fcm-certification.json
+        #         path: tuning-fcm-certification.json
+        - name: fcm-cert-volume
+          secret:
+            secretName: springboot-fcm-secret

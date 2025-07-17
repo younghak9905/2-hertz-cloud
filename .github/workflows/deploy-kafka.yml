@@ -1,0 +1,118 @@
+name: Deploy KAFKA
+
+on:
+  workflow_dispatch:
+    inputs:
+      restart:
+        description: "KAFKA를 재시작할까요?"
+        required: false
+        default: "false"
+        type: choice
+        options:
+          - "false"
+          - "true"
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Login to ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v1
+      
+      - name: Set environment variables from SSM
+        run: |
+          load_param() {
+            VALUE=$(aws ssm get-parameter --name "$1" --with-decryption --query "Parameter.Value" --output text)
+            echo "::add-mask::$VALUE"
+            echo "$2=$VALUE" >> $GITHUB_ENV
+          }
+
+          load_secret_to_file() {
+            VALUE=$(aws ssm get-parameter --name "$1" --with-decryption --output json | jq -r .Parameter.Value)
+
+            echo "$VALUE" | while IFS= read -r line; do
+              echo "::add-mask::$line"
+            done
+
+            echo "$VALUE" > "$2"
+          }
+          BRANCH="develop"  # 개발 환경을 위한 브랜치 설정
+          SANITIZED_BRANCH="${BRANCH//\//-}"
+          SANITIZED_BRANCH=$(echo "$SANITIZED_BRANCH" | sed 's#[^a-zA-Z0-9_.-]#-#g')
+          BRANCH="$SANITIZED_BRANCH"
+          echo "BRANCH=$BRANCH" >> $GITHUB_ENV
+          echo "ENV=develop" >> $GITHUB_ENV
+          load_param "/global/gcp/kafka/HOST" HOST
+          load_param "/global/gcp/kafka/INSTANCE" INSTANCE
+          load_param "/global/gcp/kafka/PROJECT_ID" PROJECT_ID
+          load_param "/global/gcp/kafka/ZONE" ZONE
+          load_secret_to_file "/global/gcp/kafka/SA_KEY" gcp-sa-key.json
+          echo "SA_KEY<<EOF" >> $GITHUB_ENV
+          cat gcp-sa-key.json >> $GITHUB_ENV
+          echo "EOF" >> $GITHUB_ENV
+
+      - name: Authenticate to GCP KAFKA
+        uses: google-github-actions/auth@v1
+        with:
+            credentials_json: ${{ env.SA_KEY }}
+
+      - name: Setup gcloud CLI
+        uses: google-github-actions/setup-gcloud@v1
+
+      - name: Boot target instance (start/resume with conditional wait)
+        run: |
+          echo "⚡ 인스턴스 상태 확인 중: $INSTANCE (zone: $ZONE)"
+          STATUS=$(gcloud compute instances describe "$INSTANCE" --zone="$ZONE" --format='get(status)')
+          echo "🔎 현재 상태: $STATUS"
+
+          if [[ "$STATUS" == "SUSPENDED" ]]; then
+            echo "🔄 'resume' 명령 실행"
+            gcloud compute instances resume "$INSTANCE" --zone="$ZONE"
+            echo "⏳ 상태 변경 후 30초 대기..."
+            sleep 30
+          elif [[ "$STATUS" == "TERMINATED" ]]; then
+            echo "🔄 'start' 명령 실행"
+            gcloud compute instances start "$INSTANCE" --zone="$ZONE"
+            echo "⏳ 상태 변경 후 30초 대기..."
+            sleep 30
+          else
+            if [[ "${{ inputs.restart }}" == "true" ]]; then
+                echo "🔄 'stop' 명령 실행"
+                gcloud compute instances stop "$INSTANCE" --zone="$ZONE"
+                echo "⏳ 상태 변경 후 30초 대기..."
+                sleep 60
+                echo "🔄 'start' 명령 실행"
+                gcloud compute instances start "$INSTANCE" --zone="$ZONE"
+                echo "⏳ 상태 변경 후 30초 대기..."
+                sleep 30
+                fi
+            echo "✅ 이미 실행 중 - 대기 생략"
+          fi
+
+      - name: Wait for KAFKA to be ready
+        run: |
+          echo "🕒 Spring Boot 서버 기동 대기 중..."
+          sleep 30
+
+      - name: Send success notification
+        if: success()
+        run: |
+            curl -H "Content-Type: application/json" \
+                 -X POST \
+                 -d "{\"content\": \"kafka 배포 완료\n> \"}" \
+                 ${{ secrets.DISCORD_WEBHOOK_CICD_URL }}
+    
+      - name: Send failure notification
+        if: failure()
+        run: |
+            curl -H "Content-Type: application/json" \
+                 -X POST \
+                 -d "{\"content\": \"kafka 배포 실패\n> \"}" \
+                 ${{ secrets.DISCORD_WEBHOOK_CICD_URL }}
