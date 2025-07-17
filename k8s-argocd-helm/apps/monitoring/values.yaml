@@ -221,8 +221,6 @@ promtail:
           min_period: 500ms   # 최소 대기 간격
           max_period: 5s      # 최대 대기 간격
           max_retries: 10     # 최대 재시도 횟수
-        send_queue_size: 10240  # 큐 크기 증가 (기본은 100)
-
      
       scrape_configs:
       - job_name: kubernetes-pods
