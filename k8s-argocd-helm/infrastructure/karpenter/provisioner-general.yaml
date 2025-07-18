@@ -14,7 +14,7 @@ spec:
     name: default
   limits:
     resources:
-      cpu: "8" # 총 8 vCPU 이상 노드 생성하지 않도록 제한 (선택적)
+      cpu: "16" # 총 8 vCPU 이상 노드 생성하지 않도록 제한 (선택적)
   labels:
     workload-type: "general"
   consolidation:
