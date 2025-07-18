@@ -34,20 +34,13 @@ jobs:
 
     steps:
       - name: Configure AWS credentials
-        if: ${{ github.event.inputs.service == 'app.hertz-tuning-api' }}
         uses: aws-actions/configure-aws-credentials@v1
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_REGION }}
 
-      - name: Login to ECR (app.hertz-tuning-api)
-        if: ${{ github.event.inputs.service == 'app.hertz-tuning-api' }}
-        uses: aws-actions/amazon-ecr-login@v1
-
-
       - name: Set environment variables from SSM
-        if: ${{ github.event.inputs.service == 'app.hertz-tuning-api' }}
         run: |
           load_param() {
             VALUE=$(aws ssm get-parameter --name "$1" --with-decryption --query "Parameter.Value" --output text)
@@ -64,84 +57,59 @@ jobs:
 
             echo "$VALUE" > "$2"
           }
-          BRANCH="develop"  # 개발 환경을 위한 브랜치 설정
-          SANITIZED_BRANCH="${BRANCH//\//-}"
-          SANITIZED_BRANCH=$(echo "$SANITIZED_BRANCH" | sed 's#[^a-zA-Z0-9_.-]#-#g')
-          BRANCH="$SANITIZED_BRANCH"
+          BRANCH="${{ github.ref_name }}"
+          SERVICE="${{ github.event.inputs.service }}"
           echo "BRANCH=$BRANCH" >> $GITHUB_ENV
-          echo "ENV=develop" >> $GITHUB_ENV
-          load_param "/global/gcp/app/GCP_HOST" HOST
-          load_param "/global/gcp/app/GCP_INSTANCE" INSTANCE
-          load_param "/global/gcp/app/GCP_PROJECT_ID" PROJECT_ID
-          load_param "/global/gcp/app/GCP_ZONE" ZONE
-          load_secret_to_file "/global/gcp/app/GCP_SA_KEY" gcp-sa-key.json
-          echo "GCP_SA_KEY<<EOF" >> $GITHUB_ENV
-          cat gcp-sa-key.json >> $GITHUB_ENV
-          echo "EOF" >> $GITHUB_ENV
+          echo "SERVICE=$SERVICE" >> $GITHUB_ENV
+          echo "ENV=$BRANCH" >> $GITHUB_ENV
+         
+          if [[ ${{github.event.inputs.service}} == 'chat-report' ]]; then
+            load_param "/global/gcp/dev/GCP_HOST" HOST
+            load_param "/global/gcp/dev/GCP_INSTANCE" INSTANCE
+            load_param "/global/gcp/dev/GCP_PROJECT_ID" PROJECT_ID
+            load_param "/global/gcp/dev/GCP_ZONE" ZONE
+            load_secret_to_file "/global/gcp/dev/GCP_SA_KEY" gcp-sa-key.json
+          elif [[ ${{github.event.inputs.service}} == 'app.hertz-tuning-api' ]]; then
+            load_param "/global/gcp/app/GCP_HOST" HOST
+            load_param "/global/gcp/app/GCP_INSTANCE" INSTANCE
+            load_param "/global/gcp/app/GCP_PROJECT_ID" PROJECT_ID
+            load_param "/global/gcp/app/GCP_ZONE" ZONE
+            load_secret_to_file "/global/gcp/app/GCP_SA_KEY" gcp-sa-key.json
+          else
+            if [[ "${{ github.ref_name }}" == "main" ]]; then
+              load_param "/global/gcp/PROD_GCP_HOST_AI" HOST
+              load_param "/global/gcp/PROD_GCP_INSTANCE_AI" INSTANCE
+              load_param "/global/gcp/POD_GCP_PROJECT_ID" PROJECT_ID
+              load_param "/global/gcp/PROD_GCP_ZONE" ZONE
+              load_secret_to_file "/global/gcp/PROD_GCP_SA_KEY" gcp-sa-key.json
+            else
+              load_param "/global/gcp/DEV_GCP_HOST_AI" HOST
+              load_param "/global/gcp/DEV_GCP_INSTANCE_AI" INSTANCE
+              load_param "/global/gcp/DEV_GCP_PROJECT_ID" PROJECT_ID
+              load_param "/global/gcp/DEV_GCP_ZONE" ZONE
+              load_secret_to_file "/global/gcp/DEV_GCP_SA_KEY" gcp-sa-key.json
+            fi
+
+            echo "GCP_SA_KEY<<EOF" >> $GITHUB_ENV
+            cat gcp-sa-key.json >> $GITHUB_ENV
+            echo "EOF" >> $GITHUB_ENV
+          fi
           
 
       - name: Authenticate to GCP (app.hertz-tuning-api)
-        if: ${{ github.event.inputs.service == 'app.hertz-tuning-api' }}
         uses: google-github-actions/auth@v1
         with:
             credentials_json: ${{ env.GCP_SA_KEY }}
       
       - name: Setup gcloud CLI
-        if: ${{ github.event.inputs.service == 'app.hertz-tuning-api' }}
         uses: google-github-actions/setup-gcloud@v1
-
-      - name: Boot target instance (start/resume with conditional wait)
-        if: ${{ github.event.inputs.service == 'app.hertz-tuning-api' }}
-        run: |
-              echo "⚡ 인스턴스 상태 확인 중: $INSTANCE (zone: $ZONE)"
-              STATUS=$(gcloud compute instances describe "$INSTANCE" --zone="$ZONE" --format='get(status)')
-              echo "🔎 현재 상태: $STATUS"
-    
-              if [[ "$STATUS" == "SUSPENDED" ]]; then
-                echo "🔄 'resume' 명령 실행"
-                gcloud compute instances resume "$INSTANCE" --zone="$ZONE"
-                echo "⏳ 상태 변경 후 30초 대기..."
-                sleep 30
-              elif [[ "$STATUS" == "TERMINATED" ]]; then
-                echo "🔄 'start' 명령 실행"
-                gcloud compute instances start "$INSTANCE" --zone="$ZONE"
-                echo "⏳ 상태 변경 후 30초 대기..."
-                sleep 30
-              else
-                echo "✅ 이미 실행 중 - 대기 생략"
-              fi
-              //종료
-               
-              exit 0
               
       - name: Set environment
-        if: ${{ github.event.inputs.service != 'app.hertz-tuning-api' }}
         run: |
           BRANCH="${{ github.ref_name }}"
           SERVICE="${{ github.event.inputs.service }}"
           echo "BRANCH=$BRANCH" >> $GITHUB_ENV
           echo "SERVICE=$SERVICE" >> $GITHUB_ENV
-
-
-          if [[ "$BRANCH" == "main" && "$SERVICE" == "tuning-api" ]]; then
-            echo "ENV=PROD" >> $GITHUB_ENV
-            echo "HOST=${{ secrets.PROD_GCP_HOST_AI }}" >> $GITHUB_ENV
-            echo "INSTANCE=${{ secrets.PROD_GCP_INSTANCE_AI }}" >> $GITHUB_ENV
-            echo "PROJECT_ID=${{ secrets.PROD_GCP_PROJECT_ID }}" >> $GITHUB_ENV
-            echo "ZONE=${{ secrets.PROD_GCP_ZONE_AI }}" >> $GITHUB_ENV
-          elif [[ "$SERVICE" == "chat-report" ]]; then
-            echo "ENV=DEV" >> $GITHUB_ENV
-            echo "HOST=${{ secrets.PROD_GCP_CHAT_REPORT }}" >> $GITHUB_ENV
-            echo "INSTANCE=${{ secrets.PROD_INSTANCE_CHAT_REPORT }}" >> $GITHUB_ENV
-            echo "PROJECT_ID=${{ secrets.PROD_GCP_PROJECT_ID }}" >> $GITHUB_ENV
-            echo "ZONE=${{ secrets.GCP_ZONE }}" >> $GITHUB_ENV
-          else
-            echo "ENV=DEV" >> $GITHUB_ENV
-            echo "HOST=${{ secrets.DEV_GCP_HOST_AI }}" >> $GITHUB_ENV
-            echo "INSTANCE=${{ secrets.DEV_GCP_INSTANCE_AI }}" >> $GITHUB_ENV
-            echo "PROJECT_ID=${{ secrets.DEV_GCP_PROJECT_ID }}" >> $GITHUB_ENV
-            echo "ZONE=${{ secrets.DEV_GCP_ZONE_AI }}" >> $GITHUB_ENV
-          fi
 
           echo "ROLLBACK=${{ github.event.inputs.rollback }}" >> $GITHUB_ENV
           echo "COMMIT_HASH=${{ github.sha }}" >> $GITHUB_ENV
@@ -157,27 +125,6 @@ jobs:
             echo "DEPLOY_MESSAGE=🚀 **[${{ env.ENV }} 환경]** ${{ github.event.inputs.service }}" >> $GITHUB_ENV
           fi
 
-      - name: Authenticate to GCP
-        if: github.ref_name == 'main' && env.SERVICE == 'tuning-api'
-        uses: google-github-actions/auth@v1
-        with:
-          credentials_json: ${{ secrets.PROD_GCP_SA_KEY }}
-
-      - name: Authenticate to GCP (Stage)
-        if: github.ref_name != 'main' && env.SERVICE == 'tuning-api'
-        uses: google-github-actions/auth@v1
-        with:
-          credentials_json: ${{ secrets.DEV_GCP_SA_KEY }}
-      
-      - name: Authenticate to GCP (chat-report)
-        if: env.SERVICE != 'tuning-api'
-        uses: google-github-actions/auth@v1
-        with:
-            credentials_json: ${{ secrets.PROD_GCP_SA_KEY }}
-
-
-      - name: Setup gcloud CLI
-        uses: google-github-actions/setup-gcloud@v1
 
       - name: Boot target instance (start/resume with conditional wait)
         run: |
@@ -199,15 +146,6 @@ jobs:
             echo "✅ 이미 실행 중 - 대기 생략"
           fi
 
-        # 2. AWS 인증
-      - name: Configure AWS credentials
-        if: env.DEPLOY_TYPE == 'docker' && env.SERVICE == 'tuning-api'
-        uses: aws-actions/configure-aws-credentials@v1
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ secrets.AWS_REGION }}
-
       # 3. ECR 로그인
       - name: Login to Amazon ECR
         if: env.DEPLOY_TYPE == 'docker' && env.SERVICE == 'tuning-api'
@@ -219,6 +157,7 @@ jobs:
         run: echo "ECR_REGISTRY=${{ steps.login-ecr.outputs.registry }}" >> $GITHUB_ENV
 
       - name: Deploy via SSH
+        if: env.DEPLOY_TYPE == 'docker' && env.SERVICE == 'tuning-api'
         uses: appleboy/ssh-action@master
         with:
           host: ${{ env.HOST }}
@@ -237,11 +176,6 @@ jobs:
               sleep 5
 
               docker compose --env-file .env up -d
-            elif [[ "${{ env.SERVICE }}" == "chat-report" ]]; then
-              echo "🚀 Docker 배포 시작..."
-              cd /home/deploy
-              ./ai_deploy.sh
-              sleep 5
             else 
               echo "🚀 PM2 배포 시작..."
               cd /home/deploy
