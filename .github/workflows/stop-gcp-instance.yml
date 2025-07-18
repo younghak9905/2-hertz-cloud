@@ -88,8 +88,8 @@ jobs:
             load_param "/global/gcp/kafka/ZONE" ZONE
             load_secret_to_file "/global/gcp/kafka/SA_KEY" gcp-sa-key.json
           elif [[ "$TARGET" == "CHAT-REPORT" ]]; then
-            load_param "/globalgcp/chat/GCP_HOST_AI" HOST
-            load_param "/global/gcp/chat/GCP_INSTANCE_AI" INSTANCE
+            load_param "/global/gcp/chat/GCP_HOST" HOST
+            load_param "/global/gcp/chat/GCP_INSTANCE" INSTANCE
             load_param "/global/gcp/chat/GCP_PROJECT_ID" PROJECT_ID
             load_param "/global/gcp/chat/GCP_ZONE" ZONE
             load_secret_to_file "/global/gcp/chat/GCP_SA_KEY" gcp-sa-key.json      
