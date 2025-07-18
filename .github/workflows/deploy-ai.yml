@@ -64,11 +64,11 @@ jobs:
           echo "ENV=$BRANCH" >> $GITHUB_ENV
          
           if [[ ${{github.event.inputs.service}} == 'chat-report' ]]; then
-            load_param "/global/gcp/dev/GCP_HOST" HOST
-            load_param "/global/gcp/dev/GCP_INSTANCE" INSTANCE
-            load_param "/global/gcp/dev/GCP_PROJECT_ID" PROJECT_ID
-            load_param "/global/gcp/dev/GCP_ZONE" ZONE
-            load_secret_to_file "/global/gcp/dev/GCP_SA_KEY" gcp-sa-key.json
+            load_param "/global/gcp/chat/GCP_HOST" HOST
+            load_param "/global/gcp/chat/GCP_INSTANCE" INSTANCE
+            load_param "/global/gcp/chat/GCP_PROJECT_ID" PROJECT_ID
+            load_param "/global/gcp/chat/GCP_ZONE" ZONE
+            load_secret_to_file "/global/gcp/chat/GCP_SA_KEY" gcp-sa-key.json
           elif [[ ${{github.event.inputs.service}} == 'app.hertz-tuning-api' ]]; then
             load_param "/global/gcp/app/GCP_HOST" HOST
             load_param "/global/gcp/app/GCP_INSTANCE" INSTANCE
@@ -89,11 +89,10 @@ jobs:
               load_param "/global/gcp/DEV_GCP_ZONE" ZONE
               load_secret_to_file "/global/gcp/DEV_GCP_SA_KEY" gcp-sa-key.json
             fi
-
-            echo "GCP_SA_KEY<<EOF" >> $GITHUB_ENV
-            cat gcp-sa-key.json >> $GITHUB_ENV
-            echo "EOF" >> $GITHUB_ENV
           fi
+          echo "GCP_SA_KEY<<EOF" >> $GITHUB_ENV
+          cat gcp-sa-key.json >> $GITHUB_ENV
+          echo "EOF" >> $GITHUB_ENV
           
 
       - name: Authenticate to GCP (app.hertz-tuning-api)
