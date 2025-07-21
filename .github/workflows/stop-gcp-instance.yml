@@ -115,7 +115,7 @@ jobs:
 
 
       - name: Set environment
-        if: ${{ inputs.target != 'TEST' && inputs.target != 'KAFKA' && inputs.target != 'CHAT-REPORT' }}        
+        if: ${{ inputs.target != 'TEST' && inputs.target != 'KAFKA' && inputs.target != 'CHAT-REPORT' && inputs.target != 'CHAT-REPORT-TEST' }}        
         run: |
           BRANCH="${{ github.ref_name }}"
           TARGET="${{ github.event.inputs.target }}"
