@@ -82,7 +82,7 @@ spec:
             #   subPath: tuning-fcm-certification.json
             #   readOnly: true
             - name: fcm-cert-volume
-              mountPath: /app/resources
+              mountPath: /app
               readOnly: true
           ports:
             - containerPort: {{ .Values.app.ports.http }}
