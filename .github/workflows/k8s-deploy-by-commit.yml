@@ -142,7 +142,7 @@ jobs:
         run: |
           BRANCH="${{ inputs.source_branch }}"
           echo "BRANCH=$BRANCH" >> $GITHUB_ENV
-          IMAGE_TAG="k8s-develop-${{ env.SHORT_HASH }}"
+          IMAGE_TAG="k8s-${{ inputs.source_branch == 'main' && 'main' || 'develop' }}-${{ env.SHORT_HASH }}"
           ENV_TAG="${{ inputs.target_branch == 'main' && 'k8s-main-latest' || 'k8s-develop-latest' }}"
           ECR_REGISTRY=${{ steps.login-ecr.outputs.registry }}
           REPOSITORY="tuning-${{ inputs.service == 'backend' && 'springboot' || 'nextjs' }}"
